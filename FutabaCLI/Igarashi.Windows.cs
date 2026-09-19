@@ -22,7 +22,7 @@ internal static partial class Igarashi {
 			shellKey.SetValue("", DefaultOpen);
 
 			using var shell1 = shellKey.CreateSubKey(@$"{DefaultOpen}\command");
-			shell1.SetValue("", @$"""{propath}"" build ""%1"" --pause");
+			shell1.SetValue("", @$"""{propath}"" build ""%1""");
 
 			using var extKey = rootKey.CreateSubKey(@$"SOFTWARE\Classes\{ManifestExtension}");
 			extKey.SetValue("", AppHandle);
