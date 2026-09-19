@@ -63,7 +63,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 					SourceEnd = SourceStart + ftext.Read(new Span<char>(SourceStart, length));
 
 					ApplyPadding();
-					Length = length;
+					Length = (int) (SourceEnd - SourceStart);
 					Error = null;
 
 					return;

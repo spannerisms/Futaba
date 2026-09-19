@@ -19,9 +19,20 @@ internal static partial class Igarashi {
 	public static readonly Version Version;
 
 	public const string RomExtension = ".sfc";
+	public const string ManifestExtension = ".futaba";
 
 	public const int Exit_Good = 0;
 	const int Exit_Error = 1;
+
+	// Windows registry identifiers
+	const string AppHandle = "futaba_assembler";
+	const string DefaultOpen = "Assemble";
+
+	// Linux/XDG identifiers
+	const string MimeType = "text/x-futaba";
+	const string DesktopFileId = "futaba.desktop";
+	const string IconName = "futaba";
+	const string MimeIconName = "text-x-futaba"; // MimeType with '/' -> '-'
 
 	static Igarashi() {
 		Version = System.Reflection.Assembly.GetAssembly(typeof(Igarashi))?.GetName().Version ?? new(0, 0);
@@ -48,6 +59,7 @@ internal static partial class Igarashi {
 	static int Main(string[] args) {
 #if UNITTESTS
 		Assembler.UnitTester.TestMain();
+		FutabaCliTests.RunAll();
 
 		return 0;
 #else
@@ -64,6 +76,9 @@ internal static partial class Igarashi {
 
 		Command registerCommand = new("register", "Register as a system command and enable direct opening of .futaba files");
 		registerCommand.SetAction(RegisterFutaba);
+
+		Command unregisterCommand = new("unregister", "Remove the .futaba file association and app shortcut");
+		unregisterCommand.SetAction(UnregisterFutaba);
 
 		Command quicky = new("quicky", "Quick assembly without a manifest file") {
 			Arg_Entry, Arg_BaseRom, Arg_OutputRom,
@@ -105,6 +120,7 @@ internal static partial class Igarashi {
 		rootaba.Add(patch);
 		rootaba.Add(checksums);
 		rootaba.Add(registerCommand);
+		rootaba.Add(unregisterCommand);
 		rootaba.Options.Remove(rootaba.Options.First(o => o is VersionOption));
 
 		rootaba.Add(cmdversion);
@@ -155,67 +171,45 @@ internal static partial class Igarashi {
 		}
 	}
 
-	static int RegisterFutaba(ParseResult _) {
-		const string AppHandle = "futaba_assembler";
-		const string DefaultOpen = "Assemble";
+	static int RegisterFutaba(ParseResult _) => RunRegistrar(static r => r.Register());
 
-		if (OperatingSystem.IsWindows()) {
-			Debug.Assert(OperatingSystem.IsWindows());
+	static int UnregisterFutaba(ParseResult _) => RunRegistrar(static r => r.Unregister());
 
-			if (Environment.ProcessPath is string propath) {
-				string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
-				using var rootKey = Microsoft.Win32.Registry.CurrentUser;
-
-				using var appKey = rootKey.CreateSubKey(@$"SOFTWARE\Classes\{AppHandle}");
-
-				using var shellKey = appKey.CreateSubKey("shell");
-				shellKey.SetValue("", DefaultOpen);
-
-				using var shell1 = shellKey.CreateSubKey(@$"{DefaultOpen}\command");
-				shell1.SetValue("", @$"""{propath}"" build ""%1"" --pause");
-
-				using var extKey = rootKey.CreateSubKey(@"SOFTWARE\Classes\.futaba");
-				extKey.SetValue("", AppHandle);
-
-				// create a symlink
-				string linkPath = Path.Combine(appData, "Microsoft", "WindowsApps", "futaba.exe");
-				
-				FileInfo exeSymLink = new(linkPath);
-				
-				if (exeSymLink.Exists) {
-					exeSymLink.Delete();
-				}
-				
-				exeSymLink.CreateAsSymbolicLink(propath);
-			}
-
-			Console.WriteLine($"Successfully registered .futaba file association and app shortcut.");
-
-			return Exit_Good;
-		}
-
-		if (OperatingSystem.IsMacOS()) {
-			Debug.Assert(OperatingSystem.IsMacOS());
-
-			Error("Registering on MacOS is not supported due to certificate fees.");
-
+	static int RunRegistrar(Func<IAssociationRegistrar, int> action) {
+		try {
+			return action(GetRegistrar());
+		} catch (Exception e) {
+			Error(e.Message);
 			return Exit_Error;
+		}
+	}
+
+	static IAssociationRegistrar GetRegistrar() {
+		if (OperatingSystem.IsWindows()) {
+			return new WindowsAssociationRegistrar();
 		}
 
 		if (OperatingSystem.IsLinux()) {
-			Debug.Assert(OperatingSystem.IsMacOS());
-
-			Error("Registering on Linux is not yet supported.");
-
-			return Exit_Good;
+			return new LinuxAssociationRegistrar();
 		}
 
+		if (OperatingSystem.IsMacOS()) {
+			return new RefusalAssociationRegistrar("MacOS is not supported due to certificate fees.");
+		}
 
+		return new RefusalAssociationRegistrar("Unsupported platform.");
+	}
 
+	// covers both a deliberately-unsupported OS (MacOS) and a genuinely
+	// unrecognized one; neither has any work to reverse on Unregister either
+	sealed class RefusalAssociationRegistrar(string message) : IAssociationRegistrar {
+		public int Register() => Refuse();
+		public int Unregister() => Refuse();
 
-		Error("Unsupported platform.");
-		return Exit_Error;
+		int Refuse() {
+			Error(message);
+			return Exit_Error;
+		}
 	}
 
 	static int AssembleQuick(ParseResult args, Argument<FileInfo> baseRomOption) {

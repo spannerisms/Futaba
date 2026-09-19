@@ -34,6 +34,7 @@ partial class Assembler {
 			Assembler asmblr = new LoromAssembler("Tests/errortests.asm");
 
 			RunErrorTests();
+			RunSourceEncodingTest();
 
 
 			return;
@@ -130,6 +131,37 @@ partial class Assembler {
 				FailLine("  Something went wrong...  ");
 				FailLine("                           ");
 			}
+		}
+
+
+		// Regression test for a bug where SourceFile.Refresh() set Length to the
+		// file's raw byte count instead of the actual decoded char count. A UTF-8
+		// BOM (3 bytes, 0 decoded chars) plus one non-ASCII character (2 UTF-8
+		// bytes, 1 decoded char) makes those two counts diverge, which a
+		// plain-ASCII source file never would.
+		private static void RunSourceEncodingTest() {
+			SuiteGroupHeader("Source file encoding length");
+
+			string tempDir = Path.Combine(Path.GetTempPath(), $"futaba-tests-{Guid.NewGuid()}");
+			Directory.CreateDirectory(tempDir);
+
+			try {
+				string content = "; café\n";
+				string path = Path.Combine(tempDir, "bom.asm");
+				File.WriteAllText(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+				using SourceFile source = new(path);
+
+				PostResult($"Length is the decoded char count, not the byte count ({source.Length} == {content.Length})",
+					source.Length == content.Length);
+
+				PostResult("AsSpan() reproduces exactly the decoded text (no overrun into padding)",
+					source.AsSpan().SequenceEqual(content));
+			} finally {
+				Directory.Delete(tempDir, recursive: true);
+			}
+
+			PostGroupResults();
 		}
 
 

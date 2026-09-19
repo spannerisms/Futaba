@@ -576,13 +576,13 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 
 			int len = (int) reader.BaseStream.Length;
 
-			buffer = ArrayPool<char>.Shared.Rent(len * 4);
+			buffer = ArrayPool<char>.Shared.Rent(len * 4); // safe upper bound: UTF-8, never decodes to more chars than input bytes
 
 			reader.BaseStream.Position = 0;
 
-			int didRead = reader.Read(buffer);
+			int didRead = reader.ReadBlock(buffer);
 
-			if (didRead < len) {
+			if (!reader.EndOfStream) {
 				Igarashi.Error("Problem parsing manifest file.");
 				ManifestGood = false;
 				return;

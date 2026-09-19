@@ -52,6 +52,10 @@
     <None Include="..\futaba.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\logo.png" LogicalName="futaba.png" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(Configuration)'=='UnitTests'">
     <None Update="Tests\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
