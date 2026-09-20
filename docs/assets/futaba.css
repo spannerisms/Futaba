@@ -25,6 +25,14 @@ pre#manifest-template {
 	border-width: 2px 0 0 20px;
 }
 
+.register-instructions
+	fex {
+		font-size: 92%;
+		color: #993399;
+		text-decoration: underline dashed;
+	}
+}
+
 ul#nugetapi code {
 	font-weight: bold;
 }
@@ -73,6 +81,15 @@ ul#allocate-keywords {
 
 }
 
+kbd {
+	border: 1px solid;
+	border-radius: 4px;
+	padding: 0 3px;
+	background: #EEEEEE;
+	box-shadow: 1px 1px 1px;
+	margin-right: 1px;
+	font-size: 90%;
+}
 
 div.futexample:before {
 	content: 'Example';
@@ -173,15 +190,6 @@ fstr {
 	background: #AADDFF99;
 	color: #224499;
 	border-radius: 2px;
-}
-
-
-fex {
-	#reg-windows & {
-		font-size: 92%;
-		color: #993399;
-		text-decoration: underline dashed;
-	}
 }
 
 fblk {
