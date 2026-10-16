@@ -1,7 +1,6 @@
 ﻿namespace Futaba;
 
 internal class SnesHelpers {
-
 	public const int BankSize = 32768;
 
 	public const int MaxRegularSize = BankSize * 128;
@@ -60,7 +59,6 @@ internal class SnesHelpers {
 		}
 	}
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal unsafe static void FillBlockB(byte* pointer, byte value, int count) {
 		new Span<byte>(pointer, count).Fill(value);
@@ -75,7 +73,6 @@ internal class SnesHelpers {
 	internal unsafe static void FillBlockD(byte* pointer, int value, int count) {
 		new Span<int>(pointer, count).Fill(FixBigEndian(value));
 	}
-
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal unsafe static void WriteW(byte* ptr, int value) {
@@ -97,12 +94,6 @@ internal class SnesHelpers {
 	internal unsafe static void WriteD(byte* ptr, int value) {
 		*(int*) ptr = FixBigEndian(value);
 	}
-
-
-
-
-
-
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static bool FitsIn8(int v) {
@@ -132,13 +123,10 @@ internal class SnesHelpers {
 		}
 	}
 
-
-
 	internal static byte GetHeaderSizeByte(int value) {
 		return (byte) System.Numerics.BitOperations.Log2(
 			System.Numerics.BitOperations.RoundUpToPowerOf2((uint) value));
 	}
-
 
 	internal static (bool valid, int distance) TestGetBranchDistance(int location, int target) {
 		int v = target - location;
@@ -146,13 +134,11 @@ internal class SnesHelpers {
 		return (v == distance, distance);
 	}
 
-
 	internal static (bool valid, int distance) TestGetBranchDistanceLong(int location, int target) {
 		int v = target - location;
 		int distance = (short) v;
 		return (v == distance, distance);
 	}
-
 
 	public const int GameCodeLength = 4;
 	public const int MakerCodeLength = 2;
@@ -220,7 +206,6 @@ internal class SnesHelpers {
 			return false;
 		}
 
-
 		if (IsMirroredWram(addrB)) {
 			return IsInMirroredBank(addrA);
 		}
@@ -266,7 +251,6 @@ internal class SnesHelpers {
 		return false;
 	}
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static bool IsValidBusAddress(int addr) {
 		return (uint) addr <= 0xFF_FFFF;
@@ -292,7 +276,6 @@ internal class SnesHelpers {
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static bool IsWram(int addr) => (addr & 0xFE_0000) >= 0x7E_0000;
-
 
 	internal static int GetAllocationSize(int desired) {
 		return desired switch {

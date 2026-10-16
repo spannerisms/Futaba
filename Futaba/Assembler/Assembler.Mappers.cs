@@ -80,7 +80,7 @@ partial class Assembler {
 	private protected abstract void StepPC(int step);
 
 	private protected void StepPCLorom(int step) {
-		int pc = PC; // put into a register
+		int pc = _pc; // put into a register
 
 		int smallStep, bankStep;
 
@@ -116,15 +116,14 @@ partial class Assembler {
 			}
 		}
 
-		PC = pc & SnesHelpers.AddressMask;
+		_pc = pc & SnesHelpers.AddressMask;
 	}
 
 	private protected void StepPCHirom(int step) {
-		int pc = PC; // put in register
+		int pc = _pc; // force into register
 		pc += step;
-		PC = pc & SnesHelpers.AddressMask;
+		_pc = pc & SnesHelpers.AddressMask;
 	}
-
 
 	/// <summary>
 	/// Tests whether a given address points to a memory location corresponding to program ROM.
@@ -147,7 +146,7 @@ partial class Assembler {
 		// is RAM or ROM depends on the PCB configuration
 		// but we'll just assume the upper half is ROM
 		// irrespective of mapper, it cannot be unique RAM
-		// when this block is RAM, it's always a mirror of the lower half
+		// when this block is RAM; it's always a mirror of the lower half
 		if ((address & 0x70_8000) is 0x70_0000) {
 			return false;
 		}
@@ -189,7 +188,7 @@ public sealed class UnmappedAssembler : Assembler {
 	}
 
 	private protected override void StepPC(int step) {
-		PC += step;
+		_pc += step;
 	}
 
 	/// <inheritdoc/>
@@ -223,7 +222,6 @@ public sealed class LoromAssembler : Assembler {
 	/// <inheritdoc/>
 	public override MapperMode Mapper => MapperMode.Lorom;
 	private protected override byte MapperCode => 0x20;
-
 
 	/// <inheritdoc/>
 	public override int MinRomSize => SnesHelpers.BankSize;
@@ -393,15 +391,15 @@ public sealed class Sa1Assembler : Assembler {
 	public override MapperMode Mapper => MapperMode.Sa1;
 	private protected override byte MapperCode => 0x23;
 
-	private byte CxBank;
-	private byte DxBank;
-	private byte ExBank;
-	private byte FxBank;
+	private byte _CxBank;
+	private byte _DxBank;
+	private byte _ExBank;
+	private byte _FxBank;
 
-	private bool CxLorom;
-	private bool DxLorom;
-	private bool ExLorom;
-	private bool FxLorom;
+	private bool _CxLorom;
+	private bool _DxLorom;
+	private bool _ExLorom;
+	private bool _FxLorom;
 
 	/// <summary>
 	/// Gets the processor used by this assembler.
@@ -424,15 +422,15 @@ public sealed class Sa1Assembler : Assembler {
 	public override int MaxRomSize => SnesHelpers.MaxMmcSize;
 
 	private protected override void RequiredInitAndCleanUp() {
-		CxBank = 0x00;
-		DxBank = 0x01;
-		ExBank = 0x02;
-		FxBank = 0x03;
+		_CxBank = 0x00;
+		_DxBank = 0x01;
+		_ExBank = 0x02;
+		_FxBank = 0x03;
 
-		CxLorom = false;
-		DxLorom = false;
-		ExLorom = false;
-		FxLorom = false;
+		_CxLorom = false;
+		_DxLorom = false;
+		_ExLorom = false;
+		_FxLorom = false;
 
 		base.RequiredInitAndCleanUp();
 	}

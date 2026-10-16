@@ -74,7 +74,6 @@ unsafe partial class Assembler {
 			case OpSPC.BVC: /*                                                                     */ AssembleBranch(opstr, 0x50); break;
 			case OpSPC.BVS: /*                                                                     */ AssembleBranch(opstr, 0x70); break;
 
-
 			case OpSPC.BRK: /*                                                                     */ AssembleImplied(opstr, size, 0x0F); break;
 
 			case OpSPC.CALL:
@@ -1403,7 +1402,7 @@ unsafe partial class Assembler {
 
 // Special classes to handle these special cases
 file class SpcBitInstruction(IExpressionReturn item, int bitx) : IExpressionReturn {
-	private readonly int BitMask = (bitx << 13) & 0xE000;
+	private readonly int _bitMask = (bitx << 13) & 0xE000;
 
 	public ExpressionState ReturnState => item.ReturnState;
 
@@ -1416,7 +1415,7 @@ file class SpcBitInstruction(IExpressionReturn item, int bitx) : IExpressionRetu
 				return MathHelpers.NaN;
 			}
 
-			return (item.ValueInt32 & 0x1FFF) | BitMask;
+			return (item.ValueInt32 & 0x1FFF) | _bitMask;
 		}
 	}
 

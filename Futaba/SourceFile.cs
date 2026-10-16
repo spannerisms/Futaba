@@ -1,59 +1,84 @@
-﻿namespace Futaba;
+﻿using Microsoft.Win32.SafeHandles;
+
+namespace Futaba;
 
 /// <summary>
 /// Encapsulates an assembly source file.
 /// </summary>
 internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
-	public string FileName { get; }
-
-	public bool WasUsed { get; set; } = false;
-
-	public DateTime LastLoaded { get; private set; } = default;
-	public string? Error { get; private set; } = null;
-
-	internal string ShortName { get; init; }
+	public SafeFileHandle? Handle { get; private set; }
 	public override FileInfo FileInfo { get; }
 
+	public string FileName { get; }
+	internal string ShortName { get; init; }
 	public override string ObjectName => ShortName;
+	public string? DirectoryName { get; }
 
-	internal override bool IsMacro => false;
+	public DateTime LastLoaded { get; private set; } = default;
+
+	public string? Error { get; private set; } = null;
 
 	public int Length { get; private set; } = 0;
+	public WatcherChangeTypes Change { get; set; }
+
+	public bool WasUsed { get; set; } = false;
+	internal override bool IsMacro => false;
+
 
 	/// <summary>
 	/// Creates a new source file container.
 	/// </summary>
 	internal SourceFile(string path) {
+		Handle = IWatchedFile.OpenHandle(path);
+
 		FileInfo = new(path);
 		ShortName = FileInfo.Name;
 		FileName = FileInfo.FullName;
+		DirectoryName = FileInfo.DirectoryName;
 
 		Refresh();
 	}
-
 
 	public CharSpan AsSpan() {
 		return new CharSpan(SourceStart, Length);
 	}
 
 	public void Refresh() {
-		FileInfo check = new(FileName);
+		// invalidate the handle
 
-		if (check.Exists) {
-			if (LastLoaded != check.LastWriteTimeUtc) {
-				LastLoaded = check.LastWriteTimeUtc;
+		if (!IWatchedFile.RevalidateHandle(this, out var newHandle, out var error)) {
+			Error = error;
+
+		} else {
+			bool reload;
+
+			if (!ReferenceEquals(newHandle, Handle)) {
+				reload = true;
+				Handle?.Dispose();
+				Handle = newHandle;
+
+			} else {
+				reload = LastLoaded != File.GetLastWriteTimeUtc(newHandle);
+			}
+
+			Change = default;
+
+			if (reload) {
+				LastLoaded = File.GetLastWriteTimeUtc(newHandle);
 
 				try {
 					//Console.WriteLine($"Loading {FullName}");
 
-					using var ftext = FileInfo.OpenText();
-
+					var fstream = new FileStream(newHandle, FileAccess.Read);
+					var ftext = new StreamReader(fstream);
+					
 					int length = (int) FileInfo.Length;
 
 					int bufferLen = length + (BufferPadding * 2);
 
 					if (AllocBlock == default) {
 						AllocBlock = NativeMemory.AllocNice<char>(bufferLen);
+
 					} else {
 						AllocBlock = NativeMemory.ReAllocNice(AllocBlock, bufferLen);
 					}
@@ -67,6 +92,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 					Error = null;
 
 					return;
+
 				} catch (Exception e) {
 					Error = e.Message;
 				}
@@ -75,8 +101,6 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 				//Console.WriteLine($"{FullName} is unchanged.");
 				return;
 			}
-		} else {
-			Error = $"File {FileName} does not exist.";
 		}
 
 		NativeMemory.AlignedFree(AllocBlock);
@@ -92,18 +116,20 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 		return $"File: {ShortName}";
 	}
 
+	protected override void DisposeResources() {
+		Handle?.Dispose();
+	}
+
 	internal static readonly SourceObject Empty = new EmptySource();
 }
-
 
 file sealed class EmptySource : SourceObject {
 	public override FileInfo? FileInfo => null;
 	internal override bool IsMacro => false;
 	public override string ObjectName => string.Empty;
 
-
 	internal EmptySource() {
-		disposed = true;
+		_disposed = true;
 	}
 
 	public override string ToString() {
@@ -114,4 +140,7 @@ file sealed class EmptySource : SourceObject {
 		// do nothing, since this has nothing allocated to it
 	}
 
+	protected override void DisposeResources() {
+		// do nothing
+	}
 }

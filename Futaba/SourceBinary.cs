@@ -1,50 +1,68 @@
-﻿namespace Futaba;
+﻿using Microsoft.Win32.SafeHandles;
+
+namespace Futaba;
 
 internal unsafe class SourceBinary : IWatchedFile {
-	public string FileName { get; }
-
-	public bool WasUsed { get; set; } = false;
-
-	public DateTime LastLoaded { get; private set; } = default;
+	private byte* _allocBlock;
 	public string? Error { get; private set; } = null;
-
-	private byte* AllocBlock;
-
+	public string FileName { get; }
+	public string? DirectoryName { get; }
+	public SafeFileHandle? Handle { get; protected set; }
+	public DateTime LastLoaded { get; private set; } = default;
 	public int Length { get; private set; }
-
+	public WatcherChangeTypes Change { get; set; }
+	public bool WasUsed { get; set; } = false;
+	protected bool _disposed = false;
 	public SourceBinary(string path) {
 		FileName = Path.GetFullPath(path);
+		DirectoryName = Path.GetDirectoryName(FileName);
+		Handle = IWatchedFile.OpenHandle(FileName);
 		Refresh();
 	}
 
-
 	public void Refresh() {
-		FileInfo check = new(FileName);
+		// invalidate the handle
 
-		if (check.Exists) {
-			if (LastLoaded != check.LastWriteTimeUtc) {
-				LastLoaded = check.LastWriteTimeUtc;
+		if (!IWatchedFile.RevalidateHandle(this, out var newHandle, out var error)) {
+			Error = error;
+
+		} else {
+			bool reload;
+
+			if (!ReferenceEquals(newHandle, Handle)) {
+				reload = true;
+				Handle?.Dispose();
+				Handle = newHandle;
+
+			} else {
+				reload = LastLoaded != File.GetLastWriteTimeUtc(newHandle);
+			}
+
+			Change = default;
+
+			if (reload) {
+				LastLoaded = File.GetLastWriteTimeUtc(newHandle);
 
 				try {
 					//Console.WriteLine($"Loading {FullName}");
 
-					using var ftext = check.OpenRead();
+					var fstream = new FileStream(newHandle, FileAccess.Read);
 
-					int length = (int) ftext.Length;
+					int length = (int) fstream.Length;
 
-					if (AllocBlock == default) {
-						AllocBlock = NativeMemory.AllocNice<byte>(length);
+					if (_allocBlock == default) {
+						_allocBlock = NativeMemory.AllocNice<byte>(length);
 						Length = length;
 
 					} else if (Length != length) {
-						AllocBlock = NativeMemory.ReAllocNice(AllocBlock, length);
+						_allocBlock = NativeMemory.ReAllocNice(_allocBlock, length);
 						Length = length;
 					}
 
-					ftext.ReadExactly(new Span<byte>(AllocBlock, length));
+					fstream.ReadExactly(new Span<byte>(_allocBlock, length));
 
-					Error = null;
 					return;
+
 				} catch (Exception e) {
 					Error = e.Message;
 				}
@@ -53,39 +71,48 @@ internal unsafe class SourceBinary : IWatchedFile {
 				//Console.WriteLine($"{FullName} is unchanged.");
 				return;
 			}
-		} else {
-			Error = $"File {FileName} does not exist.";
 		}
 
-		NativeMemory.AlignedFree(AllocBlock);
-		AllocBlock = null;
+		NativeMemory.AlignedFree(_allocBlock);
+
+		_allocBlock = default;
+
 		Length = 0;
 	}
 
-
 	public bool TryGetSpan(int start, int length, out Span<byte> span) {
-		if (disposed || (uint) length > Length || (uint) start >= Length || (start + length) > Length || AllocBlock == default) {
+		if (_disposed || (uint) length > Length || (uint) start >= Length || (start + length) > Length || _allocBlock == default) {
 			span = default;
 			return false;
 		}
 
-		span = new(AllocBlock + start, length);
+		span = new(_allocBlock + start, length);
 
 		return true;
 	}
 
-
-
-	protected bool disposed = false;
+	~SourceBinary() {
+		Dispose(false);
+	}
 
 	/// <inheritdoc cref="IDisposable.Dispose()"/>
-	public void Dispose() {
-		if (disposed) return;
-
-		disposed = true;
-
-		NativeMemory.AlignedFree(AllocBlock);
-
+	public virtual void Dispose() {
+		Dispose(true);
 		GC.SuppressFinalize(this);
+	}
+
+	/// <inheritdoc cref="IDisposable.Dispose()"/>
+	public void Dispose(bool disposing) {
+		if (_disposed) return;
+
+		_disposed = true;
+
+		if (disposing) {
+			Handle?.Dispose();
+		}
+
+		Handle = null;
+
+		NativeMemory.AlignedFree(_allocBlock);
 	}
 }

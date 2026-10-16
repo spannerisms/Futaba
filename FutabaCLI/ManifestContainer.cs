@@ -8,6 +8,20 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 	private LoadedItem<byte[]>? baseromfile = null;
 	private LoadedItem<byte[]>? diffromfile = null;
 
+
+	private FileSystemEventHandler? _filesChanged;
+
+	public event FileSystemEventHandler? SourceChange {
+		add => _filesChanged += value;
+		remove => _filesChanged -= value;
+	}
+
+	private void SomethingChanged(object source, FileSystemEventArgs e) {
+		_filesChanged?.Invoke(this, e);
+	}
+
+	public bool Incremental { get; private set; }
+
 	private LoadedItem<StreamWriter>? StdOut {
 		get;
 		set {
@@ -47,11 +61,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	} = null;
 
-
-
-
-
-
 	private byte[]? baserom = null;
 	private int? romsize = 0;
 	private int fillstart = 0;
@@ -87,7 +96,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			ManifestGood = false;
 		}
 	}
-
 
 	private void PrepAssembler() {
 		if (!TryGetArg("entry", out var fileEntry)) {
@@ -164,7 +172,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		Assembler.SpecialVersion = GetByteOrDefault("specialversion", 0);
 		Assembler.CartridgeSubtype = GetByteOrDefault("cartridgetype", 0);
 
-
 		bool autochecksum = GetBoolOrDefault("checksum", false, out ArgParse parsed);
 
 		if (parsed is ArgParse.Valid && (autofill && !autochecksum)) {
@@ -201,7 +208,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		} else {
 			romsize = null;
 		}
-
 
 		if (TryOpenBinary("base", ref baseromfile)) {
 			int allocSize;
@@ -251,7 +257,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 
 		bool doNullFill = baserom is not null && fillstart < baserom?.Length;
-
 
 		if (TryGetArg("nullfill", out var nullfillGet)) {
 			string nullfillOperand = nullfillGet.Value;
@@ -470,12 +475,16 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 
 		Assembler.ErrorOut = ErrOut?.Item ?? Console.Error;
+		Incremental = Assembler.Incremental = GetBoolOrDefault("incremental", false, out _);
+
+		if (Incremental) {
+			Assembler.SourceChange += SomethingChanged;
+		} else {
+			Assembler.SourceChange -= SomethingChanged;
+		}
+
 		AssemblerNeedsUpdating = false;
 	}
-
-
-
-
 
 	internal bool TryGetDiffFile([NotNullWhen(true)] out byte[]? binFile) {
 		if (TryOpenBinary("diff", ref diffromfile)) {
@@ -546,10 +555,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 	private bool TryGetArg(string key, [NotNullWhen(true)] out ArgInfo value) {
 		return argVals.TryGetValue(key, out value);
 	}
-
-
-
-
 
 	internal void ParseManifest() {
 		var update = File.GetLastWriteTimeUtc(fileName);
@@ -739,10 +744,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	}
 
-
-
-
-
 	byte GetByteOrDefault(string key, byte defaultValue) {
 		if (TryGetArg(key, out var argGet)) {
 			if (Helpers.TryParseByte(argGet.Value, out byte value)) {
@@ -755,7 +756,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		return defaultValue;
 	}
 
-
 	int GetInt32OrDefault(string key, int defaultValue) {
 		if (TryGetArg(key, out var argGet)) {
 			if (Helpers.TryParseByte(argGet.Value, out byte value)) {
@@ -767,7 +767,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 
 		return defaultValue;
 	}
-
 
 	bool TryOpenBinary(string key, [NotNullWhen(true)] ref LoadedItem<byte[]>? binFile) {
 		if (TryGetArg(key, out var argGet)) {
@@ -788,7 +787,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		binFile = null;
 		return false;
 	}
-
 
 	void ProblemLoadingFile(Exception e, int line) {
 		ManifestError($"Problem loading file: '{e.Message}'", line);
@@ -853,6 +851,7 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			"nullfill",
 			"randomseed",
 			"base",
+			"incremental",
 		]},
 		{ "header", [
 			"autofill",
@@ -887,15 +886,11 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			"diff",
 		]},
 	};
-
-
 	private static readonly FileStreamOptions ManifestOptions = new() {
 		Mode = FileMode.Open,
 		Access = FileAccess.Read,
 		Share = FileShare.Read
 	};
-
-
 	private record LoadedItem<T> : IDisposable {
 		public string Name { get; }
 		public DateTime Loaded { get; }
@@ -916,7 +911,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			file = Path.GetFullPath(file);
 			return file != Name || File.GetLastWriteTimeUtc(file) != Loaded;
 		}
-
 
 		private bool disposed = false;
 
@@ -960,7 +954,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			}
 		}
 	}
-
 
 
 	public void Dispose() {

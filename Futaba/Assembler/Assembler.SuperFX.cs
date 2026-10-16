@@ -524,9 +524,9 @@ unsafe partial class Assembler {
 
 		void WriteOpSfx3(byte b1, byte b2, byte b3) {
 			if (TryAdvanceProgramCounter(3)) {
-				PcPointer[0] = b1;
-				PcPointer[1] = b2;
-				PcPointer[2] = b3;
+				_pcPtr[0] = b1;
+				_pcPtr[1] = b2;
+				_pcPtr[2] = b3;
 
 				AdvanceProgramCounter(3);
 			}
@@ -547,7 +547,7 @@ unsafe partial class Assembler {
 
 		void WriteLmSm_resolved(byte opcode, byte reg, int lmoperand) {
 			if (TryAdvanceProgramCounter(4)) {
-				byte* wr = PcPointer;
+				byte* wr = _pcPtr;
 				wr[0] = opcode;
 				wr[1] = (byte) (reg | 0xF0);
 				*(ushort*) (wr + 2) = (ushort) lmoperand;
@@ -557,11 +557,11 @@ unsafe partial class Assembler {
 
 		void WriteLmSm_unresolved(byte opcode, byte reg, IExpressionReturn lmoperand) {
 			if (TryAdvanceProgramCounter(4)) {
-				byte* wr = PcPointer;
+				byte* wr = _pcPtr;
 				wr[0] = opcode;
 				wr[1] = (byte) (reg | 0xF0);
 
-				CreateSimpleRequest(lmoperand, Offset + 2, 2);
+				CreateSimpleRequest(lmoperand, _offset + 2, 2);
 
 				TrackAndStep4();
 			}
@@ -569,7 +569,7 @@ unsafe partial class Assembler {
 
 		void WriteLmSmS_resolved(byte opcode, byte reg, int lmoperand) {
 			if (TryAdvanceProgramCounter(3)) {
-				byte* wr = PcPointer;
+				byte* wr = _pcPtr;
 				wr[0] = opcode;
 				wr[1] = (byte) (reg | 0xA0);
 				wr[2] = (byte) (lmoperand / 2);
@@ -579,11 +579,11 @@ unsafe partial class Assembler {
 
 		void WriteLmSmS_unresolved(byte opcode, byte reg, IExpressionReturn lmoperand) {
 			if (TryAdvanceProgramCounter(3)) {
-				byte* wr = PcPointer;
+				byte* wr = _pcPtr;
 				wr[0] = opcode;
 				wr[1] = (byte) (reg | 0xA0);
 
-				CreateSimpleRequest(new SfxHalf(lmoperand), Offset + 2, 1);
+				CreateSimpleRequest(new SfxHalf(lmoperand), _offset + 2, 1);
 				TrackAndStep3();
 			}
 		}
@@ -1037,7 +1037,7 @@ file class Sfx4Bit(IExpressionReturn item, byte opcode, Func<int, bool> tester) 
 
 	public bool Resolved { get; private set; } = false;
 
-	private bool gaveup = false;
+	private bool _gaveUp = false;
 
 	public bool NeedsRequest => item.NeedsRequest;
 
@@ -1052,9 +1052,9 @@ file class Sfx4Bit(IExpressionReturn item, byte opcode, Func<int, bool> tester) 
 	}
 
 	public bool TryToResolve() {
-		if (!gaveup) {
+		if (!_gaveUp) {
 			if (item.TryToResolve()) {
-				gaveup = true;
+				_gaveUp = true;
 				Resolved = tester(item.ValueInt32);
 			}
 		}

@@ -121,9 +121,6 @@ public sealed class Region {
 	/// </summary>
 	public static readonly Region Other3         = new(0x14, 'Z', "Other Variation", -1);
 
-
-
-
 	/// <summary>
 	/// Test a given name or alias for being a defined region.
 	/// </summary>

@@ -16,22 +16,22 @@ internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : Exp
 
 	// Have the getter do value resolution
 	// because this object should be considered resolved as soon as the label exists
-	private ExpressionState valueresolved = ExpressionState.Unresolved;
+	private ExpressionState _resolved = ExpressionState.Unresolved;
 	public decimal Value {
 		get {
-			if (valueresolved is ExpressionState.Resolved) {
+			if (_resolved is ExpressionState.Resolved) {
 				return field;
 			}
 
 			if (Item.Resolved) {
 				if (Item.TryGetProperty(Context, out int val)) {
-					valueresolved = ExpressionState.Resolved;
+					_resolved = ExpressionState.Resolved;
 					return field = val;
 				} else {
-					valueresolved = ExpressionState.InvalidContext;
+					_resolved = ExpressionState.InvalidContext;
 				}
 			} else {
-				valueresolved = ExpressionState.Unresolved;
+				_resolved = ExpressionState.Unresolved;
 			}
 
 			return MathHelpers.NaN;
@@ -44,7 +44,7 @@ internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : Exp
 	public TokenRule Rule => TokenRule.Primary;
 
 	public override (decimal, ExpressionState) TryEvaluate() {
-		return (Value, valueresolved);
+		return (Value, _resolved);
 	}
 
 	public bool TryToResolve() {

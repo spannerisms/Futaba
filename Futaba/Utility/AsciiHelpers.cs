@@ -1,12 +1,10 @@
 ﻿namespace Futaba;
 
 internal unsafe static class AsciiHelpers {
-
 	internal const int AsciiCount = 128;
 
 	internal const char LowercaseCharMask = unchecked((char) 0x0020);
 	internal const char UppercaseCharMask = unchecked((char) ~LowercaseCharMask);
-
 
 	extension(char c) {
 		internal bool IsADecimalDigit {
@@ -122,22 +120,15 @@ internal unsafe static class AsciiHelpers {
 			return (c | LowercaseCharMask) == (c1 | LowercaseCharMask);
 		}
 	}
-
-
-
-
 	private const string LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 	private const string DIGITS = "0123456789";
 	private const string UNDERSCORE = "_";
 	private const string ALPHANUMERIC = LETTERS + UNDERSCORE + DIGITS;
 
-
 	internal static readonly SearchValues<char> IdentifierSearch = SearchValues.Create(ALPHANUMERIC);
 	internal static readonly SearchValues<char> SublabelSearch = SearchValues.Create(ALPHANUMERIC + ".");
 
 	internal static readonly SearchValues<char> SpaceSearch = SearchValues.Create(" \r\t");
-
-
 
 	//                                            =    ~}|{zyxwvutsrqponmlkjihgfedcba`_^]\[ZYXWVUTSRQPONMLKJIHGFEDCBA@"
 	internal const ulong LettersMask /*        */ = 0b0000011111111111111111111111111010000111111111111111111111111110;
@@ -148,28 +139,16 @@ internal unsafe static class AsciiHelpers {
 	internal const ulong NumbersMask /*        */ = 0b0000001111111111000000000000000000000000000000000000000000000000;
 	internal const ulong SublabelsMask /*      */ = 0b0000001111111111010000000000000000000000000000000000000000000000;
 
-
-
-
-
-
-
-
-	// Tables that end up running significantly faster than other check
+	// Tables that end up running significantly faster than other checks
 	// some might need further benchmarking
-
 	internal static readonly AsciiTable<bool> LetterOrUnderscore = new();
 	internal static readonly AsciiTable<bool> IdentifierCharacters = new();
 	internal static readonly AsciiTable<bool> SubLabelSafe = new();
-
 	internal static readonly AsciiTable<sbyte> HexValue = new();
-
-
 
 	internal const sbyte AddressMarker_Bar = 0x30;
 	internal const sbyte AddressMarker_Colon = 0x31;
 	internal const sbyte AddressMarker_Unclosed = 0x32;
-
 
 	internal static readonly AsciiTable<sbyte> AddressMarkerAction = new();
 
@@ -189,13 +168,6 @@ internal unsafe static class AsciiHelpers {
 		AddressMarkerAction['\n'] = AddressMarker_Unclosed;
 		AddressMarkerAction['\t'] = AddressMarker_Unclosed;
 
-
-
-
-
-
-
-
 		IdentifierCharacters.SetLetters(true);
 		LetterOrUnderscore.SetLetters(true);
 		SubLabelSafe.SetLetters(true);
@@ -208,7 +180,6 @@ internal unsafe static class AsciiHelpers {
 
 		SubLabelSafe['_'] = true;
 		SubLabelSafe['.'] = true;
-
 
 		InsertHex(ref HexValue);
 
@@ -242,22 +213,16 @@ internal unsafe static class AsciiHelpers {
 		}
 	}
 
-
-
-
-
-	[InlineArray(128)]
+	[InlineArray(AsciiCount)]
 	internal struct AsciiTable<T> where T : unmanaged {
-		private T table;
+		private T _table;
 
 		public void Fill(T value) {
-			fixed (T* ptr = &table) {
-				new Span<T>(ptr, 128).Fill(value);
-			}
+			((Span<T>) this).Fill(value);
 		}
 
 		public readonly T Get(char c) {
-			if (c < 128) {
+			if (c < AsciiCount) {
 				return this[c];
 			}
 
@@ -265,20 +230,16 @@ internal unsafe static class AsciiHelpers {
 		}
 
 		public void SetLetters(T value) {
-			fixed (T* ptr = &table) {
-				new Span<T>(ptr + 'A', 26).Fill(value);
-				new Span<T>(ptr + 'a', 26).Fill(value);
-			}
+			Span<T> tmp = this;
+
+			tmp.Slice('A', 26).Fill(value);
+			tmp.Slice('a', 26).Fill(value);
 		}
 
 		public void SetNumbers(T value) {
-			fixed (T* ptr = &table) {
-				new Span<T>(ptr + '0', 10).Fill(value);
-			}
+			((Span<T>) this).Slice('0', 10).Fill(value);
 		}
-
 	}
-
 
 	// TODO consider bringing this back with BitConverter.IsLittleEndian
 	// not necessary, because performance is fine, but we'll see; why not

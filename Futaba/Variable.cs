@@ -106,7 +106,6 @@ public sealed class Variable : IFormattable {
 		Contents = $"{Contents}{s}";
 	}
 
-
 	internal Variable Clone() {
 		return VarType switch {
 			VariableType.String => new(Name, Contents),
@@ -135,14 +134,13 @@ public sealed class Variable : IFormattable {
 	}
 
 	/// <summary>
-	/// 
+	/// Attempts creation of a variable with a valid name and value.
 	/// </summary>
-	/// <param name="name"></param>
-	/// <param name="value"></param>
-	/// <param name="variable"></param>
-	/// <param name="error"></param>
-	/// <returns></returns>
-
+	/// <param name="name">The name of the variable to create.</param>
+	/// <param name="value">The value to assign the variable.</param>
+	/// <param name="variable">If this method returns successfully, this will contain the created variable.</param>
+	/// <param name="error">If this method does not return successfull, this will contain an error message describing the failure.</param>
+	/// <returns><see langword="true"/> if the variable was successfully created; otherwise, <see langword="false"/>.</returns>
 	public static bool TryCreate(string name, decimal value, [NotNullWhen(true)] out Variable? variable, [NotNullWhen(false)] out string? error) {
 		if (ValidateName(name, out error)) {
 			variable = new(name, value);

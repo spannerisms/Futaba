@@ -35,7 +35,8 @@ internal static class FunctionCall {
 		{ "obsel", (ass, args) => TestForBadArity(ass, "obsel", 3, args) ? new ObSel(args[0], args[1], args[3]) : null },
 		{ "bgnba", (ass, args) => TestForBadArity(ass, "bgnba", 2, args) ? new BgNba(args[0], args[1]) : null },
 		{ "bgsc", (ass, args) => TestForBadArity(ass, "bgsc", 3, args) ? new BgSc(args[0], args[1], args[2]) : null },
-		{ "rtn", (ass, args) => TestForBadArity(ass, "rtn", 1, args) ? new Ret(args[0]) : null },
+		{ "rtn", (ass, args) => TestForBadArity(ass, "rtn", 1, args) ? new Rtn(args[0]) : null },
+		{ "argof", (ass, args) => TestForBadArity(ass, "argof", 1, args) ? new ArgOf(args[0]) : null },
 		{ "rebank", (ass, args) => TestForBadArity(ass, "rebank", 2, args) ? new Rebank(args[0], args[1]) : null },
 
 
@@ -72,7 +73,6 @@ internal static class FunctionCall {
 		}
 	}
 
-
 	private sealed class GetFileFunc(Assembler assembler, ExpressionItem itemName, ExpressionItem? itemOffset,  ExpressionItem? itemSize) : ExpressionItem {
 		private const int MaxBytes = 8;
 
@@ -107,6 +107,7 @@ internal static class FunctionCall {
 
 			if (itemOffset is null) {
 				offset = 0;
+
 			} else {
 				var (dc, ds) = itemOffset.TryEvaluate();
 
@@ -136,7 +137,6 @@ internal static class FunctionCall {
 			// using try because there are so many potential errors,
 			// and this function shouldn't be called that frequently,
 			// so the overhead of catch is fine
-
 			if (assembler.TryGetBinary(st.Contents, out var rdFile)) {
 				if ((uint) size <= MaxBytes && rdFile.TryGetSpan(offset, size, out var copySpan)) {
 					copySpan.CopyTo(rdb);
@@ -163,40 +163,37 @@ internal static class FunctionCall {
 		return null;
 	}
 
-
-
 	private static ExpressionItem? GetRandom(Assembler assembler, List<ExpressionItem> args) {
 		if (TestForBadArity(assembler, "random", 2, args)) {
-			return new Rand(args[0], args[1], assembler.RNG);
+			return new Rand(args[0], args[1], assembler._random);
+
 		} else {
 			return null;
 		}
 	}
 
 	private sealed class Rand(ExpressionItem left, ExpressionItem right, XoRandom random) : BinaryExpression(left, right) {
-		private readonly XoRandom Random = random;
-		public override ExpressionItem Clone() => new Rand(Left.Clone(), Right.Clone(), Random);
+		private readonly XoRandom _random = random;
+		public override ExpressionItem Clone() => new Rand(Left.Clone(), Right.Clone(), _random);
 
 		protected override decimal Equate(decimal a, decimal b) {
 			if (a > b) {
 				(a, b) = (b, a);
 			}
 
-			return Random.NextInt64(a.AsLong(), b.AsLong());
+			return _random.NextInt64(a.AsLong(), b.AsLong());
 		}
 	}
-
-
-
-
 
 	private static ExpressionItem? GetColor(Assembler assembler, List<ExpressionItem> args) {
 		int argCount = args.Count;
 
 		if (argCount is 1) {
 			return new UnaryColor(args[0]);
+
 		} else if (argCount is 3) {
 			return new TernaryColor(args[0], args[1], args[2]);
+
 		} else {
 			assembler.Error($"Wrong number of arguments to function [color]: got {argCount}, expected 1 or 3.");
 			return null;
@@ -210,24 +207,19 @@ internal static class FunctionCall {
 		}
 	}
 
-
 	private sealed class Cos(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Cos(Item.Clone());
 		protected override decimal Equate(decimal a) {
 			return (decimal) Math.Cos((double) a);
 		}
 	}
-
-
 	private sealed class Tan(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Tan(Item.Clone());
 		protected override decimal Equate(decimal a) {
 			return MathHelpers.ClampCastDoubleAsDecimal(Math.Tan((double) a));
 		}
 	}
-
-
-	private sealed class Asin(ExpressionItem item) : UnaryExpression(item) {
+		private sealed class Asin(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Asin(Item.Clone());
 		protected override decimal Equate(decimal a) {
 			return (decimal) Math.Asin((double) a);
@@ -240,19 +232,12 @@ internal static class FunctionCall {
 			return (decimal) Math.Asin((double) a);
 		}
 	}
-
 	private sealed class Atan(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Atan(Item.Clone());
 		protected override decimal Equate(decimal a) {
 			return (decimal) Math.Atan((double) a);
 		}
 	}
-
-
-
-
-
-
 
 	private sealed class ItemExists(ExpressionItem item) : ExpressionItem {
 		private ExpressionState _state;
@@ -291,10 +276,6 @@ internal static class FunctionCall {
 			return (value, _state = state);
 		}
 	}
-
-
-
-
 
 	private sealed class Ceil(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Ceil(Item.Clone());
@@ -339,11 +320,19 @@ internal static class FunctionCall {
 		}
 	}
 
-	private sealed class Ret(ExpressionItem item) : UnaryExpression(item) {
-		public override ExpressionItem Clone() => new Ret(Item.Clone());
+	private sealed class Rtn(ExpressionItem item) : UnaryExpression(item) {
+		public override ExpressionItem Clone() => new Rtn(Item.Clone());
 
 		protected override decimal Equate(decimal a) {
 			return a.AsLong() - 1;
+		}
+	}
+
+	private sealed class ArgOf(ExpressionItem item) : UnaryExpression(item) {
+		public override ExpressionItem Clone() => new ArgOf(Item.Clone());
+
+		protected override decimal Equate(decimal a) {
+			return a.AsLong() + 1;
 		}
 	}
 
@@ -382,8 +371,6 @@ internal static class FunctionCall {
 		}
 	}
 
-
-
 	private sealed class Pow(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
 		public override ExpressionItem Clone() => new Pow(Left.Clone(), Right.Clone());
 
@@ -391,7 +378,6 @@ internal static class FunctionCall {
 			return MathHelpers.ClampCastDoubleAsDecimal(Math.Pow((double) a, (double) b));
 		}
 	}
-
 
 	private sealed class LogB(ExpressionItem left, ExpressionItem right) : BinaryExpression.SafeBinary(left, right) {
 		public override ExpressionItem Clone() => new LogB(Left.Clone(), Right.Clone());
@@ -476,8 +462,6 @@ internal static class FunctionCall {
 		}
 	}
 
-
-
 	private sealed class Max(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
 		public override ExpressionItem Clone() => new Max(Left.Clone(), Right.Clone());
 		protected override decimal Equate(decimal a, decimal b) {
@@ -516,16 +500,15 @@ internal static class FunctionCall {
 				a *= scaling;
 
 				return a;
+
 			} else if (prec > 28) {
 				return a;
+
 			} else {
 				return decimal.Round(a, prec);
 			}
 		}
 	}
-
-
-
 
 	private sealed class Rebank(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
 		public override ExpressionItem Clone() => new Rebank(Left.Clone(), Right.Clone());
@@ -533,8 +516,6 @@ internal static class FunctionCall {
 			return (a.AsLong() & SnesHelpers.AbsoluteMask) | ((b.AsLong() & 0xFFL) << 16);
 		}
 	}
-
-
 
 	private sealed class TernaryColor(ExpressionItem itema, ExpressionItem itemb, ExpressionItem itemc) : TernaryExpression(itema, itemb, itemc) {
 		public override ExpressionItem Clone() => new TernaryColor(ItemA.Clone(), ItemB.Clone(), ItemC.Clone());
@@ -548,13 +529,13 @@ internal static class FunctionCall {
 		}
 	}
 
-
 	private sealed class Clamp(ExpressionItem itema, ExpressionItem itemb, ExpressionItem itemc) : TernaryExpression.SafeTernary(itema, itemb, itemc) {
 		public override ExpressionItem Clone() => new Clamp(ItemA.Clone(), ItemB.Clone(), ItemC.Clone());
 
 		protected override bool Validate(decimal a, decimal b, decimal c) {
 			if (b <= c) {
 				return true;
+
 			} else {
 				_state = ExpressionState.InvalidArgument;
 				return false;
@@ -565,8 +546,10 @@ internal static class FunctionCall {
 			// not using decimal.Clamp because we've already validated the inputs
 			if (a < b) {
 				return b;
+
 			} else if (a > c) {
 				return c;
+
 			} else {
 				return a;
 			}
@@ -579,7 +562,6 @@ internal static class FunctionCall {
 			return a.IsTrue() ? b : c;
 		}
 	}
-
 
 	private sealed class BgSc(ExpressionItem itema, ExpressionItem itemb, ExpressionItem itemc) : TernaryExpression(itema, itemb, itemc) {
 		public override ExpressionItem Clone() => new BgSc(ItemA.Clone(), ItemB.Clone(), ItemC.Clone());
@@ -601,7 +583,6 @@ internal static class FunctionCall {
 			return ai | bi;
 		}
 	}
-
 
 	private sealed class ObSel(ExpressionItem address, ExpressionItem nsoffset, ExpressionItem sizes) : TernaryExpression(address, nsoffset, sizes) {
 		public override ExpressionItem Clone() => new ObSel(ItemA.Clone(), ItemB.Clone(), ItemC.Clone());

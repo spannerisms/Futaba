@@ -13,7 +13,6 @@ using System.Text;
 
 namespace FutabaCLI;
 
-
 // TODO add a template command
 internal static partial class Igarashi {
 	public static readonly Version Version;
@@ -72,7 +71,6 @@ internal static partial class Igarashi {
 		manifestBuild.Arguments.Add(Arg_ManifestFile);
 		manifestBuild.AddOptions(Option_AssembleOnce, Option_PreserveConsole, Option_PauseAfter, Option_Timer);
 		manifestBuild.SetAction(Assemble);
-
 
 		Command registerCommand = new("register", "Register as a system command and enable direct opening of .futaba files");
 		registerCommand.SetAction(RegisterFutaba);
@@ -288,18 +286,79 @@ internal static partial class Igarashi {
 		}
 	}
 
-		
-
 	static void DrainKeyBuffer() {
 		while (Console.KeyAvailable) {
 			Console.ReadKey(true);
 		}
 	}
 
+	private class IncrementalManifestWaiter {
+		private readonly ManualResetEventSlim _manifestWait = new (false);
+
+		public bool PressedEscape { get; private set; }
+
+		public bool CodeChanged { get; private set; }
+
+		private bool Abort = false;
+
+		public void Wait() {
+			PressedEscape = false;
+			DrainKeyBuffer();
+
+			while (!_manifestWait.IsSet) {
+				while (Console.KeyAvailable) {
+					if (Console.ReadKey(true).Key is ConsoleKey.Escape) {
+						PressedEscape = true;
+						goto Exit;
+					}
+				}
+			}
+
+		Exit:
+			return;
+		}
+
+		public void Reset() {
+			PressedEscape = false;
+			CodeChanged = false;
+			Abort = false;
+			_manifestWait.Reset();
+
+			DrainKeyBuffer();
+		}
+
+		private void SomethingChanged(object source, FileSystemEventArgs e) {
+			if (Abort) {
+				return;
+			}
+			CodeChanged = true;
+			_manifestWait.Set();
+		}
+
+		private void EscapePressed(object source, FileSystemEventArgs e) {
+			PressedEscape = true;
+			Abort = true;
+			_manifestWait.Set();
+		}
+
+		public void Subscribe(ManifestContainer manifest) {
+			manifest.SourceChange += SomethingChanged;
+		}
+
+		public void Unsubscribe(ManifestContainer manifest) {
+			manifest.SourceChange -= SomethingChanged;
+		}
+	}
+
+
+	
+
 	private const string StartedAssembly = "Assembly started...";
 	private const string FinishedAssembly = "Assembly complete!";
 	private const string StarSep = "****************************************************************************************************";
 	private const string LineSep = "----------------------------------------------------------------------------------------------------";
+
+	private static readonly IncrementalManifestWaiter _manifestWaiter = new();
 
 	static int Assemble(ParseResult args) {
 		if (args.GetValue(Arg_ManifestFile) is not FileInfo manifestFile) {
@@ -310,7 +369,6 @@ internal static partial class Igarashi {
 		bool clearConsole = !args.GetValue(Option_PreserveConsole);
 		bool showTimer = args.GetValue(Option_Timer);
 		bool pauseAfter = args.GetValue(Option_PauseAfter);
-
 
 		int retcode = 0;
 
@@ -323,26 +381,64 @@ internal static partial class Igarashi {
 		using ManifestContainer manifest = new(manifestFile);
 
 		do {
+			_manifestWaiter.Reset();
+
 			retcode = AssembleOne(manifest);
 
 			DrainKeyBuffer();
 
-			if (redoAssembly) {
+			if (manifest.Incremental) {
+				_manifestWaiter.Subscribe(manifest);
 				Console.WriteLine();
-				Notice("Press ENTER to rerun assembly. Press any other key to exit.");
 
-				var key = Console.ReadKey(false).Key;
-				redoAssembly = key == ConsoleKey.Enter;
+				NoLineNotice("Assembling in incremental mode. Press ESCAPE to stop.");
+
+				_manifestWaiter.Wait();
+
+				Console.WriteLine();
+
+				if (_manifestWaiter.PressedEscape) {
+					break;
+				}
+
+				redoAssembly = true;
+
+				if (clearConsole) {
+					Console.Clear();
+				} else {
+					Notice("Changes detected.");
+				}
+
+			} else if (redoAssembly) {
+				_manifestWaiter.Unsubscribe(manifest);
+				Console.WriteLine();
+
+				NoLineNotice("Press ENTER to rerun assembly. Press ESCAPE to stop.");
+
+				while (true) {
+					ConsoleKey key = Console.ReadKey(true).Key;
+
+					if (key == ConsoleKey.Escape) {
+						redoAssembly = false;
+						break;
+
+					} else if (key == ConsoleKey.Enter) {
+						redoAssembly = true;
+						break;
+					}
+				}
 
 				if (redoAssembly) {
 					if (clearConsole) {
 						Console.Clear();
 					} else {
 						Console.WriteLine();
+						Console.WriteLine();
 					}
 				}
+
 			} else if (pauseAfter) {
-				Console.ReadKey(false);
+				Console.ReadKey(true);
 			}
 		} while (redoAssembly);
 
@@ -576,7 +672,7 @@ internal static partial class Igarashi {
 		Console.ResetColor();
 
 		while (true) {
-			var key = Console.ReadKey(false).Key;
+			var key = Console.ReadKey(true).Key;
 
 			if (key is ConsoleKey.Y) {
 				Console.Error.WriteLine();
@@ -867,6 +963,12 @@ internal static partial class Igarashi {
 		Console.Write(s);
 		Console.ResetColor();
 		Console.WriteLine();
+	}
+
+	internal static void NoLineNotice(string s) {
+		Console.ForegroundColor = ConsoleColor.Cyan;
+		Console.Write(s);
+		Console.ResetColor();
 	}
 
 	internal static void PostErrors(Assembler assembler) {

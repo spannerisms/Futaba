@@ -233,7 +233,7 @@ partial class Assembler {
 	}
 
 	private unsafe void UnexpectedCharacter() {
-		Error($"Unexpected character: '{*reading}'");
+		Error($"Unexpected character: '{*_reading}'");
 	}
 
 	private unsafe void UnexpectedCharacter(char* ptr) {

@@ -4,8 +4,8 @@ internal class UserFunction(string name, ExpressionItem tree, NamedParameter[] a
 	public string Name => name;
 	public int Arity { get; } = args.Length;
 
-	private readonly ExpressionItem Tree = tree;
-	private readonly NamedParameter[] Arguments = args;
+	private readonly ExpressionItem _tree = tree;
+	private readonly NamedParameter[] _args = args;
 
 	
 	public ExpressionItem? GetNewInstance(Assembler assembler, List<ExpressionItem> arguments) {
@@ -15,9 +15,9 @@ internal class UserFunction(string name, ExpressionItem tree, NamedParameter[] a
 		}
 
 		for (int i = 0; i < Arity; i++) {
-			Arguments[i].CurrentValue = arguments[i];
+			_args[i].CurrentValue = arguments[i];
 		}
 
-		return Tree.Clone();
+		return _tree.Clone();
 	}
 }

@@ -14,7 +14,6 @@ unsafe partial class Assembler {
 		IExpressionReturn opval;
 		AddressingMode mode;
 
-
 		switch (instruction) {
 			case OpWdc.ADC:
 				// standard accumulator modes could be condensed into a single routine with base opcodes (and a special case for STA #i)
@@ -820,8 +819,6 @@ unsafe partial class Assembler {
 			return (AddressingMode.Invalid, MathHelpers.InvalidExpression);
 		}
 
-
-
 		/***********************************************************************\
 		 * ASL, LSR, ROL, ROR, DEC, INC - checks implicit/repeating first
 		 * BIT - checks immediate first
@@ -876,8 +873,6 @@ unsafe partial class Assembler {
 				return PickBW(argstr, argsize, AddressingMode.DirectPage, AddressingMode.Absolute);
 			}
 		}
-
-
 
 		// #i       dp       abs      dp,Y     abs,Y
 		(AddressingMode, IExpressionReturn) CheckIndexerLoadModes(OperandString argstr, SizeToken argsize, char allowedIndexer) {
@@ -978,7 +973,7 @@ unsafe partial class Assembler {
 					Error("Repeatable instruction operand must be >= 1");
 				} else {
 					if (TryAdvanceProgramCounter(count)) {
-						SnesHelpers.FillBlockB(PcPointer, opcode, count);
+						SnesHelpers.FillBlockB(_pcPtr, opcode, count);
 						TrackAndStep(count);
 					}
 				}
@@ -986,7 +981,6 @@ unsafe partial class Assembler {
 				Error_BadResolve(rest, "Repeatable instruction operand must be immediately resolvable.");
 			}
 		}
-
 
 		// BRL, PER
 		void AssembleBranchLong(OperandString argstr, byte opcode) {
@@ -1007,7 +1001,7 @@ unsafe partial class Assembler {
 					if (opcode is 0x82) {
 						if (c is BROP) {
 							if (TryAdvanceProgramCounter(3)) {
-								*PcPointer = opcode;
+								*_pcPtr = opcode;
 								// No operand write
 								TrackAndStep3();
 							}
@@ -1046,7 +1040,6 @@ unsafe partial class Assembler {
 				WriteOpB(opcode, ParseOperandSliced(argstr, 1));
 			}
 		}
-
 
 		void AssemblePFlagChange(OperandString argstr, SizeToken argsize, byte opcode) {
 			NoTokens(argsize);
@@ -1089,7 +1082,6 @@ unsafe partial class Assembler {
 			}
 		}
 
-
 		void AssembleBlockMove(OperandString argstr, byte opcode) {
 			if (argstr.SplitByComma(out var sourceBank, out var destBank)) {
 				WriteOpBB(opcode, ParseOperand(destBank), ParseOperand(sourceBank));
@@ -1099,7 +1091,6 @@ unsafe partial class Assembler {
 			}
 		}
 	}
-
 	private static OpWdc TestFor65816(OperandString chars) {
 		// if it's not 3 letters, it's not a 65xx instruction
 		if (chars.Length is not 3) {

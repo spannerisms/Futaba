@@ -21,14 +21,9 @@ internal static unsafe class FastRead {
 		}
 	}
 
-
-
-
-
 	internal static bool IsWhiteSpace(char* start, char* end) {
 		return CharSpanHelpers.CreateSpan(start, end).IsWhiteSpace();
 	}
-
 
 	internal static bool SkipToMatchingParenthesis(scoped ref char* start, char* end) {
 		int parenCount = 0;
@@ -114,7 +109,6 @@ internal static unsafe class FastRead {
 		return false;
 	}
 
-
 	internal static bool ColonIsSeparator(char* ptr) {
 		return ptr[-1].IsSkippableSpace && ptr[+1].IsSkippableSpace;
 	}
@@ -168,7 +162,6 @@ internal static unsafe class FastRead {
 
 		return (int) (read - start);
 	}
-
 
 	internal static void SkipInlineWhitespace(scoped ref char* start, char* end) {
 		char* read = start;
@@ -242,7 +235,6 @@ internal static unsafe class FastRead {
 		return false;
 	}
 
-
 	internal static bool TryReadIdentifier(scoped ref char* reading, char* end, out CharSpan name) {
 		char* wordstart = reading;
 
@@ -268,7 +260,6 @@ internal static unsafe class FastRead {
 //
 //		return true;
 	}
-
 
 	internal static bool TryReadIdentifier(scoped ref char* reading, char* end, out OperandString name) {
 		char* wordstart = reading;
@@ -307,9 +298,6 @@ internal static unsafe class FastRead {
 
 		return ret;
 
-//
-//
-//
 //		char* wordstart = reading;
 //
 //		char* read = wordstart;
@@ -354,9 +342,6 @@ internal static unsafe class FastRead {
 		//return read != chunkstart;
 	}
 
-
-
-
 	internal static OperandString ReadAlphaNumeric(scoped ref char* reading, char* end) {
 		char* wordstart = reading;
 		int length = ReadAlphanumericHelper(wordstart, end);
@@ -374,7 +359,6 @@ internal static unsafe class FastRead {
 		//reading = read;
 		//return new(wordstart, read);
 	}
-
 
 	internal static CharSpan ReadAlphaNumericSpan(scoped ref char* reading, char* end) {
 		char* wordstart = reading;
@@ -395,7 +379,6 @@ internal static unsafe class FastRead {
 		//return CharSpanHelpers.CreateSpanUnchecked(wordstart, read);
 	}
 
-
 	// don't think these need indexof, since we're expecting very small numbers
 	internal static int CountCharacter(char* start, char* end, char test) {
 		char* read = start;
@@ -407,7 +390,6 @@ internal static unsafe class FastRead {
 		int count = (int) (read - start);
 		return count;
 	}
-
 
 	internal static int CountCharacter(scoped ref char* start, char* end, char test) {
 		char* read = start;
@@ -422,13 +404,9 @@ internal static unsafe class FastRead {
 		return count;
 	}
 
-
 	// TODO microbenchmark
 	internal static void ReadUntilLineEnd(scoped ref char* start, char* end) {
 		start += CharSpanHelpers.CreateSpanUnchecked(start, end).IndexOf(NewLine);
-
-
-
 
 		//char* read = start;
 		//
@@ -438,7 +416,6 @@ internal static unsafe class FastRead {
 		//
 		//start = read;
 	}
-
 
 	internal static decimal ReadDecimal(scoped ref char* reading, char* end) {
 		decimal decval = 0;
@@ -535,8 +512,6 @@ internal static unsafe class FastRead {
 		reading = readit;
 		return true;
 	}
-
-
 
 	internal static bool TryReadHex(scoped ref char* reading, char* end, out int hexval) {
 		// skip over dollar sign

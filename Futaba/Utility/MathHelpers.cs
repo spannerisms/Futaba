@@ -1,6 +1,4 @@
-﻿
-
-namespace Futaba;
+﻿namespace Futaba;
 
 internal static class MathHelpers {
 	/// <summary>
@@ -16,7 +14,6 @@ internal static class MathHelpers {
 		double.NaN => 0,
 		_ => (decimal) d,
 	};
-
 
 	extension (ExpressionState expst) {
 		internal bool IsResolved {
@@ -41,11 +38,8 @@ internal static class MathHelpers {
 		return pred ? DecimalTrue : DecimalFalse;
 	}
 
-
-
 	extension (decimal d) {
-		// unfortunately, we need this to allow overflow when converting to int
-		// conversions to double have no problems with overflow
+		// we need this to allow overflow to pass silently when converting to integral values
 		[DebuggerStepThrough]
 		internal unsafe long AsLong() {
 			d = decimal.Truncate(d);
@@ -86,6 +80,7 @@ internal static class MathHelpers {
 
 			if (BitConverter.IsLittleEndian) {
 				ret = dbytes[8];
+
 			} else {
 				ret = dbytes[15];
 			}
@@ -117,7 +112,7 @@ internal static class MathHelpers {
 	}
 }
 
-file class InvalidExpression : IExpressionReturn {
+file sealed class InvalidExpression : IExpressionReturn {
 	public decimal Value => MathHelpers.NaN;
 
 	public bool Resolved => false;
@@ -129,7 +124,7 @@ file class InvalidExpression : IExpressionReturn {
 	}
 }
 
-file class BadExpressionNode : ExpressionItem {
+file sealed class BadExpressionNode : ExpressionItem {
 	public override ExpressionState State => ExpressionState.Unresolved;
 
 	public override ExpressionItem Clone() {

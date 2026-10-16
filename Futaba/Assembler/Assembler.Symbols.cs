@@ -8,13 +8,13 @@ unsafe partial class Assembler {
 	/// <remarks>
 	/// If the assembler is busy, an empty dictionary will be returned.
 	/// </remarks>
-	public Dictionary<string, Symbol> Symbols => AmBusy() ? [] : SymbolsTable.GetCopy();
+	public Dictionary<string, Symbol> Symbols => AmBusy() ? [] : _symbols.GetCopy();
 
 	/// <summary>
 	/// Returns a new copy of this instance's variables dictionary.
 	/// </summary>
 	/// <inheritdoc cref="Symbols" path="//remarks"/>
-	public Dictionary<string, Variable> Variables => AmBusy() ? [] : VariablesTable.GetCopy();
+	public Dictionary<string, Variable> Variables => AmBusy() ? [] : _variables.GetCopy();
 
 	/// <summary>
 	/// Returns a new copy of this instance's breakpoint list.
@@ -24,34 +24,52 @@ unsafe partial class Assembler {
 	/// </remarks>
 	public Breakpoint[] Breakpoints => AmBusy() ? [] : [.._breakpoints];
 
+	#region Private fields
 	private List<Breakpoint> _breakpoints = [];
 
-	private Dictionary<string, Symbol> initialsymbols = [];
+	private SpannedLookup<MacroCall> _macros = new(128);
+	private SpannedLookup<UserFunction> _functions = new(128);
 
-	// coax all of these objects onto the large object heap to help reduce GC pressure
+	private Dictionary<string, Symbol> _initialSymbols = [];
+
+	private Dictionary<string, Variable> _initialVariables = [];
+
+	// coax all of these collections onto the large object heap to help reduce GC pressure
 	// TODO more case testing to find the best values here to prevent reallocations when extra large
-	private SpannedLookup<Symbol> SymbolsTable = new(50000);
-	private List<SimpleRequest> SimpleRequests = new(50000);
-	private List<BranchRequest> BranchRequests =  new(50000);
+	private SpannedLookup<Symbol> _symbols = new(50000);
+	private List<SimpleRequest> _simpleRequests = new(50000);
+	private List<BranchRequest> _branchRequests =  new(50000);
 
 	// don't expect these to be as common, so they can go on the normal heap
-	private List<FillRequest> FillRequests = [];
-	private List<AbsolutePointerRequest> JumpRequests = [];
+	private List<FillRequest> _fillRequests = [];
+	private List<AbsolutePointerRequest> _jumpRequests = [];
+	private SpannedLookup<Variable> _variables = new(50);
 
+
+	private readonly string[] _labelNameHierarchy = new string[HierarchySize];
+	private readonly int[] _pcHierarchy = new int[HierarchySize];
+	private int _hierarchyDepth = 0;
+
+	private readonly int[] _pluslabels = new int[MaxRelativeCount];
+	private readonly int[] _minuslabels = new int[MaxRelativeCount];
+
+	private bool _pooling = false;
+	private readonly List<string> _poolHeaders = new(8);
+
+	#endregion Private fields
 
 	private void CreateSimpleRequest(IExpressionReturn item, int offset, int size) {
-		SimpleRequests.Add(new SimpleRequest(item, offset, size, WriteTime, CurrentSourceLine));
+		_simpleRequests.Add(new SimpleRequest(item, offset, size, _time, CurrentSourceLine));
 	}
-
 
 	// TODO need real world performance tests to micro benchmark vectorization of these writes using a mask (and possibly a size mask in an indexed array)
 	private void ResolveAllRequests() {
 		const string CouldntDoIt = "Unable to resolve request";
 
-		foreach (SimpleRequest sreq in SimpleRequests) { 
+		foreach (SimpleRequest sreq in _simpleRequests) { 
 			if (sreq.TryToResolve()) {
-				byte* writing = RomBuffer + sreq.Offset;
-				uint* timing = TimeBuffer + sreq.Offset;
+				byte* writing = _romPtr + sreq.Offset;
+				uint* timing = _timePtr + sreq.Offset;
 
 				uint resotime = sreq.Time;
 				int rvalue = sreq.Value;
@@ -91,7 +109,7 @@ unsafe partial class Assembler {
 			}
 		}
 
-		foreach (BranchRequest breq in BranchRequests) {
+		foreach (BranchRequest breq in _branchRequests) {
 			if (breq.TryToResolve()) {
 				int distance = breq.Distance;
 
@@ -100,8 +118,8 @@ unsafe partial class Assembler {
 					continue;
 				}
 
-				byte* writing = RomBuffer + breq.Offset;
-				uint* timing = TimeBuffer + breq.Offset;
+				byte* writing = _romPtr + breq.Offset;
+				uint* timing = _timePtr + breq.Offset;
 				uint resotime = breq.Time;
 
 				if (breq.Size is 2) {
@@ -121,10 +139,10 @@ unsafe partial class Assembler {
 			}
 		}
 
-		foreach (AbsolutePointerRequest aprq in JumpRequests) {
+		foreach (AbsolutePointerRequest aprq in _jumpRequests) {
 			if (aprq.TryToResolve()) {
-				byte* writing = RomBuffer + aprq.Offset;
-				uint* timing = TimeBuffer + aprq.Offset;
+				byte* writing = _romPtr + aprq.Offset;
+				uint* timing = _timePtr + aprq.Offset;
 				uint resotime = aprq.Time;
 				int rvalue = aprq.Value;
 
@@ -144,7 +162,7 @@ unsafe partial class Assembler {
 			}
 		}
 
-		foreach (FillRequest freq in FillRequests) {
+		foreach (FillRequest freq in _fillRequests) {
 			if (freq.TryToResolve()) {
 				FullfillBlockFillRequest(freq.Offset, freq.Size, freq.WordSize, freq.Value, freq.Time);
 			} else {
@@ -160,23 +178,16 @@ unsafe partial class Assembler {
 
 
 	private void UpdateHierarchy(string name, int depth) {
-		if (depth > (HierarchyDepth + 1)) {
+		if (depth > (_hierarchyDepth + 1)) {
 			Error("Label has no parent");
 		} else if (depth > MaxSublabelDepth) {
 			Error($"Exceeded max label depth: {depth}/{MaxSublabelDepth}");
 		} else {
-			HierarchyDepth = depth;
-			LabelNameHierarchy[depth] = name;
-			QuayHierarchy[depth] = Offset;
+			_hierarchyDepth = depth;
+			_labelNameHierarchy[depth] = name;
+			_pcHierarchy[depth] = _offset;
 		}
 	}
-
-	// TODO potential inline array candidates (probably not worth)
-	private readonly string[] LabelNameHierarchy = new string[HierarchySize];
-	private readonly int[] QuayHierarchy = new int[HierarchySize];
-	private int HierarchyDepth = 0;
-
-
 
 	private void AddOrReplaceSymbol(Symbol item) {
 		string symbolName = item.Name;
@@ -188,7 +199,7 @@ unsafe partial class Assembler {
 			}
 		}
 
-		ref Symbol? getSym = ref SymbolsTable.GetRefOrDefault(symbolName);
+		ref Symbol? getSym = ref _symbols.GetRefOrDefault(symbolName);
 
 		if (getSym is null) {
 			getSym = item;
@@ -201,20 +212,20 @@ unsafe partial class Assembler {
 	}
 
 	private bool DemandColonOnLabel() {
-		if (*reading is not ':') {
+		if (*_reading is not ':') {
 			Error("Missing colon on label");
 			AbortCommand();
 			return false;
 		} else {
-			reading++;
+			_reading++;
 			return DemandSpaceAfterColon();
 		}
 	}
 
 
 	private bool DemandSpaceAfterColon() {
-		if (reading->IsNiceBoundary) {
-			reading++;
+		if (_reading->IsNiceBoundary) {
+			_reading++;
 			return true;
 		} else {
 			Error("Unexpected character after label declaration.");
@@ -225,7 +236,7 @@ unsafe partial class Assembler {
 
 
 	private Symbol RequestSymbol(CharSpan name) {
-		ref var getsym = ref SymbolsTable.GetRefOrDefault(name);
+		ref var getsym = ref _symbols.GetRefOrDefault(name);
 
 		getsym ??= new SymbolPlaceholder(new string(name));
 		
@@ -234,7 +245,7 @@ unsafe partial class Assembler {
 
 
 	private Symbol RequestSymbol(string name) {
-		ref var getsym = ref SymbolsTable.GetRefOrDefault(name);
+		ref var getsym = ref _symbols.GetRefOrDefault(name);
 
 		getsym ??= new SymbolPlaceholder(name);
 
@@ -242,7 +253,7 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? item) {
-		if (SymbolsTable.TryGetValue(name, out item) && item.Resolved) {
+		if (_symbols.TryGetValue(name, out item) && item.Resolved) {
 			return true;
 		} else {
 			item = null;
@@ -286,7 +297,7 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-		ref var dictSym = ref CollectionsMarshal.GetValueRefOrAddDefault(initialsymbols, name, out bool _);
+		ref var dictSym = ref CollectionsMarshal.GetValueRefOrAddDefault(_initialSymbols, name, out bool _);
 
 		if (dictSym is null) {
 			dictSym = toAdd;
@@ -333,7 +344,7 @@ unsafe partial class Assembler {
 	/// <inheritdoc cref="ThrowIfAssembling" path="//remarks|//exception"/>
 	public void ClearInitialSymbols() {
 		ThrowIfAssembling();
-		initialsymbols.Clear();
+		_initialSymbols.Clear();
 	}
 
 
@@ -352,35 +363,26 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
-
-
-
-
-	private bool pooling = false;
-	private readonly List<string> poolHeaders = new(8);
-
 	private void Directive_POOL() {
-		if (pooling) {
+		if (_pooling) {
 			Error("Close previous pool before creating a new one.");
 		}
 
 		if (DemandSpaceThenTopLevelName(out string? poolName)) {
-			poolHeaders.Clear();
-			HierarchyDepth = 0;
+			_poolHeaders.Clear();
+			_hierarchyDepth = 0;
 
-			QuayHierarchy[0] = Offset;
+			_pcHierarchy[0] = _offset;
 
-			pooling = true;
-			poolHeaders.Add(poolName);
+			_pooling = true;
+			_poolHeaders.Add(poolName);
 
 			while (!AdvanceOverWhitespace()) {
 				if (TryReadTopLevelName(out poolName)) {
-					if (poolHeaders.Contains(poolName)) {
+					if (_poolHeaders.Contains(poolName)) {
 						Warning("Duplicate pool name", poolName);
 					} else {
-						poolHeaders.Add(poolName);
+						_poolHeaders.Add(poolName);
 					}
 				} else {
 					Error("Invalid pool name.");
@@ -393,8 +395,8 @@ unsafe partial class Assembler {
 	}
 
 	private void ClearPools() {
-		pooling = false;
-		poolHeaders.Clear();
+		_pooling = false;
+		_poolHeaders.Clear();
 	}
 
 
@@ -428,7 +430,7 @@ unsafe partial class Assembler {
 				capacity = int.MaxValue;
 			}
 
-			Piling addPiling = new(fullName, Provenance, PC, Offset, capacity);
+			Piling addPiling = new(fullName, Provenance, _pc, _offset, capacity);
 
 			AddOrReplaceSymbol(addPiling);
 			UpdateHierarchy(chunkName, depth);
@@ -466,28 +468,28 @@ unsafe partial class Assembler {
 			length = -1;
 		}
 
-		Dock addSegment = new(segmentName, Provenance, PC, Offset, length);
+		Dock addSegment = new(segmentName, Provenance, _pc, _offset, length);
 
 		AddOrReplaceSymbol(addSegment);
 		UpdateHierarchy(segmentName, 0);
 
 		if (length > 0) {
-			int endOffset = Offset + length;
+			int endOffset = _offset + length;
 			Label endSeg = new($"{segmentName}.end", Provenance + length, OffsetToAddress(endOffset), endOffset);
 			AddOrReplaceSymbol(endSeg);
-			currentSegment = addSegment;
-			Segments.Add(addSegment);
+			_currentSegment = addSegment;
+			_segments.Add(addSegment);
 		}
 	}
 
 
 	private void GenerateExtrinsicLabel() {
-		reading++; // skip # token
+		_reading++; // skip # token
 
 		if (TryReadTopLevelName(out string? extname)) {
 			if (DemandColonOnLabel()) {
 				// no hierarchy update (that's the point of this type)
-				AddOrReplaceSymbol(new Label(extname, Provenance, PC, Offset));
+				AddOrReplaceSymbol(new Label(extname, Provenance, _pc, _offset));
 			}
 		} else {
 			Error(MsgInfo.BadLabelName);
@@ -507,7 +509,7 @@ unsafe partial class Assembler {
 
 
 	private bool TryReadAnyLabelName([NotNullWhen(true)] out string? fullName, [NotNullWhen(true)] out string? chunkName, out int depth) {
-		if (*reading is SublabelDelimiter) {
+		if (*_reading is SublabelDelimiter) {
 			if (TryReadSublabelName(out chunkName, out depth)) {
 				return TryFullyExpandLabelName(depth, chunkName, out fullName);
 			}
@@ -526,7 +528,7 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryReadInlineSymbolReference([NotNullWhen(true)] out string? fullName) {
-		if (*reading is SublabelDelimiter) {
+		if (*_reading is SublabelDelimiter) {
 			if (TryReadSublabelReference(out CharSpan chunkName, out int depth)) {
 				return TryFullyExpandLabelName(depth, chunkName, out fullName);
 			} else {
@@ -550,7 +552,7 @@ unsafe partial class Assembler {
 
 
 	private bool TryReadTopLevelName([NotNullWhen(true)] out string? fullName) {
-		if (FastRead.TryReadIdentifier(ref reading, fileEnd, out OperandString symbolName)) {
+		if (FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString symbolName)) {
 			fullName = symbolName;
 			return true;
 		} else {
@@ -561,13 +563,13 @@ unsafe partial class Assembler {
 
 
 	private bool TryReadSublabelName([NotNullWhen(true)] out string? chunkName, out int depth) {
-		depth = FastRead.CountCharacter(ref reading, fileEnd, SublabelDelimiter);
+		depth = FastRead.CountCharacter(ref _reading, _fileEnd, SublabelDelimiter);
 
-		CharSpan sublabelname = FastRead.ReadAlphaNumeric(ref reading, fileEnd);
+		CharSpan sublabelname = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
 
 		if (sublabelname.IsEmpty) {
 			Error(MsgInfo.MissingSublabel);
-		} else if (!reading->IsNiceBoundary) {
+		} else if (!_reading->IsNiceBoundary) {
 			UnexpectedCharacter();
 		} else {
 			chunkName = new(sublabelname);
@@ -579,8 +581,8 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryReadSublabelReference(out CharSpan chunkName, out int depth) {
-		if (FastRead.TryReadSublabel(ref reading, fileEnd, out chunkName, out depth)) {
-			if (reading->IsNiceBoundary) {
+		if (FastRead.TryReadSublabel(ref _reading, _fileEnd, out chunkName, out depth)) {
+			if (_reading->IsNiceBoundary) {
 				return true;
 			}
 
@@ -597,16 +599,16 @@ unsafe partial class Assembler {
 		if (TryReadSublabelName(out string? chunkName, out int depth)) {
 			UpdateHierarchy(chunkName, depth);
 
-			if (!pooling) {
+			if (!_pooling) {
 				if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
-					AddOrReplaceSymbol(new Label(fullName, Provenance, PC, Offset));
+					AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
 				}
 			} else {
-				foreach (string poolName in poolHeaders) {
-					LabelNameHierarchy[0] = poolName;
+				foreach (string poolName in _poolHeaders) {
+					_labelNameHierarchy[0] = poolName;
 
 					if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
-						AddOrReplaceSymbol(new Label(fullName, Provenance, PC, Offset));
+						AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
 					}
 				}
 			}
@@ -614,9 +616,9 @@ unsafe partial class Assembler {
 	}
 
 	private void GenerateBuoy() {
-		int backDepth = FastRead.CountCharacter(ref reading, fileEnd, '^');
+		int backDepth = FastRead.CountCharacter(ref _reading, _fileEnd, '^');
 
-		if (*reading is not SublabelDelimiter) {
+		if (*_reading is not SublabelDelimiter) {
 			UnexpectedCharacter();
 			AbortCommand();
 			return;
@@ -635,22 +637,22 @@ unsafe partial class Assembler {
 			return;
 		}
 
-		int quayOffset = Offset - QuayHierarchy[backDepth];
+		int quayOffset = _offset - _pcHierarchy[backDepth];
 
-		if (!pooling) {
+		if (!_pooling) {
 			if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
-				Buoy addsym = new(fullName, Provenance, PC, Offset, quayOffset);
+				Buoy addsym = new(fullName, Provenance, _pc, _offset, quayOffset);
 				AddOrReplaceSymbol(addsym);
 				UpdateHierarchy(chunkName, depth);
 			}
 		} else {
-			foreach (string poolName in poolHeaders) {
-				LabelNameHierarchy[0] = poolName;
+			foreach (string poolName in _poolHeaders) {
+				_labelNameHierarchy[0] = poolName;
 
 				UpdateHierarchy(chunkName, depth);
 
 				if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
-					Buoy addsym = new(fullName, Provenance, PC, Offset, quayOffset);
+					Buoy addsym = new(fullName, Provenance, _pc, _offset, quayOffset);
 					AddOrReplaceSymbol(addsym);
 				}
 			}
@@ -667,12 +669,12 @@ unsafe partial class Assembler {
 		} else if (depth is 0) {
 			fullName = new(name);
 			return true;
-		} else if (depth <= (HierarchyDepth + 1)) {
+		} else if (depth <= (_hierarchyDepth + 1)) {
 			// make depth of 1 faster
 			if (depth == 1) {
-				fullName = $"{LabelNameHierarchy[0]}.{name}";
+				fullName = $"{_labelNameHierarchy[0]}.{name}";
 			} else {
-				var temp = LabelNameHierarchy.AsSpan(0, depth);
+				var temp = _labelNameHierarchy.AsSpan(0, depth);
 
 				fullName = $"{string.Join('.', temp)}.{name}";
 			}
@@ -690,16 +692,12 @@ unsafe partial class Assembler {
 
 	private const int MaxRelativeCount = 100;
 
-	// TODO potential inline array candidates
-	private readonly int[] pluslabels = new int[MaxRelativeCount];
-	private readonly int[] minuslabels = new int[MaxRelativeCount];
-
 	private static string GetRelativeLabelName(char token, int count, int index) => $"{token}{count}.{index}";
 
 
 	internal bool TryGetPreviusMinusLabel(int minusCount, [NotNullWhen(true)] out Symbol? label) {
 		if (ValidateRelativeCount('-', minusCount)) {
-			string name = GetRelativeLabelName('-', minusCount, minuslabels[minusCount]);
+			string name = GetRelativeLabelName('-', minusCount, _minuslabels[minusCount]);
 			label = RequestSymbol(name);
 			return true;
 		} else {
@@ -711,7 +709,7 @@ unsafe partial class Assembler {
 
 	internal bool TryGetNextPlusLabel(int plusCount, [NotNullWhen(true)] out Symbol? label) {
 		if (ValidateRelativeCount('+', plusCount)) {
-			string name = GetRelativeLabelName('+', plusCount, pluslabels[plusCount] + 1);
+			string name = GetRelativeLabelName('+', plusCount, _pluslabels[plusCount] + 1);
 			label = RequestSymbol(name);
 			return true;
 		} else {
@@ -731,11 +729,11 @@ unsafe partial class Assembler {
 
 
 	private void GenerateRelativeLabel(char token) {
-		int relcount = FastRead.CountCharacter(ref reading, fileEnd, token);
+		int relcount = FastRead.CountCharacter(ref _reading, _fileEnd, token);
 
-		if (reading->IsNiceBoundary) {
+		if (_reading->IsNiceBoundary) {
 			if (ValidateRelativeCount(token, relcount)) {
-				int[] table = token is '+' ? pluslabels : minuslabels;
+				int[] table = token is '+' ? _pluslabels : _minuslabels;
 
 				ref int relindex = ref table[relcount];
 
@@ -744,7 +742,7 @@ unsafe partial class Assembler {
 				// using the token in the name will guarantee a unique label, since users can't put + or - in label names
 				string relname = GetRelativeLabelName(token, relcount, relindex);
 
-				AddOrReplaceSymbol(new Label(relname, Provenance, PC, Offset));
+				AddOrReplaceSymbol(new Label(relname, Provenance, _pc, _offset));
 			}
 		} else {
 			UnexpectedCharacter();

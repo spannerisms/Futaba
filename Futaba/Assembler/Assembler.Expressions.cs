@@ -18,14 +18,11 @@ unsafe partial class Assembler {
 		return ParseOperand(operand.Start, operand.End, context);
 	}
 
-
-
 	// TODO consider a WriteOperand that directly writes bytes to bypass making tons of wrapper objects for numbers when not needed
 	// GC is kinda really good though... using a singleton didn't have a performance benefit whatsoever
 	// jpdasm: 676000 allocs for number
 	// usdasm: 300000
 	// push: 6000
-
 	private IExpressionReturn ParseOperand(char* opreading, char* opend, SymbolContext context) {
 		FastRead.TrimWhiteSpace(ref opreading, ref opend);
 
@@ -610,7 +607,7 @@ unsafe partial class Assembler {
 				// DOUBLE QUOTE
 				case '"':
 					if (TryReadAndExplodeStringContents(ref exprReading, exprEnd, out string? str)) {
-						last = new StringToken(str, CurrentEncoder);
+						last = new StringToken(str, _currentEncoder);
 						tokens.Add(last);
 						continue;
 					} else {
@@ -694,7 +691,7 @@ unsafe partial class Assembler {
 			}
 
 			if (++cread < lend && *cread is CharDelim) {
-				charOut = new NumberToken(CurrentEncoder.Encode(quotedChar));
+				charOut = new NumberToken(_currentEncoder.Encode(quotedChar));
 				lread = cread + 1;
 				return true;
 			}
@@ -724,7 +721,7 @@ unsafe partial class Assembler {
 					if (TryGetVariable(varName, out var theVar)) {
 						getVar = theVar.VarType switch {
 							VariableType.Value => new ValueVariableToken(theVar),
-							VariableType.String => new StringVariableToken(theVar, CurrentEncoder),
+							VariableType.String => new StringVariableToken(theVar, _currentEncoder),
 							_ => new NullVariableToken(theVar.Name)
 						};
 					} else {
@@ -867,7 +864,7 @@ unsafe partial class Assembler {
 
 				if (FunctionCall.BuiltInFunctions.TryGetValue(funcName, out var funcMaker)) {
 					return funcMaker(this, args) ?? ErrorOut();
-				} else if (UserFunctionsTable.TryGetValue(funcName, out var thefunc)) {
+				} else if (_functions.TryGetValue(funcName, out var thefunc)) {
 					return thefunc.GetNewInstance(this, args) ?? ErrorOut();
 				} else {
 					Error($"Function {funcName} not found");

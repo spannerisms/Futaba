@@ -1,6 +1,4 @@
-﻿using System.Xml.Linq;
-
-namespace Futaba;
+﻿namespace Futaba;
 
 unsafe partial class Assembler {
 	private void FinishCommand() {
@@ -14,12 +12,12 @@ unsafe partial class Assembler {
 	/// returns true if hit end of command
 	/// </summary>
 	private bool AdvanceOverWhitespace() {
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		char c = *reading;
+		char c = *_reading;
 
 		if (c is CommentChar) {
-			FastRead.ReadUntilLineEnd(ref reading, fileEnd);
+			FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
 			return true;
 		}
 
@@ -27,22 +25,21 @@ unsafe partial class Assembler {
 	}
 
 	private bool AtEndOfCommand() {
-		char* rd = reading;
+		char* rd = _reading;
 
-		if (rd >= fileEnd) {
+		if (rd >= _fileEnd) {
 			return true;
 		}
 
 		return (*rd is NewLine or CommentChar) || FastRead.TestIfColonAndSeparator(rd);
 	}
 
-
 	/// <summary>
 	/// Returns false and aborts if no space
 	/// </summary>
 	private bool DemandSpaceWithError() {
-		if (reading->IsSkippableSpace) {
-			FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		if (_reading->IsSkippableSpace) {
+			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 			return true;
 		} else {
 			if (AtEndOfCommand()) {
@@ -57,8 +54,8 @@ unsafe partial class Assembler {
 	}
 
 	private void AbortCommand() {
-		char* read = reading;
-		char* theend = fileEnd;
+		char* read = _reading;
+		char* theend = _fileEnd;
 
 		while (read < theend) {
 			char c = *read;
@@ -79,7 +76,7 @@ unsafe partial class Assembler {
 			read++;
 		}
 
-		reading = read;
+		_reading = read;
 	}
 
 	private bool TestIsQuotedStringAndExplode(CharSpan arg, [NotNullWhen(true)] out string? exploded) {
@@ -103,16 +100,15 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private SizeToken GetSizeToken() {
-		char* read = reading;
+		char* read = _reading;
 
 		if (*read is '.') {
 			read += 2;
 
 			if (read->IsSkippableSpace) {
 				read++;
-				reading = read;
+				_reading = read;
 				char tok = (read - 2)->FastLower();
 
 				switch (tok) {
@@ -123,7 +119,7 @@ unsafe partial class Assembler {
 
 				Error(MsgInfo.InvalidAddressingMode, details: $"invalid size token: {tok}.");
 			} else {
-				reading = read;
+				_reading = read;
 				UnexpectedCharacter();
 			}
 		} else if (read->IsNiceBoundary) {
@@ -136,8 +132,8 @@ unsafe partial class Assembler {
 	}
 
 	private bool ReadUntilAllocator(out OperandString conts) {
-		char* theend = fileEnd;
-		char* read = reading;
+		char* theend = _fileEnd;
+		char* read = _reading;
 		char* constart = read;
 
 		for (; read < theend; read++) {
@@ -155,29 +151,28 @@ unsafe partial class Assembler {
 			if (c is ':') {
 				if (FastRead.ColonIsSeparator(read)) {
 					conts = new(constart, read);
-					reading = read + 1;
+					_reading = read + 1;
 					return false;
 				}
 
 				if (read[1] is ':') {
 					conts = new(constart, read);
-					reading = read + 2;
+					_reading = read + 2;
 					return true;
 				}
 				continue;
 			}
 		}
 
-		reading = read;
+		_reading = read;
 		conts = OperandString.CreateTrimmed(constart, read);
 		return false;
 	}
 
-
 	private bool ReadForAllocator(out OperandString postContents) {
 		if (!AdvanceOverWhitespace()) {
-			if (FastRead.IsAllocator(reading)) {
-				reading += 2;
+			if (FastRead.IsAllocator(_reading)) {
+				_reading += 2;
 				ReadRestOfCommand(out postContents);
 				return true;
 			}
@@ -203,9 +198,9 @@ unsafe partial class Assembler {
 	}
 
 	private CharSpan GetNextKeyword() {
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		var cspan = FastRead.ReadAlphaNumericSpan(ref reading, fileEnd);
+		var cspan = FastRead.ReadAlphaNumericSpan(ref _reading, _fileEnd);
 
 		int len = cspan.Length;
 
@@ -252,25 +247,23 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private bool CaptureLine(out CharSpan operand) {
 		bool ret = ReadRestOfCommand(out operand);
 
-		if (*reading is NewLine) {
-			SourceLineNumber++;
-			reading++;
+		if (*_reading is NewLine) {
+			_sourceLine++;
+			_reading++;
 		}
 
 		return ret;
 	}
 
-
 	/// <summary>
 	/// returns false if nothing is found. trims ends of string
 	/// </summary>
 	private bool RestOfCommand(out char* opstart, out char* opend) {
-		opstart = reading;
-		char* theend = fileEnd;
+		opstart = _reading;
+		char* theend = _fileEnd;
 
 		char* read = opstart;
 
@@ -284,14 +277,14 @@ unsafe partial class Assembler {
 			}
 
 			if (c is CommentChar) {
-				reading = read + 1;
-				FastRead.ReadUntilLineEnd(ref reading, theend);
+				_reading = read + 1;
+				FastRead.ReadUntilLineEnd(ref _reading, theend);
 
 				goto FinishUp;
 			}
 
 			if (FastRead.TestIfColonAndSeparator(read)) {
-				reading = read + 2;
+				_reading = read + 2;
 				goto FinishUp;
 			}
 
@@ -300,7 +293,7 @@ unsafe partial class Assembler {
 			}
 		}
 
-		reading = read;
+		_reading = read;
 
 		FinishUp:
 
@@ -312,11 +305,11 @@ unsafe partial class Assembler {
 
 	/// <returns>true if theres another comma</returns>
 	private bool ReadToNextComma(out OperandString stuff) {
-		char* theend = fileEnd;
+		char* theend = _fileEnd;
 
-		FastRead.SkipInlineWhitespace(ref reading, theend);
+		FastRead.SkipInlineWhitespace(ref _reading, theend);
 
-		char* read = reading;
+		char* read = _reading;
 		char* start = read;
 
 		for (; read < theend; read++) {
@@ -342,12 +335,12 @@ unsafe partial class Assembler {
 
 			if (c is ',') {
 				stuff = OperandString.CreateTrimmed(start, read);
-				reading = read + 1;
+				_reading = read + 1;
 				return true;
 			}
 		}
 
-		reading = read;
+		_reading = read;
 
 		stuff = OperandString.CreateTrimmed(start, read);
 		return false;
@@ -359,7 +352,7 @@ unsafe partial class Assembler {
 		int blockDepth = 1;
 
 		while (blockDepth > 0) {
-			if (reading >= fileEnd) {
+			if (_reading >= _fileEnd) {
 				Error($"Unclosed {blockTypeName} block");
 				return null;
 			}
@@ -404,10 +397,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
-
-
 	private bool TryReadAndExplodeStringContents(ref char* stread, char* stend, [NotNullWhen(true)] out string? str) {
 		if (FastRead.TryReadOutQuotedString(ref stread, stend, out CharSpan span)) {
 			str = ExplodeStringContents(span);
@@ -418,90 +407,10 @@ unsafe partial class Assembler {
 		}
 	}
 
-	internal bool TryGetSource(string path, [NotNullWhen(true)] out SourceFile? file) {
-		if (TryGetFileName(path, out var fullPath)) {
-			ref var fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(LoadedFiles, fullPath, out _);
-
-			if (fileRef is not null) {
-				fileRef.Refresh();
-			} else {
-				fileRef = new(fullPath);
-			}
-
-			if (fileRef.Error is not null) {
-				SourceLine eline = CurrentSourceObject == SourceFile.Empty
-					? default
-					: CurrentSourceLine;
-
-				Error("Problem loading file", fileRef.Error, eline);
-
-				file = null;
-				return false;
-			}
-
-			fileRef.WasUsed = true;
-
-			file = fileRef;
-			return true;
-		} else {
-			file = null;
-			return false;
-		}
-	}
-
-	internal bool TryGetBinary(string path, [NotNullWhen(true)] out SourceBinary? file) {
-		if (TryGetFileName(path, out var fullPath)) {
-			ref var fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(LoadedBinaries, fullPath, out _);
-
-			if (fileRef is not null) {
-				fileRef.Refresh();
-			} else {
-				fileRef = new(fullPath);
-			}
-
-			if (fileRef.Error is not null) {
-				SourceLine eline = CurrentSourceObject == SourceFile.Empty
-					? default
-					: CurrentSourceLine;
-
-				Error("Problem loading file", fileRef.Error, eline);
-
-				file = null;
-				return false;
-			}
-
-			fileRef.WasUsed = true;
-
-			file = fileRef;
-			return true;
-		} else {
-			file = null;
-			return false;
-		}
-	}
-
-
-	internal bool TryGetFileName(string path, [NotNullWhen(true)] out string? filePath) {
-		if (Path.IsPathFullyQualified(path)) {
-			filePath = path;
-			return true;
-
-		} else if (CurrentSourceObject.FileInfo?.Directory is DirectoryInfo dir) {
-			// fully qualify it
-			filePath = Path.Join(dir.FullName, path);
-			return true;
-
-		} else {
-			Error("Unable to find current directory.");
-			filePath = null;
-			return false;
-		}
-	}
-
 	private bool ReadOutCommaItemsWithParen([NotNullWhen(true)] out List<OperandString>? args) {
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		if (*reading is not '(') {
+		if (*_reading is not '(') {
 			args = null;
 			Error("Missing opening parenthesis");
 			return false;
@@ -509,16 +418,16 @@ unsafe partial class Assembler {
 
 
 		args = [];
-		char* theend = fileEnd;
+		char* theend = _fileEnd;
 
-		char* read = reading + 1;
+		char* read = _reading + 1;
 		char* start = read;
 
 		FastRead.SkipInlineWhitespace(ref read, theend);
 
 		if (read < theend && *read is ')') {
 			read++;
-			reading = read;
+			_reading = read;
 			return true;
 		}
 
@@ -550,7 +459,7 @@ unsafe partial class Assembler {
 			if (c is ')') {
 				args.Add(OperandString.CreateTrimmed(start, read));
 				read++;
-				reading = read;
+				_reading = read;
 				return true;
 			}
 
@@ -560,14 +469,14 @@ unsafe partial class Assembler {
 		}
 
 		Error("Mismatched parentheses");
-		reading = read;
+		_reading = read;
 		args = null;
 		return false;
 	}
 
 	// TODO add mask functions for AND / OR / XOR
 	private bool TryReadStringWithParams(OperandString strArg, [NotNullWhen(true)] out string? strparsed, out SnesEncoder encoding) {
-		encoding = CurrentEncoder;
+		encoding = _currentEncoder;
 
 		if (strArg.First is not '"') {
 			strparsed = null;

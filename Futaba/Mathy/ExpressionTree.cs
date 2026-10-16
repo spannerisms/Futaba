@@ -1,12 +1,12 @@
 ﻿namespace Futaba;
 
 internal class ExpressionTree : IExpressionReturn {
-	private readonly ExpressionItem root;
+	private readonly ExpressionItem _root;
 
 	public decimal Value { get; private set; }
 
 	public ExpressionTree(ExpressionItem tree) {
-		root = tree;
+		_root = tree;
 		TryToResolve();
 	}
 
@@ -14,10 +14,10 @@ internal class ExpressionTree : IExpressionReturn {
 
 	public bool NeedsRequest { get; private set; }
 
-	public ExpressionState ReturnState => root.State;
+	public ExpressionState ReturnState => _root.State;
 
 	public bool TryToResolve() {
-		var (value, state) = root.TryEvaluate();
+		var (value, state) = _root.TryEvaluate();
 
 		Value = value;
 

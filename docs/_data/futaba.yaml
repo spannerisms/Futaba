@@ -187,6 +187,9 @@ functions:
   - name: "rtn"
     args: [ "a" ]
     desc: "Returns <fblk>%1&minus;1</fblk>; useful for self-documenting stack return addresses"
+  - name: "argof"
+    args: [ "a" ]
+    desc: "Returns <fblk>%1+1</fblk>; useful for self-documenting operand references"
   - name: "rebank"
     args: [ "a", "b" ]
     desc: "Returns a new 24-bit address where the bank byte of %1 has been replaced with %2"
@@ -300,6 +303,11 @@ cli_args:
           desc: Seeds the assembler for deterministic random numbers using the given string
         - name: base
           desc: Relative path to a file to use as a base binary
+        - name: incremental
+          desc: |
+            When true, the application will listen for changes to the manifest or
+            source files to automatically restart assembly.
+          values: &BoolInputs [ "true", "false" ]
     - name: header
       items:
         - name: mapmode
@@ -308,7 +316,7 @@ cli_args:
           required: true
         - name: autofill
           desc: Automatically populates the ROM header using the data supplied in this block.
-          values: &BoolInputs [ "true", "false" ]
+          values: *BoolInputs
           default: "false"
         - name: checksum
           desc: Calculate and insert a checksum at the end of assembly.

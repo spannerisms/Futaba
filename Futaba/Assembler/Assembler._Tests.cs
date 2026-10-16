@@ -1,21 +1,12 @@
-﻿using System.Buffers;
-using System.Buffers.Binary;
-using System.Drawing;
-using System.Numerics;
-using static System.Net.Mime.MediaTypeNames;
+﻿namespace Futaba;
 
-namespace Futaba;
-
-
-
+// TODO find a way to make this its own project with less reliance on internal/private stuff
 
 #if UNITTESTS
 
 #pragma warning disable IDE0079
 #pragma warning disable CS1591 // debug only class. not part of the public api
 partial class Assembler {
-
-
 	// TODO
 	// need to stress test ; and : for end of command behavior
 	// need to stress test multiple variables in a single function
@@ -29,7 +20,6 @@ partial class Assembler {
 
 		public static void TestMain() {
 			FailsOnly = false;
-
 
 			Assembler asmblr = new LoromAssembler("Tests/errortests.asm");
 
