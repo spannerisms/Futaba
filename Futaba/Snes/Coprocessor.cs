@@ -45,7 +45,6 @@ public enum Coprocessor {
 	/// </summary>
 	SRTC = 0x10_50__00_00,
 
-
 	/// <summary>
 	/// Other chips
 	/// </summary>

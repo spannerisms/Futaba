@@ -1,6 +1,6 @@
 ﻿namespace Futaba;
 
-internal class ExpressionTree : IExpressionReturn {
+internal sealed class ExpressionTree : IExpressionReturn {
 	private readonly ExpressionItem _root;
 
 	public decimal Value { get; private set; }

@@ -42,7 +42,6 @@ unsafe partial class Assembler {
 				return false;
 			}
 
-
 			if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString nextArg)) {
 				Error("Missing or invalid macro parameter name");
 				return false;
@@ -66,10 +65,8 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-
 		return true;
 	}
-
 
 	private void Directive_FUNCTION() {
 		if (!TryReadMacroHeader(out var macroName, out var args)) {
@@ -99,7 +96,6 @@ unsafe partial class Assembler {
 		}
 
 		ref var getFunc = ref _functions.GetRefOrDefault(funcName);
-
 
 		if (getFunc is not null) {
 			Error("A user function with this name already exists");
@@ -160,7 +156,7 @@ unsafe partial class Assembler {
 				Error("Extraneous content after macro header");
 				AbortCommand();
 			}
-			
+
 			if (CaptureBlock(MACRO, ENDMACRO, MACRO) is StringBuilder macroBody) {
 				if (getMacro is not null) {
 					Error("A macro with this name already exists");

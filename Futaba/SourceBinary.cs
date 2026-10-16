@@ -2,17 +2,18 @@
 
 namespace Futaba;
 
-internal unsafe class SourceBinary : IWatchedFile {
+internal unsafe sealed class SourceBinary : IWatchedFile {
 	private byte* _allocBlock;
 	public string? Error { get; private set; } = null;
 	public string FileName { get; }
 	public string? DirectoryName { get; }
-	public SafeFileHandle? Handle { get; protected set; }
+	public SafeFileHandle? Handle { get; private set; }
 	public DateTime LastLoaded { get; private set; } = default;
 	public int Length { get; private set; }
 	public WatcherChangeTypes Change { get; set; }
 	public bool WasUsed { get; set; } = false;
-	protected bool _disposed = false;
+	private bool _disposed = false;
+
 	public SourceBinary(string path) {
 		FileName = Path.GetFullPath(path);
 		DirectoryName = Path.GetDirectoryName(FileName);
@@ -21,8 +22,6 @@ internal unsafe class SourceBinary : IWatchedFile {
 	}
 
 	public void Refresh() {
-		// invalidate the handle
-
 		if (!IWatchedFile.RevalidateHandle(this, out var newHandle, out var error)) {
 			Error = error;
 
@@ -96,7 +95,7 @@ internal unsafe class SourceBinary : IWatchedFile {
 	}
 
 	/// <inheritdoc cref="IDisposable.Dispose()"/>
-	public virtual void Dispose() {
+	public void Dispose() {
 		Dispose(true);
 		GC.SuppressFinalize(this);
 	}

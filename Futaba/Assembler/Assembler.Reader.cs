@@ -14,9 +14,7 @@ unsafe partial class Assembler {
 	private bool AdvanceOverWhitespace() {
 		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		char c = *_reading;
-
-		if (c is CommentChar) {
+		if (*_reading is CommentChar) {
 			FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
 			return true;
 		}
@@ -50,7 +48,6 @@ unsafe partial class Assembler {
 			}
 			return false;
 		}
-
 	}
 
 	private void AbortCommand() {
@@ -215,7 +212,6 @@ unsafe partial class Assembler {
 		return new string(dspan);
 	}
 
-
 	/// <inheritdoc cref="RestOfCommand(out char*, out char*)"/>
 	private bool ReadRestOfCommand(out CharSpan operand) {
 		if (RestOfCommand(out char* opstart, out char* opend)) {
@@ -303,7 +299,7 @@ unsafe partial class Assembler {
 		return opstart != opend;
 	}
 
-	/// <returns>true if theres another comma</returns>
+	/// <returns><see langword="true"/> if theres another comma</returns>
 	private bool ReadToNextComma(out OperandString stuff) {
 		char* theend = _fileEnd;
 
@@ -416,7 +412,6 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-
 		args = [];
 		char* theend = _fileEnd;
 
@@ -430,7 +425,6 @@ unsafe partial class Assembler {
 			_reading = read;
 			return true;
 		}
-
 
 		for (; read < theend; read++) {
 			char c = *read;
@@ -490,12 +484,9 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-
 		// we have a string, so check for the next character
 		if (FastRead.SkipInlineWhitespaceWithEndCheck(ref read, theend)) {
-			// no next character, so it's a normal string
-
-			strparsed = ExplodeStringContents(contents);
+			strparsed = ExplodeStringContents(contents); // no next character, so it's a normal string
 			return true;
 		}
 
@@ -518,8 +509,6 @@ unsafe partial class Assembler {
 		bool paddingHappened = false;
 		bool casingHappened = false;
 		bool encoderHappened = false;
-
-		// check each rule
 
 		StringBuilder bld = new(strparsed);
 
@@ -651,7 +640,6 @@ unsafe partial class Assembler {
 
 								string padStr = new(padChar, diff / 2);
 
-								
 								bld.Insert(0, padStr);
 								bld.Append(padStr);
 
@@ -663,14 +651,8 @@ unsafe partial class Assembler {
 										bld.Insert(0, padChar);
 									}
 								}
-
-								return;
-							} else {
-								return;
 							}
-
-
-
+							return;
 
 						case 'l' or 'L' or 'r' or 'R':
 							if (!TryGetLength(out lenArg)) {
@@ -700,11 +682,9 @@ unsafe partial class Assembler {
 								} else {
 									bld.Append(padStr);
 								}
-
-								return;
-							} else {
-								return;
 							}
+
+							return;
 
 						default:
 							Warning("Bad padding mode");
@@ -766,7 +746,6 @@ unsafe partial class Assembler {
 			}
 
 			Error($"Missing or invalid string argument: {cmd}");
-
 
 		} while (more);
 

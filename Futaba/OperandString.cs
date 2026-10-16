@@ -83,9 +83,7 @@ internal unsafe readonly struct OperandString {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public char GetUnchecked(int i) => _start[i];
 
-
 	public readonly bool OnlyCharIs(char c) => ((_end - 1) == _start) && _start[0] == c;
-
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void FastLower(scoped Span<char> dest) {
@@ -115,7 +113,6 @@ internal unsafe readonly struct OperandString {
 			return false;
 		}
 	}
-
 
 	public bool HasIndexer(char token, out char register, out OperandString newSlice) {
 		char* search = _end;
@@ -177,7 +174,6 @@ internal unsafe readonly struct OperandString {
 
 		Debug.Assert(start >= 0);
 		Debug.Assert(length >= 0);
-
 
 		return new OperandString(newStart, newEnd);
 	}
@@ -259,7 +255,6 @@ internal unsafe readonly struct OperandString {
 		return _start[0] is '!' && FastRead.IsVariableName(_start + 1, _end);
 	}
 
-
 	public void Deconstruct(out char* start, out char* end) {
 		start = _start;
 		end = _end;
@@ -269,7 +264,6 @@ internal unsafe readonly struct OperandString {
 
 	public static implicit operator CharSpan(OperandString a) => CharSpanHelpers.CreateSpanUnchecked(a._start, a._end);
 	public static implicit operator string(OperandString a) => new(a._start, 0, a.Length);
-
 
 	public StringSplitter GetEnumerator() => new(_start, _end);
 }

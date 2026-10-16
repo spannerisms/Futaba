@@ -6,11 +6,11 @@ internal interface INeedResolution {
 
 	public int Offset { get; }
 	public int Size { get; }
-	
+
 	public uint Time { get; }
-	
+
 	public bool TryToResolve();
-	
+
 	public int Value { get; }
 
 	// for warnings when things can't be resolved

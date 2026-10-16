@@ -21,7 +21,7 @@ namespace Futaba;
 //       copies or substantial portions of the Software.
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-internal unsafe class XoRandom {
+internal unsafe sealed class XoRandom {
 	private ulong _s0, _s1, _s2, _s3;
 
 	public XoRandom() {

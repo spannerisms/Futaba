@@ -39,20 +39,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	private TextWriter _messageOut = Console.Out;
 	private TextWriter _errorOut = Console.Error;
 
-
-	#endregion Private fields
-
-	/// <summary>
-	/// Gets or sets whether the assembler operates in incremental mode,
-	/// allowing it to detect and raise events about file changes.
-	/// </summary>
-	public bool Incremental {
-		get;
-		set {
-			ThrowIfAssembling();
-			field = value;
-		}
-	}
+	#endregion
 
 	/// <summary>
 	/// Gets the file that acts as the entry point of assembly.
@@ -203,6 +190,18 @@ public unsafe abstract partial class Assembler : IDisposable {
 	}
 
 	/// <summary>
+	/// Gets or sets whether the assembler operates in incremental mode,
+	/// allowing it to detect and raise events about file changes.
+	/// </summary>
+	public bool Incremental {
+		get;
+		set {
+			ThrowIfAssembling();
+			field = value;
+		}
+	}
+
+	/// <summary>
 	/// Creates a new assembler object using the given file as its entry point.
 	/// </summary>
 	private protected Assembler(FileInfo entry) {
@@ -236,8 +235,10 @@ public unsafe abstract partial class Assembler : IDisposable {
 			TryAssembly();
 
 			return [.. new ReadOnlySpan<byte>(_romPtr, CurrentRomSize)];
+
 		} catch {
 			throw;
+
 		} finally {
 			DeallocRomBuffer();
 		}
@@ -261,8 +262,10 @@ public unsafe abstract partial class Assembler : IDisposable {
 
 			stream.Write(new ReadOnlySpan<byte>(_romPtr, CurrentRomSize));
 			stream.Flush(true);
+
 		} catch {
 			throw;
+
 		} finally {
 			DeallocRomBuffer();
 		}
@@ -319,8 +322,17 @@ public unsafe abstract partial class Assembler : IDisposable {
 		}
 
 		_disposed = true;
+
+		_filesChanged = null;
+
 		if (disposing) {
 			// managed resources
+			if (_watchedFiles is not null) {
+				foreach (var f in _watchedFiles.Values) {
+					f?.Dispose();
+				}
+			}
+
 			if (_loadedFiles is not null) {
 				foreach (var f in _loadedFiles.Values) {
 					f?.Dispose();
@@ -329,12 +341,6 @@ public unsafe abstract partial class Assembler : IDisposable {
 
 			if (_loadedBinaries is not null) {
 				foreach (var f in _loadedBinaries.Values) {
-					f?.Dispose();
-				}
-			}
-
-			if (_watchedFiles is not null) {
-				foreach (var f in _watchedFiles.Values) {
 					f?.Dispose();
 				}
 			}

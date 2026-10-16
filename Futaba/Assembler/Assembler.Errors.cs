@@ -22,33 +22,18 @@ partial class Assembler {
 
 		[DoesNotReturn]
 		static void TooManyErrors() {
-			throw new InvalidOperationException($"Too many errors occured. Assembly has been aborted.");
+			throw new InvalidOperationException("Too many errors occured. Assembly has been aborted.");
 		}
 	}
 
-	internal void Error(string message) {
-		Error(message, null, CurrentSourceLine);
-	}
+	internal void Error(string message) => Error(message, null, CurrentSourceLine);
+	internal void Warning(string message) => Warning(message, null, CurrentSourceLine);
 
-	internal void Warning(string message) {
-		Warning(message, null, CurrentSourceLine);
-	}
+	internal void Error(string message, string details) => Error(message, details, CurrentSourceLine);
+	internal void Warning(string message, string details) => Warning(message, details, CurrentSourceLine);
 
-	internal void Error(string message, string details) {
-		Error(message, details, CurrentSourceLine);
-	}
-
-	internal void Warning(string message, string details) {
-		Warning(message, details, CurrentSourceLine);
-	}
-
-	internal void Error(string message, SourceLine srcLine) {
-		Error(message, null, srcLine);
-	}
-
-	internal void Warning(string message, SourceLine srcLine) {
-		Warning(message, null, srcLine);
-	}
+	internal void Error(string message, SourceLine srcLine) => Error(message, null, srcLine);
+	internal void Warning(string message, SourceLine srcLine) => Warning(message, null, srcLine);
 
 	internal void Error(string message, string? details, SourceLine srcLine) {
 		ErrorOutWrite(ErrorText, message, details, srcLine, ConsoleColor.Red);
@@ -66,7 +51,7 @@ partial class Assembler {
 		if (!srcLine.IsNull) {
 			ErrorOut.Write(srcLine);
 		}
-		
+
 		ErrorOut.Write(messageType);
 		ErrorOut.Write(message);
 
@@ -86,8 +71,6 @@ partial class Assembler {
 		ErrorOut.WriteLine();
 
 	}
-
-
 
 	internal void Error_BadResolve(IExpressionReturn expr, string unresolvedmsg) {
 		Error_BadResolve(expr, unresolvedmsg, CurrentSourceLine);
@@ -147,14 +130,11 @@ partial class Assembler {
 		Error("Missing operand to instruction");
 	}
 
-
 	private void NoTokens(SizeToken size) {
 		if (size is not SizeToken.Unspecified) {
 			Error("Size tokens are not valid on this instruction.");
 		}
 	}
-
-
 
 	private void PreferDotB(SizeToken size) {
 		if (size is not SizeToken.B) {

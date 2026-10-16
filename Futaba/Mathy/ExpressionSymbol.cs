@@ -13,7 +13,6 @@ internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : Exp
 	public override ExpressionState State => Item.Resolved ? ExpressionState.Resolved : ExpressionState.MissingSymbol;
 	public ExpressionState ReturnState => State;
 
-
 	// Have the getter do value resolution
 	// because this object should be considered resolved as soon as the label exists
 	private ExpressionState _resolved = ExpressionState.Unresolved;
@@ -37,7 +36,6 @@ internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : Exp
 			return MathHelpers.NaN;
 		}
 	}
-
 
 	public TokenType Type => TokenType.Symbol;
 

@@ -102,7 +102,7 @@ unsafe partial class Assembler {
 				break;
 
 			// symbol or function
-			case	'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
+			case 'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
 					'N' or 'O' or 'P' or 'Q' or 'R' or 'S' or 'T' or 'U' or 'V' or 'W' or 'X' or 'Y' or 'Z' or
 					'a' or 'b' or 'c' or 'd' or 'e' or 'f' or 'g' or 'h' or 'i' or 'j' or 'k' or 'l' or 'm' or
 					'n' or 'o' or 'p' or 'q' or 'r' or 's' or 't' or 'u' or 'v' or 'w' or 'x' or 'y' or 'z' or
@@ -442,7 +442,7 @@ unsafe partial class Assembler {
 					goto Advance1;
 
 				// symbol or function
-				case	'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
+				case 'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
 						'N' or 'O' or 'P' or 'Q' or 'R' or 'S' or 'T' or 'U' or 'V' or 'W' or 'X' or 'Y' or 'Z' or
 						'a' or 'b' or 'c' or 'd' or 'e' or 'f' or 'g' or 'h' or 'i' or 'j' or 'k' or 'l' or 'm' or
 						'n' or 'o' or 'p' or 'q' or 'r' or 's' or 't' or 'u' or 'v' or 'w' or 'x' or 'y' or 'z' or
@@ -634,7 +634,6 @@ unsafe partial class Assembler {
 					goto Finished;
 			}
 
-
 			InvalidCharacter:
 			UnexpectedCharacter(exprReading);
 
@@ -673,7 +672,6 @@ unsafe partial class Assembler {
 			return *peeker;
 		}
 	}
-
 
 	private bool TryMakeCharacterToken(ref char* lread, char* lend, [NotNullWhen(true)] out NumberToken? charOut) {
 		char quotedChar;
@@ -737,7 +735,6 @@ unsafe partial class Assembler {
 		return false;
 	}
 
-
 	private ExpressionSymbol MakeSymbolToken(CharSpan symbolName, SymbolContext context, ref char* lread, char* lend) {
 		if (*lread is SymbolContextAccess) {
 			context = ReadSymbolContext(ref lread, lend);
@@ -772,7 +769,6 @@ unsafe partial class Assembler {
 			return context;
 		}
 	}
-
 
 	private ExpressionItem CreateExpressionTree(List<IToken> tokens) {
 		int index = 0;
@@ -823,7 +819,6 @@ unsafe partial class Assembler {
 			Error("Unexpected token");
 			return ErrorOut();
 		}
-
 
 		ExpressionItem Call() {
 			if (index >= max) return ErrorOut();
@@ -890,7 +885,6 @@ unsafe partial class Assembler {
 			return left;
 		}
 
-
 		ExpressionItem Unary() {
 			if (index >= max) return ErrorOut();
 
@@ -903,7 +897,6 @@ unsafe partial class Assembler {
 
 			return Postfix();
 		}
-
 
 		ExpressionItem Multiplicative() {
 			ExpressionItem left = Unary();

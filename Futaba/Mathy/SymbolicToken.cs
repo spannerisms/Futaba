@@ -19,10 +19,10 @@ internal abstract class SymbolicToken : IToken {
 	}
 
 	/*
-	 * What follows here is a bunch of singleton subclasses
+	 * What follows here is a bunch of singletos
 	 * to help speedup the type and rule checks and the expression item creation
 	 */
-
+	// TODO make these properties of a single sealed class instead?
 	public static readonly SymbolicToken Start = new SingletonStart();
 	private sealed class SingletonStart : SymbolicToken {
 		public override TokenType Type => TokenType.Start;

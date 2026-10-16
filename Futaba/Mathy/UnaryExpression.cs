@@ -9,7 +9,6 @@ internal abstract class UnaryExpression(ExpressionItem item) : ExpressionItem {
 
 	protected ExpressionState _state = ExpressionState.Unresolved;
 
-
 	public override (decimal, ExpressionState) TryEvaluate() {
 		var (value, state) = Item.TryEvaluate();
 
@@ -22,9 +21,6 @@ internal abstract class UnaryExpression(ExpressionItem item) : ExpressionItem {
 		}
 	}
 
-
-
-
 	internal abstract class SafeUnary(ExpressionItem item) : UnaryExpression(item) {
 		protected abstract bool Validate(decimal a);
 
@@ -34,22 +30,16 @@ internal abstract class UnaryExpression(ExpressionItem item) : ExpressionItem {
 			if (state.IsResolved) {
 				if (Validate(value)) {
 					return (Equate(value), _state = state);
+
 				} else {
 					return (MathHelpers.NaN, _state);
+
 				}
 			} else {
 				return (MathHelpers.NaN, _state = state);
 			}
 		}
 	}
-
-
-
-
-
-
-
-
 
 	public sealed class Not(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Not(Item.Clone());
@@ -65,7 +55,6 @@ internal abstract class UnaryExpression(ExpressionItem item) : ExpressionItem {
 		}
 	}
 
-	// unfortunately, we can't just cast to int, because decimal likes throwing overflow errors
 	public sealed class LowByte(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new LowByte(Item.Clone());
 		protected override decimal Equate(decimal a) {
@@ -108,26 +97,24 @@ internal abstract class UnaryExpression(ExpressionItem item) : ExpressionItem {
 		}
 	}
 
-	internal class NullCoalesce(ExpressionItem item) : UnaryExpression(item) {
+	public sealed class NullCoalesce(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new NullCoalesce(Item.Clone());
 
 		public override (decimal, ExpressionState) TryEvaluate() {
 			var (value, state) = Item.TryEvaluate();
 
-
 			if (state.WarrantsRequest) {
 				return (value, _state = ExpressionState.ResolvedButForceRequest);
+
 			} else if (!state.IsResolved) {
 				value = MathHelpers.NaN;
 			}
 
-			_state = state;
-			return (value, state);
+			return (value, _state = state);
 		}
 
 		protected override decimal Equate(decimal a) {
 			return a;
 		}
 	}
-
 }

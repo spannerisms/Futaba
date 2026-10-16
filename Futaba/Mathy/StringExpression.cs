@@ -13,7 +13,7 @@ internal abstract class StringExpression : ExpressionItem {
 		return str.Contents;
 	}
 
-	public class HashString(ExpressionItem item) : StringExpression {
+	public sealed class HashString(ExpressionItem item) : StringExpression {
 		public override (decimal, ExpressionState) TryEvaluate() {
 			var s = ValidateString(item);
 
@@ -30,9 +30,7 @@ internal abstract class StringExpression : ExpressionItem {
 		}
 	}
 
-
-
-	public class GetStringLength(ExpressionItem item) : StringExpression {
+	public sealed class GetStringLength(ExpressionItem item) : StringExpression {
 		public override ExpressionItem Clone() => new GetStringLength(item.Clone());
 
 		public override (decimal, ExpressionState) TryEvaluate() {
@@ -51,8 +49,7 @@ internal abstract class StringExpression : ExpressionItem {
 		}
 	}
 
-
-	public class CompareStrings(ExpressionItem left, ExpressionItem right) : StringExpression {
+	public sealed class CompareStrings(ExpressionItem left, ExpressionItem right) : StringExpression {
 		public override ExpressionItem Clone() => new CompareStrings(left.Clone(), right.Clone());
 
 		public override (decimal, ExpressionState) TryEvaluate() {

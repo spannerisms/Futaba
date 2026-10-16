@@ -18,12 +18,12 @@ internal unsafe abstract class SourceObject : IDisposable {
 
 	protected void ApplyPadding() {
 		// add some padding to obviate bounds checking
-		new Span<char>(SourceEnd, BufferPadding ).Fill(BadChar);
+		new Span<char>(SourceEnd, BufferPadding).Fill(BadChar);
 		new Span<char>(AllocBlock, BufferPadding).Fill(BadChar);
 	}
 
 	protected static char* Allocate(int length) {
-		return NativeMemory.AllocNice<char>(length + BufferPadding * sizeof(char));
+		return NativeMemory.AllocNice<char>(length + BufferPadding * 2);
 	}
 
 	/// <inheritdoc cref="IDisposable.Dispose()"/>

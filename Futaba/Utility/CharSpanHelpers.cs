@@ -1,6 +1,6 @@
 ﻿namespace Futaba;
 
-internal unsafe static class CharSpanHelpers {
+internal static unsafe class CharSpanHelpers {
 	extension(CharSpan charspan) {
 		internal bool MatchesIgnoreCase(string test) {
 			return MemoryExtensions.Equals(charspan, test, StringComparison.OrdinalIgnoreCase);
@@ -37,7 +37,6 @@ internal unsafe static class CharSpanHelpers {
 		return System.IO.Hashing.XxHash128.HashToUInt128(MemoryMarshal.AsBytes(spn), 0xBEBE_F007ABA);
 	}
 
-
 	private const char PrettyAddressSpecifier = 'A';
 	private const char PrettyAddressSpecifierLower = (char) (PrettyAddressSpecifier | AsciiHelpers.LowercaseCharMask);
 
@@ -57,14 +56,11 @@ internal unsafe static class CharSpanHelpers {
 		};
 	}
 
-
 	[DebuggerStepThrough]
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static CharSpan CreateSpan(char* start, char* end) {
 		return (start < end) ? new(start, (int) (end - start)) : default;
 	}
-
-
 
 	[DebuggerStepThrough]
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]

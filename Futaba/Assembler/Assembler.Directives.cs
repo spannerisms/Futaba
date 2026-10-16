@@ -141,7 +141,7 @@ unsafe partial class Assembler {
 		}
 
 		bool more;
-		
+
 		do {
 			more = ReadToNextComma(out var next);
 
@@ -160,7 +160,6 @@ unsafe partial class Assembler {
 							WriteData(datval, size);
 							break;
 					}
-
 
 				} else {
 					Error(MsgInfo.VariableNotFound(next));
@@ -357,7 +356,6 @@ unsafe partial class Assembler {
 				}
 			} while (more);
 
-
 			void WriteString(string str, SnesEncoder encoder) {
 				int len = str.Length * size;
 
@@ -513,7 +511,6 @@ unsafe partial class Assembler {
 									continue;
 								}
 
-
 							} else {
 								Error("Too many allocators.");
 								continue;
@@ -530,7 +527,6 @@ unsafe partial class Assembler {
 					UnexpectedCharacter(pread);
 					continue;
 				}
-
 
 			}
 
@@ -572,7 +568,6 @@ unsafe partial class Assembler {
 
 		FinishCommand();
 	}
-
 
 	private void Directive_LANG() {
 		if (!DemandSpaceWithError()) return;
@@ -616,7 +611,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private void Directive_RAW() {
 		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString arg)) {
 			int len = arg.Length;
@@ -653,8 +647,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
 	private void Directive_REBANK() {
 		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString arg)) {
 			if (arg.OnlyCharIs(SPLAT)) {
@@ -686,7 +678,6 @@ unsafe partial class Assembler {
 			}
 		}
 	}
-
 
 	private void Directive_FILL() {
 		const string BadFillCommand = "Malformatted fill command";
@@ -980,8 +971,6 @@ unsafe partial class Assembler {
 		return (triggers, inserts);
 	}
 
-
-
 	private void Directive_BREAKPOINTS() {
 		if (_bpControl is BreakpointsControl.Kill) {
 			AbortCommand();
@@ -1125,7 +1114,6 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-
 		StringBuilder printer = new();
 
 		bool moreStuff;
@@ -1211,18 +1199,13 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
-
-	
-
 	private void Directive_ALLOCATE() {
 		int blockAddress = -1;
 		int blockEnd = -1;
 		bool sizedBlock = false;
 
 		// just restart the command so we can reuse all the code
-		_reading = _lastCommandStart;
+		_reading = _commandStart;
 
 		var parentState = _previousState;
 
@@ -1230,7 +1213,6 @@ unsafe partial class Assembler {
 			Error("Close pool before beginning allocation block.");
 			ClearPools();
 		}
-
 
 		do {
 			while (_reading < _fileEnd) {
@@ -1245,7 +1227,7 @@ unsafe partial class Assembler {
 					continue;
 				}
 
-				_lastCommandStart = _reading;
+				_commandStart = _reading;
 
 				c = *_reading;
 
@@ -1472,10 +1454,6 @@ unsafe partial class Assembler {
 		} while (PopSourceControl());
 	}
 
-
-
-
-
 	private bool TryGetEncoder(CharSpan encoderName, [NotNullWhen(true)] out SnesEncoder? encoder) {
 		if (_encoders.TryGetValue(encoderName, out encoder)) {
 			return true;
@@ -1601,7 +1579,6 @@ unsafe partial class Assembler {
 						continue;
 					}
 
-
 					if (FastRead.SkipInlineWhitespaceWithEndCheck(ref cptr, cend)) {
 						ErrorInEncoderFile($"Missing operator");
 						continue;
@@ -1677,7 +1654,6 @@ unsafe partial class Assembler {
 						lastValue = lv;
 					}
 
-
 					void TryAddChar(char toAdd, int addValue) {
 						if (encoding.ContainsKey(toAdd)) {
 							Warning($"Duplicate definition for '{toAdd}' on line {line} of {encPath}");
@@ -1708,7 +1684,6 @@ unsafe partial class Assembler {
 			AbortCommand();
 		}
 	}
-
 
 	private void Directive_IF() {
 		if (!DemandSpaceWithError()) return;
@@ -1782,12 +1757,9 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
 	private protected virtual void Directive_MMC() {
 		Error("MMC rebanking is not enabled for this mapper mode.");
 	}
-
 
 	private void Directive_BANKGUARD() {
 		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString guardMode)) {

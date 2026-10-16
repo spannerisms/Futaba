@@ -15,7 +15,7 @@ internal static class MathHelpers {
 		_ => (decimal) d,
 	};
 
-	extension (ExpressionState expst) {
+	extension(ExpressionState expst) {
 		internal bool IsResolved {
 			[DebuggerStepThrough]
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -38,7 +38,8 @@ internal static class MathHelpers {
 		return pred ? DecimalTrue : DecimalFalse;
 	}
 
-	extension (decimal d) {
+	extension(decimal d) {
+		// unfortunately, we can't just cast, because decimal throws overflow errors
 		// we need this to allow overflow to pass silently when converting to integral values
 		[DebuggerStepThrough]
 		internal unsafe long AsLong() {

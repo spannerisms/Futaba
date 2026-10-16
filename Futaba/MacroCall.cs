@@ -1,6 +1,6 @@
 ﻿namespace Futaba;
 
-internal sealed unsafe class MacroCall {
+internal unsafe sealed class MacroCall {
 	private readonly string _name;
 	private readonly SourceLine _declarationSite;
 
@@ -63,7 +63,7 @@ internal sealed unsafe class MacroCall {
 			if (repv is ['"', .. var contents, '"']) {
 				repv = contents;
 			}
-			
+
 			ret.Replace($"{(char) (SpecialMarker + i)}", repv);
 		}
 
@@ -100,7 +100,7 @@ internal sealed unsafe class MacroCall {
 		private readonly SourceLine _callSite;
 		private readonly MacroCall _macroType;
 
-		internal MacroInvocation(MacroCall macroClass, string body, string name, SourceLine callSite) {
+		internal MacroInvocation(MacroCall macroType, string body, string name, SourceLine callSite) {
 			int bufferLen = body.Length;
 
 			AllocBlock = Allocate(bufferLen);
@@ -115,7 +115,7 @@ internal sealed unsafe class MacroCall {
 			_identifier = name;
 
 			_callSite = callSite;
-			_macroType = macroClass;
+			_macroType = macroType;
 		}
 
 		public override string ObjectName => _identifier;
@@ -126,8 +126,5 @@ internal sealed unsafe class MacroCall {
 
 		protected override void DisposeResources() { }
 	}
-
-
-
 
 }

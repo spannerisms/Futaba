@@ -9,19 +9,18 @@ unsafe partial class Assembler {
 	public bool Busy { get; private set; } = false;
 
 	private SourcePointers? _previousState = null;
-
 	private SourceObject _currentSourceObject = SourceFile.Empty;
-	private SourceLine CurrentSourceLine => new(_currentSourceObject, _sourceLine, _lastCommandStart);
+	private SourceLine CurrentSourceLine => new(_currentSourceObject, _sourceLine, _commandStart);
 
 	private char* _reading = default;
-	private char* _lastCommandStart = default;
 	private char* _fileEnd = default;
+	private char* _commandStart = default;
 	private IfLink? _ifChain = null;
 	private int _sourceLine = 0;
 
 	/// <summary>
 	/// Things that should be done both before and after assembly
-	/// both to reduce allocations and have a consistent outside state
+	/// both to reduce allocations and maintain a consistent public state.
 	/// </summary>
 	private protected virtual void RequiredInitAndCleanUp() {
 		_currentEncoder = SnesEncoder.ASCII;
@@ -30,7 +29,7 @@ unsafe partial class Assembler {
 		_ifChain = null;
 		_currentSegment = null;
 
-		Array.Fill(_labelNameHierarchy, string.Empty);
+		Array.Fill(_nameHierarchy, string.Empty);
 		Array.Clear(_pcHierarchy);
 
 		ClearPools();
@@ -116,12 +115,10 @@ unsafe partial class Assembler {
 		} catch {
 			if (_currentSourceObject == SourceFile.Empty) {
 				ErrorLine = "Unable to determine line.";
-			} else {
-				var srcLine = CurrentSourceLine;
 
-				if (!srcLine.IsNull) {
-					ErrorLine = $"{srcLine}";
-				}
+			} else {
+				ErrorLine = $"{CurrentSourceLine}";
+
 			}
 
 			throw;
@@ -196,7 +193,7 @@ unsafe partial class Assembler {
 					continue;
 				}
 
-				_lastCommandStart = _reading;
+				_commandStart = _reading;
 
 				// everything else is some sort of interesting character!
 				switch (c) {
@@ -276,7 +273,7 @@ unsafe partial class Assembler {
 						continue;
 
 					// symbols / labels / mnemonics / directives
-					case	'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
+					case 'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
 							'N' or 'O' or 'P' or 'Q' or 'R' or 'S' or 'T' or 'U' or 'V' or 'W' or 'X' or 'Y' or 'Z' or
 							'a' or 'b' or 'c' or 'd' or 'e' or 'f' or 'g' or 'h' or 'i' or 'j' or 'k' or 'l' or 'm' or
 							'n' or 'o' or 'p' or 'q' or 'r' or 's' or 't' or 'u' or 'v' or 'w' or 'x' or 'y' or 'z' or '_':
@@ -693,7 +690,7 @@ unsafe partial class Assembler {
 		_currentSourceObject = source;
 		_fileEnd = source.SourceEnd;
 		_reading = source.SourceStart;
-		_lastCommandStart = _reading;
+		_commandStart = _reading;
 		_sourceLine = 1;
 		_ifChain = null;
 	}
@@ -719,7 +716,7 @@ unsafe partial class Assembler {
 		}
 	}
 
-	private class IfLink(IfLink? parent) {
+	private sealed class IfLink(IfLink? parent) {
 		internal IfLink? Parent { get; } = parent;
 		internal int Depth { get; } = parent?.Depth ?? 1;
 		internal bool HitElse { get; set; } = false;

@@ -1,7 +1,7 @@
 ﻿namespace Futaba;
 
 unsafe partial class Assembler {
-	protected private virtual void InitializeHeader() {
+	private protected virtual void InitializeHeader() {
 		byte* header = _romPtr + AddressToOffset(RomHeader.ExtendedHeaderLocation);
 
 		if (ExtendedHeader) {
@@ -52,7 +52,7 @@ unsafe partial class Assembler {
 		header[0x2B] = RomVersion;
 	}
 
-	protected private virtual void FinalizeHeader() {
+	private protected virtual void FinalizeHeader() {
 		byte* header = _romPtr + AddressToOffset(RomHeader.ExtendedHeaderLocation);
 
 		byte mapcode = MapperCode;
@@ -129,7 +129,7 @@ unsafe partial class Assembler {
 	/// and inserts those values into the header at the appropriate location
 	/// as outlined on page 1-2-21 of BOOK I.
 	/// </summary>
-	protected private virtual void RecalculateChecksum() {
+	private protected virtual void RecalculateChecksum() {
 		// placeholder checksum for calculation
 		ushort* complementPointer = (ushort*) (_romPtr + AddressToOffset(RomHeader.ExtendedHeaderLocation + 0x2C));
 
@@ -306,7 +306,6 @@ unsafe partial class Assembler {
 			field = SnesHelpers.SanitizeString(value, SnesHelpers.MakerCodeLength);
 		}
 	} = "  ";
-
 
 	/// <summary>
 	/// Gets or sets the 4 character game code.

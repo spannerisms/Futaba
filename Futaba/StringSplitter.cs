@@ -129,7 +129,6 @@ internal unsafe struct StringSplitter {
 		return false;
 	}
 
-
 	// This type also behaves as OperandString's enumerator,
 	// because it has everything required already
 	public readonly char Current => *_current;

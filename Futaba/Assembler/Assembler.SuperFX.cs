@@ -78,8 +78,6 @@ unsafe partial class Assembler {
 			case OpSFX.GETBS: /*                                                                   */ AssembleLongOp(0x3F, 0xEF); break;
 			case OpSFX.GETC: /*                                                                    */ AssembleImplied(opstr, size, 0xDF); break;
 
-
-
 			case OpSFX.LOOP: /*                                                                    */ AssembleImplied(opstr, size, 0x3C); break;
 			case OpSFX.STOP: /*                                                                    */ AssembleImplied(opstr, size, 0x00); break;
 
@@ -88,7 +86,6 @@ unsafe partial class Assembler {
 
 			case OpSFX.RAMB: /*                                                                    */ AssembleLongOp(0x3E, 0xDF); break;
 			case OpSFX.ROMB: /*                                                                    */ AssembleLongOp(0x3F, 0xDF); break;
-
 
 			// More complex, instruction-specific handlers
 			case OpSFX.CMP:
@@ -99,7 +96,6 @@ unsafe partial class Assembler {
 				cmpreg |= 0x60;
 				WriteOpB(0x3F, cmpreg);
 				break;
-
 
 			case OpSFX.DEC:
 			case OpSFX.INC:
@@ -290,7 +286,7 @@ unsafe partial class Assembler {
 
 							break;
 
-						// MOVE Rd, #i
+							// MOVE Rd, #i
 						} else if (IsImmediate(moveSrc, out var moveRIexpr)) {
 							if (moveRIexpr.NeedsRequest) {
 								moveDestReg |= 0xF0;
@@ -309,7 +305,7 @@ unsafe partial class Assembler {
 
 							break;
 
-						// MOVE Rd, (a)
+							// MOVE Rd, (a)
 						} else if (IsIndirect(moveSrc, out moveRIexpr)) {
 							if (moveRIexpr.NeedsRequest) {
 								WriteLmSm_unresolved(0x3D, moveDestReg, moveRIexpr);
@@ -326,7 +322,7 @@ unsafe partial class Assembler {
 							break;
 						}
 
-					// MOVE (a), Rs
+						// MOVE (a), Rs
 					} else if (srcIsRegister && IsIndirect(moveDest, out var moveSmExpr)) {
 						if (moveSmExpr.NeedsRequest) {
 							WriteLmSm_unresolved(0x3E, moveSrcReg, moveSmExpr);
@@ -346,7 +342,6 @@ unsafe partial class Assembler {
 
 				InvalidAddressingMode();
 				break;
-
 
 			case OpSFX.MOVES:
 				byte movesOpD = 0x20;
@@ -439,7 +434,6 @@ unsafe partial class Assembler {
 				break;
 		}
 
-
 		bool IsImmediate(OperandString argstr, [NotNullWhen(true)] out IExpressionReturn? expr) {
 			if (argstr.First is '#') {
 				expr = ParseOperandSliced(argstr, 1);
@@ -459,7 +453,6 @@ unsafe partial class Assembler {
 				return false;
 			}
 		}
-
 
 		void AssembleMoveStLd(OperandString argstr, bool isBnotW) {
 #pragma warning disable IDE0018 // Inline variable declaration - it's neater like this
@@ -521,7 +514,6 @@ unsafe partial class Assembler {
 			}
 		}
 
-
 		void WriteOpSfx3(byte b1, byte b2, byte b3) {
 			if (TryAdvanceProgramCounter(3)) {
 				_pcPtr[0] = b1;
@@ -532,8 +524,6 @@ unsafe partial class Assembler {
 			}
 		}
 
-
-
 		void AssembleLongOp(byte opA, byte opB) {
 			if (size is not SizeToken.Unspecified) {
 				TokensOnImplied();
@@ -543,7 +533,6 @@ unsafe partial class Assembler {
 				InvalidAddressingMode();
 			}
 		}
-
 
 		void WriteLmSm_resolved(byte opcode, byte reg, int lmoperand) {
 			if (TryAdvanceProgramCounter(4)) {
@@ -646,7 +635,6 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-
 		bool TryGetRegister(OperandString test, out byte reg) {
 			if (test.First.CiIs('R')) {
 				int len = test.Length;
@@ -673,8 +661,6 @@ unsafe partial class Assembler {
 			reg = 0;
 			return false;
 		}
-
-
 
 		void AssembleGetRegister(OperandString argstr, byte opcode) {
 			if (!TryGetRegister(argstr, out byte reg)) {
@@ -1011,7 +997,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	// methods that let us call Error to simplify the resolution logic
 	private bool TestFor0(int val) {
 		if (val is > 0 and < 16) {
@@ -1032,7 +1017,7 @@ unsafe partial class Assembler {
 	}
 }
 
-file class Sfx4Bit(IExpressionReturn item, byte opcode, Func<int, bool> tester) : IExpressionReturn {
+file sealed class Sfx4Bit(IExpressionReturn item, byte opcode, Func<int, bool> tester) : IExpressionReturn {
 	public ExpressionState ReturnState => item.ReturnState;
 
 	public bool Resolved { get; private set; } = false;
@@ -1063,7 +1048,7 @@ file class Sfx4Bit(IExpressionReturn item, byte opcode, Func<int, bool> tester) 
 	}
 }
 
-file class SfxHalf(IExpressionReturn item) : IExpressionReturn {
+file sealed class SfxHalf(IExpressionReturn item) : IExpressionReturn {
 	public ExpressionState ReturnState => item.ReturnState;
 
 	public bool Resolved { get; private set; } = false;

@@ -23,7 +23,6 @@ internal readonly struct SpannedLookup<T> where T : notnull {
 		return ref CollectionsMarshal.GetValueRefOrAddDefault(_alt, name, out _);
 	}
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public bool ContainsKey(string name) {
 		return _dict.ContainsKey(name);

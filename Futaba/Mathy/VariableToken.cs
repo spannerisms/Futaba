@@ -1,6 +1,5 @@
 ﻿namespace Futaba;
 
-
 internal abstract class VariableToken : ExpressionItem, IReturnableToken, IToken, IExpressionReturn {
 	public TokenType Type => TokenType.Variable;
 	public TokenRule Rule => TokenRule.Primary;
@@ -19,7 +18,7 @@ internal abstract class VariableToken : ExpressionItem, IReturnableToken, IToken
 	public ExpressionItem CreateExpressionItem() => this;
 }
 
-internal class ValueVariableToken(Variable thevar) : VariableToken {
+internal sealed class ValueVariableToken(Variable thevar) : VariableToken {
 	public override ExpressionState State => ExpressionState.Resolved;
 
 	public override ExpressionState ReturnState => ExpressionState.Resolved;
@@ -35,7 +34,7 @@ internal class ValueVariableToken(Variable thevar) : VariableToken {
 	}
 }
 
-internal class StringVariableToken : VariableToken, IStringToken {
+internal sealed class StringVariableToken : VariableToken, IStringToken {
 	public string Contents { get; }
 	public override ExpressionState State => ExpressionState.Resolved;
 
@@ -61,8 +60,7 @@ internal class StringVariableToken : VariableToken, IStringToken {
 	}
 }
 
-
-internal class NullVariableToken(string name) : VariableToken {
+internal sealed class NullVariableToken(string name) : VariableToken {
 	public string Name => name;
 
 	public override ExpressionState State => ExpressionState.VariableNotFound;

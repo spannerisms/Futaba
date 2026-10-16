@@ -31,7 +31,6 @@ public sealed class Dock : Symbol {
 	/// </summary>
 	public int Distance => BinaryOffset - BaseOffset;
 
-
 	/// <inheritdoc/>
 	public override int DefaultValue => Address;
 
@@ -108,7 +107,5 @@ public sealed class Dock : Symbol {
 		val = 0;
 		return false;
 	}
-
-
 
 }

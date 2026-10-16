@@ -30,7 +30,6 @@ internal static class FunctionCall {
 		{ "round", (ass, args) => TestForBadArity(ass, "round", 2, args) ? new Round(args[0], args[1]) : null },
 		{ "select", (ass, args) => TestForBadArity(ass, "select", 3, args) ? new Select(args[0], args[1], args[2]) : null },
 
-
 		{ "vram", (ass, args) => TestForBadArity(ass, "vram", 1, args) ? new VramAddress(args[0]) : null },
 		{ "obsel", (ass, args) => TestForBadArity(ass, "obsel", 3, args) ? new ObSel(args[0], args[1], args[3]) : null },
 		{ "bgnba", (ass, args) => TestForBadArity(ass, "bgnba", 2, args) ? new BgNba(args[0], args[1]) : null },
@@ -38,7 +37,6 @@ internal static class FunctionCall {
 		{ "rtn", (ass, args) => TestForBadArity(ass, "rtn", 1, args) ? new Rtn(args[0]) : null },
 		{ "argof", (ass, args) => TestForBadArity(ass, "argof", 1, args) ? new ArgOf(args[0]) : null },
 		{ "rebank", (ass, args) => TestForBadArity(ass, "rebank", 2, args) ? new Rebank(args[0], args[1]) : null },
-
 
 		{ "floor", (ass, args) => TestForBadArity(ass, "floor", 1, args) ? new Floor(args[0]) : null },
 		{ "ceil", (ass, args) => TestForBadArity(ass, "ceil", 1, args) ? new Ceil(args[0]) : null },
@@ -73,7 +71,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	private sealed class GetFileFunc(Assembler assembler, ExpressionItem itemName, ExpressionItem? itemOffset,  ExpressionItem? itemSize) : ExpressionItem {
+	private sealed class GetFileFunc(Assembler assembler, ExpressionItem itemName, ExpressionItem? itemOffset, ExpressionItem? itemSize) : ExpressionItem {
 		private const int MaxBytes = 8;
 
 		public override ExpressionItem Clone() => new GetFileFunc(assembler, itemName, itemSize, itemOffset);
@@ -213,13 +211,15 @@ internal static class FunctionCall {
 			return (decimal) Math.Cos((double) a);
 		}
 	}
+
 	private sealed class Tan(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Tan(Item.Clone());
 		protected override decimal Equate(decimal a) {
 			return MathHelpers.ClampCastDoubleAsDecimal(Math.Tan((double) a));
 		}
 	}
-		private sealed class Asin(ExpressionItem item) : UnaryExpression(item) {
+
+	private sealed class Asin(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Asin(Item.Clone());
 		protected override decimal Equate(decimal a) {
 			return (decimal) Math.Asin((double) a);
@@ -232,6 +232,7 @@ internal static class FunctionCall {
 			return (decimal) Math.Asin((double) a);
 		}
 	}
+
 	private sealed class Atan(ExpressionItem item) : UnaryExpression(item) {
 		public override ExpressionItem Clone() => new Atan(Item.Clone());
 		protected override decimal Equate(decimal a) {
@@ -427,7 +428,6 @@ internal static class FunctionCall {
 			return MathHelpers.ClampCastDoubleAsDecimal(Math.Log10((double) a));
 		}
 	}
-
 
 	private sealed class Root(ExpressionItem left, ExpressionItem right) : BinaryExpression.SafeBinary(left, right) {
 		public override ExpressionItem Clone() => new Root(Left.Clone(), Right.Clone());

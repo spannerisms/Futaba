@@ -38,7 +38,6 @@ public sealed class Breakpoint {
 	/// </summary>
 	public string Comment { get; } = string.Empty;
 
-
 	/// <summary>
 	/// Gets the length of the range of addresses this instance breaks on.
 	/// </summary>
@@ -60,7 +59,6 @@ internal enum BreakpointTriggers {
 
 	RWX = Read | Write | Execute
 }
-
 
 internal enum BreakpointInserts {
 	Nothing = 0,

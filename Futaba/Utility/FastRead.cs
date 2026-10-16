@@ -165,11 +165,11 @@ internal static unsafe class FastRead {
 
 	internal static void SkipInlineWhitespace(scoped ref char* start, char* end) {
 		char* read = start;
-		
+
 		while (read < end && read->IsSkippableSpace) {
 			read++;
 		}
-		
+
 		start = read;
 		//start = TrimHelper(start, end, TrimType.Head).Start;
 	}
@@ -184,14 +184,14 @@ internal static unsafe class FastRead {
 
 		char* thestart = start;
 		char* theend = end;
-		
+
 		while (thestart < theend && thestart->IsSkippableSpace) {
 			thestart++;
 		}
-		
+
 		// test must happen first to avoid reading out of bounds
 		while (--theend > thestart && theend->IsSkippableSpace) ;
-		
+
 		start = thestart;
 		end = theend + 1;
 	}
@@ -251,14 +251,14 @@ internal static unsafe class FastRead {
 
 		return true;
 
-//		char* read = wordstart;
-//		while (++read < end && read->IsIdentifierCharacter) ;
-//
-//		reading = read;
-//
-//		name = CharSpanHelpers.CreateSpan(wordstart, read);
-//
-//		return true;
+		//		char* read = wordstart;
+		//		while (++read < end && read->IsIdentifierCharacter) ;
+		//
+		//		reading = read;
+		//
+		//		name = CharSpanHelpers.CreateSpan(wordstart, read);
+		//
+		//		return true;
 	}
 
 	internal static bool TryReadIdentifier(scoped ref char* reading, char* end, out OperandString name) {
@@ -298,17 +298,17 @@ internal static unsafe class FastRead {
 
 		return ret;
 
-//		char* wordstart = reading;
-//
-//		char* read = wordstart;
-//
-//		while (read < end && read->IsSublabelSafe) {
-//			read++;
-//		}
-//
-//		reading = read;
-//
-//		return CharSpanHelpers.CreateSpan(wordstart, read);
+		//		char* wordstart = reading;
+		//
+		//		char* read = wordstart;
+		//
+		//		while (read < end && read->IsSublabelSafe) {
+		//			read++;
+		//		}
+		//
+		//		reading = read;
+		//
+		//		return CharSpanHelpers.CreateSpan(wordstart, read);
 	}
 
 	internal static bool TryReadSublabel(scoped ref char* reading, char* end, out CharSpan chunk, out int dots) {
@@ -366,7 +366,6 @@ internal static unsafe class FastRead {
 
 		reading += length;
 		return new(wordstart, length);
-
 
 		//char* wordstart = reading;
 		//char* read = wordstart;
@@ -556,7 +555,7 @@ internal static unsafe class FastRead {
 
 	internal static bool IsAllocator(char* read) {
 		return AsciiHelpers.FastTest(read, ':', ':');
-			
+
 		//return (read[0] is ':') && (read[1] is ':');
 	}
 }

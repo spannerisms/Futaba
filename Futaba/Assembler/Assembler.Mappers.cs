@@ -198,9 +198,9 @@ public sealed class UnmappedAssembler : Assembler {
 	public override int MaxRomSize => 0x80_0000;
 
 	// doesn't make sense to perform these on an unmapped rom.
-	protected private override void InitializeHeader() { }
-	protected private override void FinalizeHeader() { }
-	protected private override void RecalculateChecksum() { }
+	private protected override void InitializeHeader() { }
+	private protected override void FinalizeHeader() { }
+	private protected override void RecalculateChecksum() { }
 
 	private protected override bool JumpTargetMakesSense(int address, int destination) {
 		return ((address ^ destination) & SnesHelpers.BankMask) is not 0;
@@ -438,7 +438,6 @@ public sealed class Sa1Assembler : Assembler {
 	private protected override void Directive_MMC() {
 		throw new NotImplementedException();
 	}
-
 
 	private protected override bool JumpTargetMakesSense(int address, int destination) {
 		return SnesHelpers.JumpTargetMakesSenseMmc(address, destination);

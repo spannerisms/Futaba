@@ -1,13 +1,12 @@
 ﻿namespace FutabaCLI;
 
-internal class ManifestContainer(FileInfo manifest) : IDisposable {
+internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private static readonly Random random = new();
 
 	private readonly string fileName = manifest.FullName;
 
 	private LoadedItem<byte[]>? baseromfile = null;
 	private LoadedItem<byte[]>? diffromfile = null;
-
 
 	private FileSystemEventHandler? _filesChanged;
 
@@ -38,12 +37,10 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	} = null;
 
-
 	public string OutputPath {
 		get;
 		private set;
 	} = Path.ChangeExtension(manifest.FullName, Igarashi.RomExtension);
-
 
 	private LoadedItem<Stream>? OutputStream {
 		get;
@@ -76,7 +73,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 	private readonly Dictionary<string, ArgInfo> argVals = [];
 	private readonly Dictionary<string, Variable> prevariables = [];
 	private readonly Dictionary<string, FutabaSymbol> presymbols = [];
-
 
 	public Assembler GetAssembler() {
 		if (Assembler is null) {
@@ -127,9 +123,7 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			return;
 		}
 
-
 		Igarashi.Notice("Configuring assembler...");
-
 
 		Assembler.ClearInitialSymbols();
 		Assembler.ClearInitialVariables();
@@ -142,11 +136,10 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			OutputStream = new(outputGet, Helpers.WaitForAndCreateStream(outputGet));
 		}
 
-
 		if (TryGetArg("coprocessor", out var coprocessor)
 			&& CoprocessorLookup.TryGetValue(coprocessor.Value, out var copval)) {
 			Assembler.Coprocessor = copval;
-			
+
 		} else if (Assembler.Mapper is not MapperMode.Sa1) {
 			Assembler.Coprocessor = Coprocessor.None;
 		}
@@ -157,7 +150,7 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		Assembler.Title = GetStringOrDefault("title");
 		Assembler.MakerCode = GetStringOrDefault("makercode");
 		Assembler.GameCode = GetStringOrDefault("gamecode");
-		
+
 		if (TryGetArg("region", out var regionGet)) {
 			if (Region.TryGetRegion(regionGet.Value, out var regionObj)) {
 				Assembler.Destination = regionObj;
@@ -335,7 +328,7 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 					if (doNullFill) {
 						Helpers.FillRandom((ulong) rngseed1, (ulong) rngseed2, baserom.AsSpan(fillstart));
 					}
-						
+
 				}
 			}
 		} else if (doNullFill) {
@@ -443,7 +436,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 		Assembler.OverflowAction = overflowAction;
 
-
 		if (TryGetFileInfo("stdout", out var stdoutGet, out int stdoutLine)) {
 			if (StdOut?.Reload(stdoutGet) ?? true) {
 				try {
@@ -502,7 +494,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		return outStream is not null;
 	}
 
-
 	private bool GetBoolOrDefault(string argName, bool defaultValue, out ArgParse parseStatus) {
 		if (TryGetArg(argName, out var argvalrecord)) {
 			string argvalstr = argvalrecord.Value;
@@ -523,7 +514,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		return defaultValue;
 	}
 
-
 	internal bool TryGetString(string key, [NotNullWhen(true)] out string? value) {
 		if (argVals.TryGetValue(key, out var info)) {
 			value = info.Value;
@@ -538,7 +528,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		_ = TryGetString(key, out var ret);
 		return ret ?? string.Empty;
 	}
-
 
 	internal bool TryGetFileInfo(string key, [NotNullWhen(true)] out FileInfo? value, out int line) {
 		if (argVals.TryGetValue(key, out var info)) {
@@ -572,7 +561,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			prevariables.Clear();
 			presymbols.Clear();
 
-
 			var ManifestWordsSpan = ManifestKeywords.GetAlternateLookup<ReadOnlySpan<char>>();
 
 			using var reader = new StreamReader(fileName, ManifestOptions);
@@ -592,7 +580,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 				ManifestGood = false;
 				return;
 			}
-
 
 			ManifestGood = true;
 
@@ -632,7 +619,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 						ManifestError("Missing command name.", lineNum);
 						continue;
 					}
-
 
 					var cmdVal = (equalsAt + 1) == line.Length ? [] : line[(equalsAt+1)..].Trim();
 
@@ -841,7 +827,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		{ "other", Coprocessor.Other },
 	};
 
-
 	static readonly Dictionary<string, HashSet<string>> ManifestKeywords = new() {
 		{ "assembly", [
 			"entry",
@@ -886,11 +871,13 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 			"diff",
 		]},
 	};
+
 	private static readonly FileStreamOptions ManifestOptions = new() {
 		Mode = FileMode.Open,
 		Access = FileAccess.Read,
 		Share = FileShare.Read
 	};
+
 	private record LoadedItem<T> : IDisposable {
 		public string Name { get; }
 		public DateTime Loaded { get; }
@@ -938,7 +925,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		Invalid,
 	}
 
-
 	public void TryExportSymbols() {
 		if (Assembler is not null) {
 			if (TryGetArg("symbols", out var symbolsOutput)) {
@@ -955,12 +941,12 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	}
 
-
 	public void Dispose() {
 		StdOut = null;
 		ErrOut = null;
 		Assembler = null;
 		OutputStream = null;
+		_filesChanged = null;
 	}
 
 	static readonly Dictionary<string, Action<string, Assembler>> SymbolsOutputLookup = new(StringComparer.OrdinalIgnoreCase) {
@@ -968,6 +954,6 @@ internal class ManifestContainer(FileInfo manifest) : IDisposable {
 		{ "mlb", Igarashi.ExportSymbols_Mlb },
 		{ "wla", Igarashi.ExportSymbols_Wla },
 	};
-	
+
 	private readonly record struct ArgInfo(int Line, string Value);
 }

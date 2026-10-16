@@ -26,7 +26,6 @@ internal static class Helpers {
 		}
 	}
 
-
 	public static byte[] GetFileAsArray(FileInfo file) {
 		using FileStream stream = file.OpenRead();
 
@@ -113,7 +112,6 @@ internal static class Helpers {
 		return s.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 	}
 
-
 	extension(Command cmd) {
 		internal void AddArguments(params Argument[] arguments) {
 			foreach (Argument a in arguments) {
@@ -128,14 +126,12 @@ internal static class Helpers {
 		}
 	}
 
-
-	extension (string s) {
+	extension(string s) {
 		public bool EqualsI(string s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
 		public bool EqualsI(Span<char> s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
 	}
 
-
-	extension (ReadOnlySpan<char> s) {
+	extension(ReadOnlySpan<char> s) {
 		public bool EqualsI(string s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
 		public bool EqualsI(Span<char> s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
 	}
@@ -147,8 +143,6 @@ internal static class Helpers {
 		_ = Convert.TryToHexString(addrBytes[1..4], destination.Slice(offset, 6), out _);
 	}
 
-
-
 	public static (long, long) HashString(ReadOnlySpan<char> seedString) {
 		Span<long> seed = stackalloc long[2];
 
@@ -158,7 +152,6 @@ internal static class Helpers {
 
 		return (0, 0);
 	}
-
 
 	public static bool TryParseByte(ReadOnlySpan<char> s, out byte value) {
 		if (s.Length > 0) {
@@ -198,8 +191,6 @@ internal static class Helpers {
 		return false;
 	}
 
-
-
 	public static bool TryParseValue(ReadOnlySpan<char> s, out decimal value) {
 
 		if (s.Length > 0) {
@@ -219,8 +210,6 @@ internal static class Helpers {
 		value = 0M;
 		return false;
 	}
-
-
 
 	// We want RNG to never change across builds
 	// but we also want the benefits of xoshiro
@@ -278,9 +267,5 @@ internal static class Helpers {
 			}
 		}
 	}
-
-
-
-
 
 }

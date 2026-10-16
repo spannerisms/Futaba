@@ -1,6 +1,6 @@
 ﻿namespace Futaba;
 
-internal unsafe static class AsciiHelpers {
+internal static unsafe class AsciiHelpers {
 	internal const int AsciiCount = 128;
 
 	internal const char LowercaseCharMask = unchecked((char) 0x0020);
@@ -94,7 +94,6 @@ internal unsafe static class AsciiHelpers {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			get => (c < AsciiCount) && LetterOrUnderscore[c];
 		}
-
 
 		[DebuggerStepThrough]
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

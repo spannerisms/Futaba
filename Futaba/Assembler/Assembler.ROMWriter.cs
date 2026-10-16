@@ -207,7 +207,6 @@ unsafe partial class Assembler {
 
 				break;
 
-
 			default:
 				for (int start = 0; start < wordsize; start++) {
 					byte fillval = (byte) val;
@@ -287,7 +286,6 @@ unsafe partial class Assembler {
 		new Span<uint>(_timePtr + _offset, step).Fill(_time++);
 		AdvanceProgramCounter(step);
 	}
-
 
 	private void WriteData(int offset, IExpressionReturn val, int size) {
 		if (TestOffsetBounds(offset + size)) {
@@ -401,7 +399,6 @@ unsafe partial class Assembler {
 	// just to maybe influence cleaner compilation wrt cache
 	#region writes
 
-
 	private void WriteOpImplied(IExpressionReturn opcode) {
 		if (TryAdvanceProgramCounter(1)) {
 			if (opcode.NeedsRequest) {
@@ -438,8 +435,6 @@ unsafe partial class Assembler {
 		AdvanceProgramCounter(1);
 	}
 
-
-
 	private void AssembleBranch(OperandString argstr, byte opcode) {
 		int len = argstr.Length;
 
@@ -470,8 +465,6 @@ unsafe partial class Assembler {
 			}
 		}
 	}
-
-
 
 	private void WriteOpRel8(byte opcode, IExpressionReturn val) {
 		if (TryAdvanceProgramCounter(2)) {
@@ -535,7 +528,6 @@ unsafe partial class Assembler {
 		mod[1] = wt;
 		AdvanceProgramCounter(2);
 	}
-
 
 	private void WriteOpBB(byte opcode, IExpressionReturn val1, IExpressionReturn val2) {
 		if (TryAdvanceProgramCounter(3)) {
@@ -685,7 +677,6 @@ unsafe partial class Assembler {
 			TrackAndStep3();
 		}
 	}
-
 
 	/// <summary>
 	/// For absolute jumps and calls
@@ -917,7 +908,7 @@ unsafe partial class Assembler {
 					Error("The ROM cannot be enlarged any further.");
 					_shutUpAboutAddresses = true;
 				}
-				
+
 				return false;
 		}
 

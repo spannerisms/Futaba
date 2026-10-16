@@ -236,7 +236,7 @@ unsafe partial class Assembler {
 
 			// these don't need their own functions, since they're all unique
 			case OpWdc.JML:
-				
+
 				if (opstr.IsEmpty) {
 					MissingOperand();
 				} else if (opstr.OnlyCharIs(JNOP)) {
@@ -496,7 +496,7 @@ unsafe partial class Assembler {
 
 				break;
 
-			case OpWdc.PER: /*                                                                        */ NoTokens(size);  AssembleBranchLong(opstr, 0x62); break;
+			case OpWdc.PER: /*                                                                        */ NoTokens(size); AssembleBranchLong(opstr, 0x62); break;
 
 			case OpWdc.PHA: /*                                                                        */ AssembleImplied(opstr, size, 0x48); break;
 			case OpWdc.PHB: /*                                                                        */ AssembleImplied(opstr, size, 0x8B); break;
@@ -571,7 +571,6 @@ unsafe partial class Assembler {
 
 				break;
 
-
 			case OpWdc.SEC: /*                                                                        */ AssembleImplied(opstr, size, 0x38); break;
 			case OpWdc.SED: /*                                                                        */ AssembleImplied(opstr, size, 0xF8); break;
 			case OpWdc.SEI: /*                                                                        */ AssembleImplied(opstr, size, 0x78); break;
@@ -599,7 +598,6 @@ unsafe partial class Assembler {
 					default: /*                                                                    */ InvalidAddressingMode(); break;
 				}
 				break;
-
 
 			case OpWdc.STP: /*                                                                        */ AssembleImplied(opstr, size, 0xDB); break;
 
@@ -664,9 +662,7 @@ unsafe partial class Assembler {
 			case OpWdc.XCE: /*                                                                        */ AssembleImplied(opstr, size, 0xFB); break;
 		}
 
-
 		return;
-
 
 		(AddressingMode, IExpressionReturn) HandleImmediate(OperandString argstr, SizeToken argsize) {
 			return PickBW(argstr.Slice(1), argsize, AddressingMode.Immediate8, AddressingMode.Immediate16);
@@ -929,7 +925,7 @@ unsafe partial class Assembler {
 				TokensOnImplied();
 				PlaceholderOp(opcode);
 			}
-			
+
 			if (argstr.IsEmpty) {
 				WriteOpImplied(opcode);
 			} else if (argstr.GetUnchecked(0) is ImmediateMode) {

@@ -2,7 +2,6 @@
 
 namespace Futaba;
 
-// TODO see if i actually want to use safe handles; makes moves a little more difficult to deal with...
 internal interface IWatchedFile : IDisposable {
 	/// <summary>
 	/// The full path of this file.

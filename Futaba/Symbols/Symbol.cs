@@ -51,14 +51,13 @@ public abstract class Symbol {
 		}
 	}
 
-
 	internal ExpressionSymbol CreateExpressionItem(SymbolContext context) {
 		return new ExpressionSymbol(this, context);
 	}
 }
 
 [DebuggerDisplay("BAD SYMBOL")]
-internal class BadSymbolPlaceHolder : Symbol {
+internal sealed class BadSymbolPlaceHolder : Symbol {
 	public override int DefaultValue => 0;
 	public override int Address => 0;
 	public override int RomAddress => 0;

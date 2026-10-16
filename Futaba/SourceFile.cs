@@ -24,7 +24,6 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 	public bool WasUsed { get; set; } = false;
 	internal override bool IsMacro => false;
 
-
 	/// <summary>
 	/// Creates a new source file container.
 	/// </summary>
@@ -44,8 +43,6 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 	}
 
 	public void Refresh() {
-		// invalidate the handle
-
 		if (!IWatchedFile.RevalidateHandle(this, out var newHandle, out var error)) {
 			Error = error;
 
@@ -71,7 +68,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 
 					var fstream = new FileStream(newHandle, FileAccess.Read);
 					var ftext = new StreamReader(fstream);
-					
+
 					int length = (int) FileInfo.Length;
 
 					int bufferLen = length + (BufferPadding * 2);

@@ -252,7 +252,7 @@ public static class RomHeader {
 	/// <returns>A 16-bit checksum</returns>
 	public static short CalculateChecksum(byte[] data) {
 		unsafe {
-			fixed(byte* baseptr = data) {
+			fixed (byte* baseptr = data) {
 				return (short) CalculateChecksum(baseptr, data.Length);
 			}
 		}
@@ -261,7 +261,7 @@ public static class RomHeader {
 	/// <inheritdoc cref="CalculateChecksum(byte[])"/>
 	public static short CalculateChecksum(ReadOnlySpan<byte> data) {
 		unsafe {
-			fixed(byte* baseptr = data) {
+			fixed (byte* baseptr = data) {
 				return (short) CalculateChecksum(baseptr, data.Length);
 			}
 		}
@@ -317,7 +317,7 @@ public static class RomHeader {
 					ptr += Vector256<byte>.Count;
 				}
 			}
-		
+
 			if (Vector128.IsHardwareAccelerated) {
 				for (; sumCount >= Vector128<byte>.Count; sumCount -= Vector128<byte>.Count) {
 					var chunk = Vector128.Load(ptr);

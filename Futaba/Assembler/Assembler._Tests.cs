@@ -12,7 +12,7 @@ partial class Assembler {
 	// need to stress test multiple variables in a single function
 	// test db "string" including functions
 
-	public class UnitTester(Assembler asmtester) {
+	public sealed class UnitTester(Assembler asmtester) {
 		private static bool FailsOnly = true;
 		private static bool GroupPassing = false;
 		private static int TotalTestCount = 0;
@@ -797,19 +797,9 @@ and just reuse assembler while modifying the code in its entry point
 
 	private static char BoolChar(bool v) => v ? 'T' : 'F';
 
-
-
-
-
-
-
-
-
-
 }
 
-
-file record class ExpressionTest(string Expression, decimal? Value);
+file sealed record class ExpressionTest(string Expression, decimal? Value);
 
 #pragma warning restore CS1591
 #pragma warning restore IDE0079

@@ -1,6 +1,4 @@
-using System.Text;
-
-namespace FutabaCLI;
+﻿namespace FutabaCLI;
 
 #if UNITTESTS
 #pragma warning disable IDE0079

@@ -22,7 +22,7 @@ unsafe partial class Assembler {
 	/// <remarks>
 	/// If the assembler is busy, an empty collection will be returned.
 	/// </remarks>
-	public Breakpoint[] Breakpoints => AmBusy() ? [] : [.._breakpoints];
+	public Breakpoint[] Breakpoints => AmBusy() ? [] : [.. _breakpoints];
 
 	#region Private fields
 	private List<Breakpoint> _breakpoints = [];
@@ -45,8 +45,7 @@ unsafe partial class Assembler {
 	private List<AbsolutePointerRequest> _jumpRequests = [];
 	private SpannedLookup<Variable> _variables = new(50);
 
-
-	private readonly string[] _labelNameHierarchy = new string[HierarchySize];
+	private readonly string[] _nameHierarchy = new string[HierarchySize];
 	private readonly int[] _pcHierarchy = new int[HierarchySize];
 	private int _hierarchyDepth = 0;
 
@@ -66,7 +65,7 @@ unsafe partial class Assembler {
 	private void ResolveAllRequests() {
 		const string CouldntDoIt = "Unable to resolve request";
 
-		foreach (SimpleRequest sreq in _simpleRequests) { 
+		foreach (SimpleRequest sreq in _simpleRequests) {
 			if (sreq.TryToResolve()) {
 				byte* writing = _romPtr + sreq.Offset;
 				uint* timing = _timePtr + sreq.Offset;
@@ -171,11 +170,9 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private const int MaxLabelNameLength = 100;
 	private const int MaxSublabelDepth = 20;
 	private const int HierarchySize = MaxSublabelDepth + 4;
-
 
 	private void UpdateHierarchy(string name, int depth) {
 		if (depth > (_hierarchyDepth + 1)) {
@@ -184,7 +181,7 @@ unsafe partial class Assembler {
 			Error($"Exceeded max label depth: {depth}/{MaxSublabelDepth}");
 		} else {
 			_hierarchyDepth = depth;
-			_labelNameHierarchy[depth] = name;
+			_nameHierarchy[depth] = name;
 			_pcHierarchy[depth] = _offset;
 		}
 	}
@@ -222,7 +219,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private bool DemandSpaceAfterColon() {
 		if (_reading->IsNiceBoundary) {
 			_reading++;
@@ -234,15 +230,13 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private Symbol RequestSymbol(CharSpan name) {
 		ref var getsym = ref _symbols.GetRefOrDefault(name);
 
 		getsym ??= new SymbolPlaceholder(new string(name));
-		
+
 		return getsym;
 	}
-
 
 	private Symbol RequestSymbol(string name) {
 		ref var getsym = ref _symbols.GetRefOrDefault(name);
@@ -271,7 +265,6 @@ unsafe partial class Assembler {
 
 		return AddSymbolUnchecked(toAdd);
 	}
-
 
 	/// <summary>
 	/// Tries to add a symbol with a given name and value to the assembler's lookup table.
@@ -307,8 +300,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
 	/// <summary>
 	/// Adds a collection of symbols to the assembler's lookup table.
 	/// </summary>
@@ -335,9 +326,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-	
-
-
 	/// <summary>
 	/// Clears the initial symbols dictionary.
 	/// </summary>
@@ -346,8 +334,6 @@ unsafe partial class Assembler {
 		ThrowIfAssembling();
 		_initialSymbols.Clear();
 	}
-
-
 
 	private void CreateAssignedSymbol(CharSpan symbolName) {
 		if (!ReadRestOfCommand(out OperandString assignmentOperand)) {
@@ -399,7 +385,6 @@ unsafe partial class Assembler {
 		_poolHeaders.Clear();
 	}
 
-
 	private void Directive_PILING() {
 		if (!DemandSpaceWithError()) return;
 
@@ -439,13 +424,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
-
-
-
-
-
 	private void Directive_DOCK() {
 		if (!DemandSpaceWithError()) return;
 
@@ -482,7 +460,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private void GenerateExtrinsicLabel() {
 		_reading++; // skip # token
 
@@ -505,8 +482,6 @@ unsafe partial class Assembler {
 			return TryFullyExpandLabelName(dotCount, sublabelname, out fullName);
 		}
 	}
-
-
 
 	private bool TryReadAnyLabelName([NotNullWhen(true)] out string? fullName, [NotNullWhen(true)] out string? chunkName, out int depth) {
 		if (*_reading is SublabelDelimiter) {
@@ -550,7 +525,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private bool TryReadTopLevelName([NotNullWhen(true)] out string? fullName) {
 		if (FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString symbolName)) {
 			fullName = symbolName;
@@ -560,7 +534,6 @@ unsafe partial class Assembler {
 			return false;
 		}
 	}
-
 
 	private bool TryReadSublabelName([NotNullWhen(true)] out string? chunkName, out int depth) {
 		depth = FastRead.CountCharacter(ref _reading, _fileEnd, SublabelDelimiter);
@@ -605,7 +578,7 @@ unsafe partial class Assembler {
 				}
 			} else {
 				foreach (string poolName in _poolHeaders) {
-					_labelNameHierarchy[0] = poolName;
+					_nameHierarchy[0] = poolName;
 
 					if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
 						AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
@@ -647,7 +620,7 @@ unsafe partial class Assembler {
 			}
 		} else {
 			foreach (string poolName in _poolHeaders) {
-				_labelNameHierarchy[0] = poolName;
+				_nameHierarchy[0] = poolName;
 
 				UpdateHierarchy(chunkName, depth);
 
@@ -659,10 +632,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
-
-
 	internal bool TryFullyExpandLabelName(int depth, CharSpan name, [NotNullWhen(true)] out string? fullName) {
 		if (name.Length is 0) {
 			Error(MsgInfo.MissingLabelName);
@@ -672,9 +641,9 @@ unsafe partial class Assembler {
 		} else if (depth <= (_hierarchyDepth + 1)) {
 			// make depth of 1 faster
 			if (depth == 1) {
-				fullName = $"{_labelNameHierarchy[0]}.{name}";
+				fullName = $"{_nameHierarchy[0]}.{name}";
 			} else {
-				var temp = _labelNameHierarchy.AsSpan(0, depth);
+				var temp = _nameHierarchy.AsSpan(0, depth);
 
 				fullName = $"{string.Join('.', temp)}.{name}";
 			}
@@ -689,11 +658,8 @@ unsafe partial class Assembler {
 		return false;
 	}
 
-
 	private const int MaxRelativeCount = 100;
-
 	private static string GetRelativeLabelName(char token, int count, int index) => $"{token}{count}.{index}";
-
 
 	internal bool TryGetPreviusMinusLabel(int minusCount, [NotNullWhen(true)] out Symbol? label) {
 		if (ValidateRelativeCount('-', minusCount)) {
@@ -705,7 +671,6 @@ unsafe partial class Assembler {
 			return false;
 		}
 	}
-
 
 	internal bool TryGetNextPlusLabel(int plusCount, [NotNullWhen(true)] out Symbol? label) {
 		if (ValidateRelativeCount('+', plusCount)) {
@@ -726,7 +691,6 @@ unsafe partial class Assembler {
 			return false;
 		}
 	}
-
 
 	private void GenerateRelativeLabel(char token) {
 		int relcount = FastRead.CountCharacter(ref _reading, _fileEnd, token);

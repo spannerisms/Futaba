@@ -26,9 +26,7 @@ internal interface IExpressionReturn : IFormattable {
 	}
 }
 
-
-
-internal class InvalidExpression : IExpressionReturn {
+internal sealed class InvalidExpression : IExpressionReturn {
 	public ExpressionState ReturnState { get; }
 
 	private InvalidExpression(ExpressionState reason) {

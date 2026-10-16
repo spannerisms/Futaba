@@ -1,9 +1,11 @@
 ﻿namespace Futaba;
 
+// TODO need test cases for when someone (for some reason) uses both incbin and incsrc on the same file
 internal sealed class FileWatcher : IDisposable {
 	private readonly Dictionary<string, IWatchedFile?> _files = [];
 	public string DirectoryPath { get; }
 	private readonly FileSystemWatcher _watcher;
+	private bool _disposed;
 	public bool IsEmpty => _files.Count is 0;
 
 	public bool Enabled {
@@ -19,10 +21,11 @@ internal sealed class FileWatcher : IDisposable {
 			EnableRaisingEvents = true,
 			NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.Size,
 		};
-		
+
 		_watcher.Changed += OnAnyChange;
 		_watcher.Deleted += OnAnyChange;
-		_watcher.Renamed += OnAnyChange;
+		_watcher.Created += OnAnyChange;
+		_watcher.Renamed += OnRename;
 	}
 
 	private FileSystemEventHandler? _filesChanged;
@@ -32,35 +35,28 @@ internal sealed class FileWatcher : IDisposable {
 		remove => _filesChanged -= value;
 	}
 
+	private void Strobe(string path, FileSystemEventArgs e) {
+		if (_files.TryGetValue(path, out var file)) {
+			file?.Change = e.ChangeType;
+			_filesChanged?.Invoke(this, e);
+		}
+	}
+
+	private void OnRename(object sender, RenamedEventArgs e) {
+		if (_disposed) {
+			return;
+		}
+
+		Strobe(e.OldFullPath, e);
+	}
+
 	private void OnAnyChange(object sender, FileSystemEventArgs e) {
 		if (_disposed) {
 			return;
 		}
 
-		switch (e.ChangeType) {
-			case WatcherChangeTypes.Renamed:
-				if (e is RenamedEventArgs r) {
-					if (_files.TryGetValue(r.OldFullPath, out var rfile)) {
-						rfile?.Change = e.ChangeType;
-						_filesChanged?.Invoke(sender, e);
-					}
-				}
-
-				goto case WatcherChangeTypes.Created;
-
-			case WatcherChangeTypes.Created:
-			case WatcherChangeTypes.Deleted:
-			case WatcherChangeTypes.Changed:
-				if (_files.TryGetValue(e.FullPath, out var file)) {
-					file?.Change = e.ChangeType;
-					_filesChanged?.Invoke(sender, e);
-				}
-
-				break;
-		}
+		Strobe(e.FullPath, e);
 	}
-
-	private bool _disposed;
 
 	public void WatchFile(IWatchedFile file) {
 		if (_disposed) {
@@ -86,7 +82,9 @@ internal sealed class FileWatcher : IDisposable {
 				_watcher.Dispose();
 			}
 
-			_files.Clear();
+			_files?.Clear();
+			_filesChanged = null;
+
 			_disposed = true;
 		}
 	}
