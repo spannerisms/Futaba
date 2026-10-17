@@ -79,7 +79,10 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			throw new InvalidOperationException("Assembler is null.");
 		}
 
-		Assembler.SeedRNG(random.NextInt64(), random.NextInt64());
+		if (!AssemblerSeeded) {
+			Assembler.SeedRNG(random.NextInt64(), random.NextInt64());
+		}
+
 		return Assembler;
 	}
 
