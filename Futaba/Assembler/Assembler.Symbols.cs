@@ -258,7 +258,7 @@ unsafe partial class Assembler {
 	/// <summary>
 	/// Adds a given symbol to the assembler's lookup table.
 	/// </summary>
-	/// <param name="toAdd">The symbol to add</param>
+	/// <param name="toAdd">The symbol to add.</param>
 	/// <inheritdoc cref="TryAddSymbol(string, int)" path="//returns|//remarks|//exception"/>
 	public bool TryAddSymbol(Symbol toAdd) {
 		ThrowIfAssembling();
@@ -269,8 +269,8 @@ unsafe partial class Assembler {
 	/// <summary>
 	/// Tries to add a symbol with a given name and value to the assembler's lookup table.
 	/// </summary>
-	/// <param name="name">The symbol's case-sensitive name</param>
-	/// <param name="value">The symbol's value</param>
+	/// <param name="name">The symbol's case-sensitive name.</param>
+	/// <param name="value">The symbol's value.</param>
 	/// <returns><see langword="true"/> if the symbol was successfully added.</returns>
 	/// <inheritdoc cref="ThrowIfAssembling" path="//remarks|//exception"/>
 	public bool TryAddSymbol(string name, int value) {
@@ -307,7 +307,7 @@ unsafe partial class Assembler {
 	/// Any symbols that could not be added during the pass will be ignored.
 	/// <para><inheritdoc cref="ThrowIfAssembling" path="//remarks"/></para>
 	/// </remarks>
-	/// <param name="symbols">The collection of symbols to add</param>
+	/// <param name="symbols">The collection of symbols to add.</param>
 	/// <inheritdoc cref="ThrowIfAssembling" path="//exception"/>
 	public void AddSymbols(Symbol[] symbols) {
 		ThrowIfAssembling();

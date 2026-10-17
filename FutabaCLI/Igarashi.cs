@@ -13,7 +13,6 @@ using System.Text;
 
 namespace FutabaCLI;
 
-// TODO add a template command
 internal static partial class Igarashi {
 	public static readonly Version Version;
 
@@ -39,6 +38,8 @@ internal static partial class Igarashi {
 		Arg_Entry.AcceptExistingOnly();
 		Arg_PatchBase.AcceptExistingOnly();
 		Arg_MapMode.AcceptOnlyFromAmong("none", "lorom", "hirom", "exlorom", "exhirom", "loromsa1", "hiromsa1");
+
+		Option_ProjectType.AcceptOnlyFromAmong("new", "homebrew", "patch", "hack", "disassembly", "other");
 
 		Option_Size.Validators.Add(res => {
 			if (res.GetValue(Option_Size) is string s) {
@@ -86,6 +87,12 @@ internal static partial class Igarashi {
 			Arg_Entry, Arg_PatchBase, Arg_OutputRom
 		};
 
+		Command template = new("template", "Create a new empty manifest file") {
+			Arg_OutputManifest
+		};
+		template.SetAction(CreateTemplateFile);
+		template.AddOptions(Option_ProjectType);
+
 		Command checksums = new("checksum", "Calculate various checksums for a file") {
 			Arg_TargetRom
 		};
@@ -115,6 +122,7 @@ internal static partial class Igarashi {
 		rootaba.Add(quicky);
 		rootaba.Add(patch);
 		rootaba.Add(checksums);
+		rootaba.Add(template);
 		rootaba.Add(registerCommand);
 		rootaba.Add(unregisterCommand);
 		rootaba.Options.Remove(rootaba.Options.First(o => o is VersionOption));
@@ -123,6 +131,54 @@ internal static partial class Igarashi {
 
 		return rootaba.Parse(args).Invoke();
 #endif
+	}
+
+	static int CreateTemplateFile(ParseResult res) {
+		string fileName = res.GetRequiredValue(Arg_OutputManifest);
+
+		if (!Path.HasExtension(fileName)) {
+			fileName += ".futaba";
+		}
+
+		string? projectType = res.GetValue(Option_ProjectType);
+
+		bool makingDisassembly = projectType?.EqualsI("disassembly") ?? false;
+
+		FileInfo templateFile = new(fileName);
+
+		if (templateFile.Exists) {
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			if (!GetYN($"The file '{fileName}' already exists. Would you like to overwrite it?")) {
+				return Exit_Good;
+			}
+		}
+
+		try {
+			using var stream = templateFile.CreateText();
+
+			stream.BaseStream.Clear();
+
+			stream.WriteLine("[FUTABA:assemble]");
+
+			foreach (var (cat, list) in ManifestContainer.ManifestKeywords) {
+				if (cat is "disassembly" && !makingDisassembly) {
+					continue;
+				}
+
+				stream.WriteLine();
+				stream.WriteLine($"{cat}:");
+
+				foreach (string key in list) {
+					stream.WriteLine($"\t{key,-20}= ");
+				}
+			}
+
+		} catch (Exception e) {
+			Error($"Error writing file: {e.Message}");
+			return Exit_Error;
+		}
+
+		return Exit_Good;
 	}
 
 	static int ChecksumFile(ParseResult res) {
@@ -659,17 +715,27 @@ internal static partial class Igarashi {
 
 		Console.BackgroundColor = ConsoleColor.Red;
 		Console.ForegroundColor = ConsoleColor.White;
-		Console.Write("Print trace? (Y/N) ");
+
+		if (GetYN("Print trace ?")) {
+			Error(e.StackTrace ?? "\tStack trace not available.");
+		}
+	}
+
+	private static bool GetYN(string text) {
+		Console.Write(text);
+		Console.Write(" (Y/N) ");
 		Console.ResetColor();
 
 		while (true) {
 			var key = Console.ReadKey(true).Key;
 
 			if (key is ConsoleKey.Y) {
-				Console.Error.WriteLine();
-				Error(e.StackTrace ?? "\tStack trace not available.");
-			} else if (key is ConsoleKey.N or ConsoleKey.Enter) {
-				break;
+				Console.WriteLine();
+				return true;
+
+			} else if (key is ConsoleKey.N or ConsoleKey.Enter or ConsoleKey.Escape) {
+				Console.WriteLine();
+				return false;
 			}
 		}
 	}
@@ -1000,7 +1066,6 @@ internal static partial class Igarashi {
 	internal static Register[] SuperFX => field ??= Register.SuperFxRegisters;
 
 	// Arguments
-
 	static readonly Argument<FileInfo> Arg_ManifestFile = new("manifest"){
 		Description = "manifest file with assembly configuration",
 		Arity = ArgumentArity.ExactlyOne,
@@ -1032,8 +1097,12 @@ internal static partial class Igarashi {
 		Arity = ArgumentArity.ExactlyOne,
 	};
 
-	// Options
+	static readonly Argument<string> Arg_OutputManifest = new("manifest") {
+		Description = "target project name",
+		Arity = ArgumentArity.ExactlyOne,
+	};
 
+	// Options
 	static readonly Option<bool> Option_PreserveConsole = new("--keep-old-logs", "-k") {
 		Description = "Disables clearing the console on each assembly",
 		Arity = ArgumentArity.Zero,
@@ -1069,6 +1138,11 @@ internal static partial class Igarashi {
 	static readonly Option<bool> Option_FixChecksum = new("--fix-checksum", "-c") {
 		Description = "Automatically adjusts the checksum",
 		Arity = ArgumentArity.Zero,
+	};
+
+	static readonly Option<string?> Option_ProjectType = new("--type") {
+		Description = "Automatically adjusts the checksum",
+		Arity = ArgumentArity.ZeroOrOne,
 	};
 
 }

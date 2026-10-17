@@ -1,6 +1,62 @@
 ﻿namespace Futaba;
 
 unsafe partial class Assembler {
+	private int? _copVectorNative = null;
+	private int? _brkVector = null;
+	private int? _abortVectorNative = null;
+	private int? _nmiVectorNative = null;
+	private int? _irqVectorNative = null;
+
+	private int? _copVectorEmulation = null;
+	private int? _abortVectorEmulation = null;
+	private int? _nmiVectorEmulation = null;
+	private int? _resetVector = null;
+	private int? _irqVectorEmulation = null;
+
+	private protected virtual void AdjustInterruptVectors() {
+		byte* vectorTable = _romPtr + AddressToOffset(0x00FFE0);
+
+		if (_copVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x04, _copVectorEmulation.Value);
+		}
+
+		if (_brkVector is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x06, _brkVector.Value);
+		}
+
+		if (_abortVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x08, _abortVectorEmulation.Value);
+		}
+
+		if (_nmiVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x0A, _nmiVectorEmulation.Value);
+		}
+
+		if (_irqVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x0E, _irqVectorEmulation.Value);
+		}
+
+		if (_copVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x14, _copVectorEmulation.Value);
+		}
+
+		if (_abortVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x18, _abortVectorEmulation.Value);
+		}
+
+		if (_nmiVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x1A, _nmiVectorEmulation.Value);
+		}
+
+		if (_resetVector is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x1C, _resetVector.Value);
+		}
+
+		if (_irqVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x1E, _irqVectorEmulation.Value);
+		}
+	}
+
 	private protected virtual void InitializeHeader() {
 		byte* header = _romPtr + AddressToOffset(RomHeader.ExtendedHeaderLocation);
 
@@ -95,7 +151,7 @@ unsafe partial class Assembler {
 	} = "";
 
 	/// <summary>
-	/// Gets or sets whether the internal header is assembled after assembly.
+	/// Gets or sets whether the internal header is populated by the assembler.
 	/// </summary>
 	/// <inheritdoc cref="OverflowAction" path="//remarks|//exception"/>
 	public bool AutoPopulateHeader {

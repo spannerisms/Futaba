@@ -5,7 +5,7 @@ namespace Futaba;
 /// <summary>
 /// Encapsulates an assembly source file.
 /// </summary>
-internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
+internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFileFactory<SourceFile> {
 	public SafeFileHandle? Handle { get; private set; }
 	public override FileInfo FileInfo { get; }
 
@@ -27,7 +27,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 	/// <summary>
 	/// Creates a new source file container.
 	/// </summary>
-	internal SourceFile(string path) {
+	private SourceFile(string path) {
 		Handle = IWatchedFile.OpenHandle(path);
 
 		FileInfo = new(path);
@@ -40,6 +40,10 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile {
 
 	public CharSpan AsSpan() {
 		return new CharSpan(SourceStart, Length);
+	}
+
+	public static SourceFile Create(string path) {
+		return new SourceFile(path);
 	}
 
 	public void Refresh() {

@@ -1,24 +1,33 @@
 ﻿namespace FutabaCLI;
 
 internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
-	private static readonly Random random = new();
+	private static readonly Random s_random = new();
 
-	private readonly string fileName = manifest.FullName;
+	private readonly string _fileName = manifest.FullName;
 
-	private LoadedItem<byte[]>? baseromfile = null;
-	private LoadedItem<byte[]>? diffromfile = null;
+	private LoadedItem<byte[]>? _baseRomFile = null;
+	private LoadedItem<byte[]>? _diffRomFile = null;
+	private byte[]? _baseRomData = null;
+
+	private int? _romSize = 0;
+	private int _fillStart = 0;
+
+	private DateTime _lastUpdated = DateTime.MinValue;
+
+	private bool _assemblerNeedsUpdating = true;
+	private bool _assemblerIsSeeded = false;
+
+	private readonly Dictionary<string, ArgInfo> _manifestArguments = [];
+	private readonly Dictionary<string, Variable> _variables = [];
+	private readonly Dictionary<string, FutabaSymbol> _symbols = [];
 
 	private FileSystemEventHandler? _filesChanged;
-
 	public event FileSystemEventHandler? SourceChange {
 		add => _filesChanged += value;
 		remove => _filesChanged -= value;
 	}
 
-	private void SomethingChanged(object source, FileSystemEventArgs e) {
-		_filesChanged?.Invoke(this, e);
-	}
-
+	public bool ManifestGood { get; private set; } = false;
 	public bool Incremental { get; private set; }
 
 	private LoadedItem<StreamWriter>? StdOut {
@@ -58,29 +67,17 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	} = null;
 
-	private byte[]? baserom = null;
-	private int? romsize = 0;
-	private int fillstart = 0;
-
-	public bool ManifestGood { get; private set; } = false;
-
-	private DateTime LastUpdated = DateTime.MinValue;
-
-	private bool AssemblerNeedsUpdating = true;
-
-	private bool AssemblerSeeded = false;
-
-	private readonly Dictionary<string, ArgInfo> argVals = [];
-	private readonly Dictionary<string, Variable> prevariables = [];
-	private readonly Dictionary<string, FutabaSymbol> presymbols = [];
+	private void SomethingChanged(object source, FileSystemEventArgs e) {
+		_filesChanged?.Invoke(this, e);
+	}
 
 	public Assembler GetAssembler() {
 		if (Assembler is null) {
 			throw new InvalidOperationException("Assembler is null.");
 		}
 
-		if (!AssemblerSeeded) {
-			Assembler.SeedRNG(random.NextInt64(), random.NextInt64());
+		if (!_assemblerIsSeeded) {
+			Assembler.SeedRNG(s_random.NextInt64(), s_random.NextInt64());
 		}
 
 		return Assembler;
@@ -88,7 +85,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 	internal void Configure() {
 		try {
-			if (ManifestGood && AssemblerNeedsUpdating) {
+			if (ManifestGood && _assemblerNeedsUpdating) {
 				PrepAssembler();
 			}
 		} catch {
@@ -108,7 +105,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 
 		if (!TryGetString("output", out var outputGet)) {
-			outputGet = Path.ChangeExtension(fileName, Igarashi.RomExtension);
+			outputGet = Path.ChangeExtension(_fileName, Igarashi.RomExtension);
 		}
 
 		string entryPoint = fileEntry.Value;
@@ -195,55 +192,56 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 		if (TryGetArg("romsize", out var romsizestr)) {
 			if (RomHeader.TryGetRomSize(romsizestr.Value, out int romsizeget)) {
-				romsize = romsizeget;
+				_romSize = romsizeget;
 				setSize = true;
 			} else {
 				ManifestError($"Invalid argument to romsize: \"{romsizestr.Value}\"", romsizestr.Line);
-				romsize = null;
+				_romSize = null;
 			}
 		} else {
-			romsize = null;
+			_romSize = null;
 		}
 
-		if (TryOpenBinary("base", ref baseromfile)) {
+		// this looks like a memory leak, but this field uses a byte[] so it doesn't need disposal
+		if (TryOpenBinary("base", ref _baseRomFile)) {
 			int allocSize;
 
 			setSize = true;
 
-			if (romsize is null) {
-				allocSize = baseromfile.Item.Length;
-				fillstart = allocSize;
+			if (_romSize is null) {
+				allocSize = _baseRomFile.Item.Length;
+				_fillStart = allocSize;
 
 				if (allocSize > Assembler.MaxRomSize) {
 					ManifestWarningNoLine("Base ROM file exceeds maximum length. It has been truncated.");
 					allocSize = Assembler.MaxRomSize;
-					fillstart = allocSize;
+					_fillStart = allocSize;
 
 				} else if (allocSize < Assembler.MinRomSize) {
 					ManifestWarningNoLine("Base ROM file is too small on its own. ROM will be padded to reach minimum length.");
-					fillstart = allocSize;
+					_fillStart = allocSize;
 					allocSize = Assembler.MinRomSize;
 					forceNullFill = true;
-
 				}
-			} else {
-				fillstart = (int) long.Min(baseromfile.Item.Length, romsize.Value);
 
-				allocSize = romsize.Value;
+			} else {
+				_fillStart = (int) long.Min(_baseRomFile.Item.Length, _romSize.Value);
+
+				allocSize = _romSize.Value;
 			}
 
 			AllocateBaseRom(allocSize);
 			Assembler.InitialRomSize = allocSize;
-			Array.Copy(baseromfile.Item, baserom!, fillstart);
+			Array.Copy(_baseRomFile.Item, _baseRomData!, _fillStart);
 
 		} else {
-			fillstart = 0;
+			_fillStart = 0;
 
-			if (romsize is null) {
-				baserom = null;
+			if (_romSize is null) {
+				_baseRomData = null;
 			} else {
-				AllocateBaseRom(romsize.Value);
-				Assembler.InitialRomSize = romsize.Value;
+				AllocateBaseRom(_romSize.Value);
+				Assembler.InitialRomSize = _romSize.Value;
 			}
 		}
 
@@ -252,7 +250,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			Assembler.InitialRomSize = Assembler.MinRomSize;
 		}
 
-		bool doNullFill = baserom is not null && fillstart < baserom?.Length;
+		bool doNullFill = _baseRomData is not null && _fillStart < _baseRomData?.Length;
 
 		if (TryGetArg("nullfill", out var nullfillGet)) {
 			string nullfillOperand = nullfillGet.Value;
@@ -274,7 +272,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 				}
 			}
 
-			if (!forceNullFill && (romsize is null || baserom is null)) {
+			if (!forceNullFill && (_romSize is null || _baseRomData is null)) {
 				ManifestWarning("Ignoring 'nullfill' while 'romsize' is unspecified.", nullfillGet.Line);
 			} else {
 				if (string.IsNullOrWhiteSpace(nullFillType)) {
@@ -286,7 +284,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 						ManifestWarning("Ignoring 'nullfill' value' while type is 'zero'.", nullfillGet.Line);
 					}
 
-					baserom.AsSpan(fillstart).Clear();
+					_baseRomData.AsSpan(_fillStart).Clear();
 				} else if (nullFillType.EqualsI("byte")) {
 					if (nullFillValue is null) {
 						ManifestError("'nullfill=byte' requires a comma-separated argument.", nullfillGet.Line);
@@ -309,14 +307,14 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 						}
 
 						if (good && doNullFill) {
-							Helpers.FillArray(fillarray, baserom!, fillstart);
+							Helpers.FillArray(fillarray, _baseRomData!, _fillStart);
 						}
 					}
 				} else if (nullfillGet.Value.EqualsI("string")) {
 					if (nullFillValue is null) {
 						ManifestError("'nullfill=string' requires a comma-separated argument.", nullfillGet.Line);
 					} else if (doNullFill) {
-						Helpers.FillArray(System.Text.Encoding.ASCII.GetBytes(nullFillValue), baserom!, fillstart);
+						Helpers.FillArray(System.Text.Encoding.ASCII.GetBytes(nullFillValue), _baseRomData!, _fillStart);
 					}
 				} else if (nullfillGet.Value.EqualsI("random")) {
 					long rngseed1, rngseed2;
@@ -329,19 +327,19 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 					}
 
 					if (doNullFill) {
-						Helpers.FillRandom((ulong) rngseed1, (ulong) rngseed2, baserom.AsSpan(fillstart));
+						Helpers.FillRandom((ulong) rngseed1, (ulong) rngseed2, _baseRomData.AsSpan(_fillStart));
 					}
 
 				}
 			}
 		} else if (doNullFill) {
-			baserom?.AsSpan(fillstart).Clear();
+			_baseRomData?.AsSpan(_fillStart).Clear();
 		}
 
-		Assembler.BaseRom = baserom;
-		AssemblerSeeded = TryGetString("randomseed", out var randomseed);
+		Assembler.BaseRom = _baseRomData;
+		_assemblerIsSeeded = TryGetString("randomseed", out var randomseed);
 
-		if (AssemblerSeeded) {
+		if (_assemblerIsSeeded) {
 			var (seedA, seedB) = Helpers.HashString(randomseed);
 			Assembler.SeedRNG(seedA, seedB);
 		}
@@ -412,8 +410,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			}
 		}
 
-		Assembler.AddSymbols(presymbols.Values);
-		Assembler.AddVariables(prevariables.Values);
+		Assembler.AddSymbols(_symbols.Values);
+		Assembler.AddVariables(_variables.Values);
 
 		Assembler.MaximumErrors = GetInt32OrDefault("maxerrors", int.MaxValue);
 		Assembler.WarningsAreErrors = GetBoolOrDefault("warnaserror", false, out _);
@@ -442,7 +440,6 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		if (TryGetFileInfo("stdout", out var stdoutGet, out int stdoutLine)) {
 			if (StdOut?.Reload(stdoutGet) ?? true) {
 				try {
-					StdOut?.Dispose();
 					StdOut = new(stdoutGet.FullName, new(Helpers.WaitForAndCreateStream(stdoutGet)));
 				} catch (Exception e) {
 					StdOut = null;
@@ -458,7 +455,6 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		if (TryGetFileInfo("errorout", out var erroroutGet, out int erroroutLine)) {
 			if (ErrOut?.Reload(erroroutGet) ?? true) {
 				try {
-					ErrOut?.Dispose();
 					ErrOut = new(erroroutGet.FullName, new(Helpers.WaitForAndCreateStream(erroroutGet)));
 				} catch (Exception e) {
 					ErrOut = null;
@@ -478,17 +474,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			Assembler.SourceChange -= SomethingChanged;
 		}
 
-		AssemblerNeedsUpdating = false;
-	}
-
-	internal bool TryGetDiffFile([NotNullWhen(true)] out byte[]? binFile) {
-		if (TryOpenBinary("diff", ref diffromfile)) {
-			binFile = diffromfile.Item;
-			return true;
-		}
-
-		binFile = null;
-		return false;
+		_assemblerNeedsUpdating = false;
 	}
 
 	internal bool TryGetOutputStream([NotNullWhen(true)] out Stream? outStream) {
@@ -518,7 +504,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	}
 
 	internal bool TryGetString(string key, [NotNullWhen(true)] out string? value) {
-		if (argVals.TryGetValue(key, out var info)) {
+		if (_manifestArguments.TryGetValue(key, out var info)) {
 			value = info.Value;
 			return true;
 		} else {
@@ -533,7 +519,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	}
 
 	internal bool TryGetFileInfo(string key, [NotNullWhen(true)] out FileInfo? value, out int line) {
-		if (argVals.TryGetValue(key, out var info)) {
+		if (_manifestArguments.TryGetValue(key, out var info)) {
 			line = info.Line;
 			value = new(info.Value);
 			return true;
@@ -545,28 +531,28 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	}
 
 	private bool TryGetArg(string key, [NotNullWhen(true)] out ArgInfo value) {
-		return argVals.TryGetValue(key, out value);
+		return _manifestArguments.TryGetValue(key, out value);
 	}
 
 	internal void ParseManifest() {
-		var update = File.GetLastWriteTimeUtc(fileName);
+		var update = File.GetLastWriteTimeUtc(_fileName);
 
-		if (update == LastUpdated) {
+		if (update == _lastUpdated) {
 			return;
 		}
 
-		LastUpdated = update;
-		AssemblerNeedsUpdating = true;
+		_lastUpdated = update;
+		_assemblerNeedsUpdating = true;
 		char[]? buffer = null;
 
 		try {
-			argVals.Clear();
-			prevariables.Clear();
-			presymbols.Clear();
+			_manifestArguments.Clear();
+			_variables.Clear();
+			_symbols.Clear();
 
 			var ManifestWordsSpan = ManifestKeywords.GetAlternateLookup<ReadOnlySpan<char>>();
 
-			using var reader = new StreamReader(fileName, ManifestOptions);
+			using var reader = new StreamReader(_fileName, ManifestOptions);
 
 			Igarashi.Notice("Parsing manifest file...");
 
@@ -639,13 +625,13 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 							continue;
 						}
 
-						if (presymbols.ContainsKey(symName)) {
+						if (_symbols.ContainsKey(symName)) {
 							ManifestWarning($"Duplicate declaration for symbol {symName}.", lineNum);
 						}
 
 						if (Helpers.TryParseValue(cmdVal, out decimal symval)) {
 							if (AssignedSymbol.TryCreate(symName, symval, out var assym, out var symerr)) {
-								presymbols.Add(symName, assym);
+								_symbols.Add(symName, assym);
 							} else {
 								ManifestError(symerr, lineNum);
 							}
@@ -661,7 +647,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 							continue;
 						}
 
-						if (prevariables.ContainsKey(varName)) {
+						if (_variables.ContainsKey(varName)) {
 							ManifestWarning($"Duplicate declaration for variable !{varName}.", lineNum);
 						}
 
@@ -671,13 +657,13 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 						if (cmdVal is ['"', .. var contents, '"']) {
 							if (Variable.TryCreate(varName, contents, out var addVar, out var varErr)) {
-								prevariables.Add(varName, addVar);
+								_variables.Add(varName, addVar);
 							} else {
 								ManifestError(varErr, lineNum);
 							}
 						} else if (Helpers.TryParseValue(cmdVal, out decimal varVal)) {
 							if (Variable.TryCreate(varName, varVal, out var addVar, out var varErr)) {
-								prevariables.Add(varName, addVar);
+								_variables.Add(varName, addVar);
 							} else {
 								ManifestError(varErr, lineNum);
 							}
@@ -691,12 +677,12 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 							ManifestError("Not in any category.", lineNum);
 						} else {
 							if (cmdset2.TryGetValue(cmdName, out var cmdReal)) {
-								if (argVals.ContainsKey(cmdReal)) {
+								if (_manifestArguments.ContainsKey(cmdReal)) {
 									ManifestWarning($"Ignoring duplicate key: {cmdName}", lineNum);
 								} else if (cmdVal.IsWhiteSpace()) {
 									ManifestWarning($"Ignoring empty key", lineNum);
 								} else {
-									argVals[cmdReal] = new(lineNum, new string(cmdVal));
+									_manifestArguments[cmdReal] = new(lineNum, new string(cmdVal));
 								}
 							} else {
 								ManifestError("Unrecognized command name.", lineNum);
@@ -728,8 +714,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	}
 
 	void AllocateBaseRom(int size) {
-		if (baserom is null || (baserom.Length != size)) {
-			baserom = GC.AllocateUninitializedArray<byte>(size);
+		if (_baseRomData is null || (_baseRomData.Length != size)) {
+			_baseRomData = GC.AllocateUninitializedArray<byte>(size);
 		}
 	}
 
@@ -777,26 +763,37 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		return false;
 	}
 
+	internal bool TryGetDiffFile([NotNullWhen(true)] out byte[]? binFile) {
+		// this looks like a memory leak, but this field uses a byte[] so it doesn't need disposal
+		if (TryOpenBinary("diff", ref _diffRomFile)) {
+			binFile = _diffRomFile.Item;
+			return true;
+		}
+
+		binFile = null;
+		return false;
+	}
+
 	void ProblemLoadingFile(Exception e, int line) {
 		ManifestError($"Problem loading file: '{e.Message}'", line);
 	}
 
 	void ManifestError(string err, int lineNumber) {
-		Igarashi.Error($"Manifest error in {fileName}:{lineNumber}: {err}");
+		Igarashi.Error($"Manifest error in {_fileName}:{lineNumber}: {err}");
 		ManifestGood = false;
 	}
 
 	void ManifestErrorNoLine(string err) {
-		Igarashi.Error($"Manifest error in {fileName}: {err}");
+		Igarashi.Error($"Manifest error in {_fileName}: {err}");
 		ManifestGood = false;
 	}
 
 	void ManifestWarning(string err, int lineNumber) {
-		Igarashi.Warning($"Manifest warning in {fileName}:{lineNumber}: {err}");
+		Igarashi.Warning($"Manifest warning in {_fileName}:{lineNumber}: {err}");
 	}
 
 	void ManifestWarningNoLine(string err) {
-		Igarashi.Warning($"Manifest warning in {fileName}: {err}");
+		Igarashi.Warning($"Manifest warning in {_fileName}: {err}");
 	}
 
 	static readonly Dictionary<string, MissingTokenSeverity> MissingTokenLookup = new(StringComparer.OrdinalIgnoreCase) {
@@ -830,7 +827,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		{ "other", Coprocessor.Other },
 	};
 
-	static readonly Dictionary<string, HashSet<string>> ManifestKeywords = new() {
+	// TODO populate these with a new type of object so that the template command can programmatically fill the options
+	internal static readonly Dictionary<string, HashSet<string>> ManifestKeywords = new() {
 		{ "assembly", [
 			"entry",
 			"type",
@@ -884,7 +882,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private record LoadedItem<T> : IDisposable {
 		public string Name { get; }
 		public DateTime Loaded { get; }
-		public T Item { get; }
+		public T Item { get; private set; }
+		private bool _disposed = false;
 
 		public LoadedItem(string name, T item) {
 			name = Path.GetFullPath(name);
@@ -902,30 +901,28 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			return file != Name || File.GetLastWriteTimeUtc(file) != Loaded;
 		}
 
-		private bool disposed = false;
-
 		~LoadedItem() {
-			Dispose();
+			Dispose(false);
 		}
 
 		public void Dispose() {
-			if (disposed) {
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		private void Dispose(bool disposing) {
+			if (_disposed) {
 				return;
 			}
 
-			disposed = true;
-			if (Item is IDisposable d) {
+			_disposed = true;
+
+			if (disposing && Item is IDisposable d) {
 				d.Dispose();
 			}
 
-			GC.SuppressFinalize(this);
+			Item = default!;
 		}
-	}
-
-	private enum ArgParse {
-		Empty = 0,
-		Valid,
-		Invalid,
 	}
 
 	public void TryExportSymbols() {
@@ -945,6 +942,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	}
 
 	public void Dispose() {
+		// No field disposal necessary, because the property setter handles that.
 		StdOut = null;
 		ErrOut = null;
 		Assembler = null;
@@ -959,4 +957,10 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	};
 
 	private readonly record struct ArgInfo(int Line, string Value);
+
+	private enum ArgParse {
+		Empty = 0,
+		Valid,
+		Invalid,
+	}
 }

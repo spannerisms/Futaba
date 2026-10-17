@@ -1,16 +1,9 @@
 ﻿namespace Futaba;
 
-internal enum BreakpointsControl {
-	Kill = -1,
-	Off = 0,
-	On,
-}
-
 /// <summary>
 /// Represents a breakpoint in assembly code.
 /// </summary>
 public sealed class Breakpoint {
-
 	private readonly BreakpointTriggers _triggers;
 
 	/// <summary>
@@ -48,6 +41,12 @@ public sealed class Breakpoint {
 		_triggers = triggers;
 	}
 
+}
+
+internal enum BreakpointsControl {
+	Kill = -1,
+	Off = 0,
+	On,
 }
 
 [Flags]

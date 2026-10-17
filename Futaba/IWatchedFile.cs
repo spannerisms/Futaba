@@ -2,6 +2,10 @@
 
 namespace Futaba;
 
+internal interface IWatchedFileFactory<T> where T : class, IWatchedFile {
+	public static abstract T Create(string path);
+}
+
 internal interface IWatchedFile : IDisposable {
 	/// <summary>
 	/// The full path of this file.

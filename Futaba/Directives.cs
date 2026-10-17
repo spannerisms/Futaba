@@ -87,6 +87,7 @@ internal static class Directives {
 
 		LANG                          = "lang",
 		ARCH                          = "arch",
+		VECTOR                        = "vector",
 
 		PUSHPC                        = "pushpc",
 		PULLPC                        = "pullpc",

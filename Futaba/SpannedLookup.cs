@@ -48,7 +48,6 @@ internal readonly struct SpannedLookup<T> where T : notnull {
 		_dict[name] = value;
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Clear() {
 		_dict.Clear();
 	}
@@ -59,12 +58,10 @@ internal readonly struct SpannedLookup<T> where T : notnull {
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public Dictionary<string, T>.Enumerator GetEnumerator() {
 		return _dict.GetEnumerator();
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public Dictionary<string, T> GetCopy() {
 		return new(_dict);
 	}

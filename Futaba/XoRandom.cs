@@ -32,7 +32,6 @@ internal unsafe sealed class XoRandom {
 		Reseed(seed);
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Reseed(UInt128 seed) {
 		// need not all 0s, and this will guarantee that, irrespective of seed
 		_s0 = 0xBEBE_6368_6565_7365ul;
@@ -49,7 +48,6 @@ internal unsafe sealed class XoRandom {
 		_s3 = BinaryPrimitives.ReverseEndianness((ulong) (seed >> 32));
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public ulong NextUInt64() {
 		ulong s0 = _s0;
 		ulong s1 = _s1;
@@ -149,7 +147,6 @@ internal unsafe sealed class XoRandom {
 		return minValue;
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal uint NextUInt32(uint maxValue) {
 		ulong randomProduct = (ulong) maxValue * (uint) NextUInt64();
 		uint lowPart = (uint) randomProduct;
@@ -175,5 +172,4 @@ internal unsafe sealed class XoRandom {
 		}
 		return result;
 	}
-
 }

@@ -390,7 +390,6 @@ unsafe partial class Assembler {
 		} while (moreFiles);
 
 		while (srcstack.TryPop(out var addSrc)) {
-			WatchFile(addSrc);
 			TransferSourceControl(addSrc);
 		}
 	}
@@ -458,8 +457,6 @@ unsafe partial class Assembler {
 			if (!TryGetBinary(pathString, out var binFile)) {
 				break;
 			}
-
-			WatchFile(binFile);
 
 			int binlen = binFile.Length;
 			int binstart = 0; // static analysis can't seem to figure out these are guaranteed to be initialized
@@ -1762,12 +1759,12 @@ unsafe partial class Assembler {
 	}
 
 	private void Directive_BANKGUARD() {
-		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString guardMode)) {
-			int len = guardMode.Length;
+		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString contents)) {
+			int len = contents.Length;
 
-			if (guardMode.Length < 6) {
-				Span<char> test = stackalloc char[guardMode.Length];
-				guardMode.FastLower(test);
+			if (contents.Length < 6) {
+				Span<char> test = stackalloc char[contents.Length];
+				contents.FastLower(test);
 
 				switch (test) {
 					case "off":
@@ -1784,14 +1781,79 @@ unsafe partial class Assembler {
 				}
 			}
 
-			string? argWrite = null;
-
-			if (len > 20) {
-				argWrite = $"{guardMode[..20]}...";
-			}
-
-			Error($"Invalid bank guard name: {argWrite ?? guardMode}");
+			Error($"Invalid bank guard name: {CharSpanHelpers.ClampForMessage(contents)}");
 		}
 	}
 
+	private void Directive_VECTOR() {
+		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString contents)) {
+			if (contents.Length < 10) {
+				Span<char> contentsLower = stackalloc char[contents.Length];
+
+				contents.FastLower(contentsLower);
+
+				switch (contentsLower) {
+					case "cop":
+						TrySetVector(ref _copVectorNative, "native COP");
+						return;
+
+					case "brk":
+						TrySetVector(ref _brkVector, "native BRK");
+						return;
+
+					case "abort":
+						TrySetVector(ref _abortVectorNative, "native abort");
+						return;
+
+					case "nmi":
+						TrySetVector(ref _nmiVectorNative, "native NMI");
+						return;
+
+					case "irq":
+						TrySetVector(ref _irqVectorNative, "native IRQ");
+						return;
+
+					case "reset":
+						TrySetVector(ref _resetVector, "reset");
+						return;
+
+					case "ecop":
+						TrySetVector(ref _copVectorEmulation, "emulation mode COP");
+						return;
+
+					case "eabort":
+						TrySetVector(ref _abortVectorEmulation, "emulation mode abort");
+						return;
+
+					case "enmi":
+						TrySetVector(ref _nmiVectorEmulation, "emulation mode NMI");
+						return;
+
+					case "eirq":
+						TrySetVector(ref _irqVectorEmulation, "emulation mode IRQ/BRK");
+						return;
+				}
+			}
+
+			Error($"Invalid vector name: {CharSpanHelpers.ClampForMessage(contents)}");
+
+			void TrySetVector(ref int? vector, string name) {
+				if (Mapper is MapperMode.None or MapperMode.Invalid) {
+					Error("This assembly mapper cannot apply interrupt vectors.");
+					return;
+				}
+
+				if (vector is not null) {
+					Error($"The {name} vector has already been defined.");
+
+				} else {
+					if (JumpTargetMakesSense(_pc, 0x00_FFE0)) {
+						vector = _pc;
+					} else {
+						Error("Vectors must be in bank 00 or mirror.");
+					}
+				}
+			}
+		}
+	}
 }

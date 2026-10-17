@@ -69,7 +69,7 @@ unsafe partial class Assembler {
 	private Dock? _currentSegment = null;
 
 	private Stack<int> _pcStack = new(64);
-	private Stack<long> _provStack = new(64);
+	private Stack<int?> _provStack = new(64);
 
 	private void PushPC() {
 		_pcStack.Push(_pc);
@@ -89,13 +89,13 @@ unsafe partial class Assembler {
 		if (_inProvenance) {
 			_provStack.Push(_site);
 		} else {
-			_provStack.Push(long.MinValue);
+			_provStack.Push(null);
 		}
 	}
 
 	private void PullProvenance() {
-		if (_provStack.TryPop(out long newpv)) {
-			if (newpv is long.MinValue) {
+		if (_provStack.TryPop(out int? newpv)) {
+			if (newpv is null) {
 				_inProvenance = false;
 			} else {
 				_site = (int) newpv;
@@ -649,7 +649,7 @@ unsafe partial class Assembler {
 					WarningIfWeirdLocalJump(vval, Provenance);
 				}
 
-				SnesHelpers.WriteW(wr + 1, val.ValueInt32);
+				SnesHelpers.WriteW(wr + 1, vval);
 			}
 
 			TrackAndStep3();
@@ -698,7 +698,8 @@ unsafe partial class Assembler {
 				if (MissingTokenSeverity >= MissingTokenSeverity.AbsolutePointers) {
 					WarningIfWeirdLocalJump(vval, Provenance);
 				}
-				SnesHelpers.WriteW(wr + 1, val.ValueInt32);
+
+				SnesHelpers.WriteW(wr + 1, vval);
 			}
 			TrackAndStep3();
 		}

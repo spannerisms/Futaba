@@ -2,7 +2,7 @@
 
 namespace Futaba;
 
-internal unsafe sealed class SourceBinary : IWatchedFile {
+internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<SourceBinary> {
 	private byte* _allocBlock;
 	public string? Error { get; private set; } = null;
 	public string FileName { get; }
@@ -14,11 +14,15 @@ internal unsafe sealed class SourceBinary : IWatchedFile {
 	public bool WasUsed { get; set; } = false;
 	private bool _disposed = false;
 
-	public SourceBinary(string path) {
+	private SourceBinary(string path) {
 		FileName = Path.GetFullPath(path);
 		DirectoryName = Path.GetDirectoryName(FileName);
 		Handle = IWatchedFile.OpenHandle(FileName);
 		Refresh();
+	}
+
+	public static SourceBinary Create(string path) {
+		return new SourceBinary(path);
 	}
 
 	public void Refresh() {

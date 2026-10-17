@@ -26,7 +26,7 @@ internal unsafe abstract class SourceObject : IDisposable {
 		return NativeMemory.AllocNice<char>(length + BufferPadding * 2);
 	}
 
-	/// <inheritdoc cref="IDisposable.Dispose()"/>
+	/// <inheritdoc/>
 	public virtual void Dispose() {
 		Dispose(true);
 		GC.SuppressFinalize(this);

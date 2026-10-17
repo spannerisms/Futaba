@@ -12,7 +12,7 @@ partial class Assembler {
 	/// Creates an assembler for the given mode and using the specified entry point.
 	/// </summary>
 	/// <returns>A new <see cref="Assembler"/> object for the given mode and entry point.</returns>
-	/// <param name="mode">The enum for the .</param>
+	/// <param name="mode">The enum for the desired mapper.</param>
 	/// <param name="entry">The <see cref="FileInfo"/> object to be used as the entry point of assembly.</param>
 	public static Assembler CreateAssemblerWithMapper(MapperMode mode, FileInfo entry) {
 		return mode switch {
@@ -46,7 +46,7 @@ partial class Assembler {
 	/// <summary>
 	/// Tests an integer for being within the valid range of ROM sizes for this instance's mapper mode.
 	/// </summary>
-	/// <param name="size">The size to test</param>
+	/// <param name="size">The size to test.</param>
 	/// <returns><see langword="true"/> if the size can be considered valid; otherwise <see langword="false"/>.</returns>
 	public bool IsValidRomSize(int size) {
 		return size >= MinRomSize && size <= MaxRomSize;
@@ -70,11 +70,13 @@ partial class Assembler {
 	/// <summary>
 	/// Converts a given address to a binary offset.
 	/// </summary>
+	/// <param name="address">The address to convert.</param>
 	public abstract int AddressToOffset(int address);
 
 	/// <summary>
 	/// Converts a given binary offset to a SNES address.
 	/// </summary>
+	/// <param name="offset">The binary offset to convert.</param>
 	public abstract int OffsetToAddress(int offset);
 
 	private protected abstract void StepPC(int step);
@@ -199,6 +201,7 @@ public sealed class UnmappedAssembler : Assembler {
 
 	// doesn't make sense to perform these on an unmapped rom.
 	private protected override void InitializeHeader() { }
+	private protected override void AdjustInterruptVectors() { }
 	private protected override void FinalizeHeader() { }
 	private protected override void RecalculateChecksum() { }
 

@@ -39,7 +39,6 @@ public static class RomHeader {
 	/// </summary>
 	/// <param name="title">The game title to sanitize.</param>
 	/// <returns>A header-compliant title.</returns>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string SanitizeTitle(string title) {
 		Debug.Assert(TitleLength == 21);
 

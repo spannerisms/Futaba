@@ -31,6 +31,12 @@ internal static unsafe class CharSpanHelpers {
 		}
 	}
 
+	internal static CharSpan ClampForMessage(CharSpan span) {
+		int len = Math.Min(span.Length, 20);
+
+		return span[..len];
+	}
+
 	// NEVER CHANGE THIS
 	// We want deterministic output across builds
 	internal static UInt128 HashString(CharSpan spn) {

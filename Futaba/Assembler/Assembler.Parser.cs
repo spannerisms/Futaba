@@ -20,7 +20,7 @@ unsafe partial class Assembler {
 
 	/// <summary>
 	/// Things that should be done both before and after assembly
-	/// both to reduce allocations and maintain a consistent public state.
+	/// to clean up allocations and maintain a consistent public state.
 	/// </summary>
 	private protected virtual void RequiredInitAndCleanUp() {
 		_currentEncoder = SnesEncoder.ASCII;
@@ -96,15 +96,27 @@ unsafe partial class Assembler {
 				_variables.Add(k, v.Clone());
 			}
 
+			_copVectorNative = null;
+			_brkVector = null;
+			_abortVectorNative = null;
+			_nmiVectorNative = null;
+			_irqVectorNative = null;
+			_copVectorEmulation = null;
+			_abortVectorEmulation = null;
+			_nmiVectorEmulation = null;
+			_resetVector = null;
+			_irqVectorEmulation = null;
+
 			RequiredInitAndCleanUp();
 
 			// reset source state
 			_previousState = null;
-			WatchFile(entryObj);
 			TransferSourceControl(entryObj);
 
 			StartAssembly();
 			ResolveAllRequests();
+
+			AdjustInterruptVectors();
 
 			if (AutoPopulateHeader) {
 				FinalizeHeader();
@@ -564,6 +576,10 @@ unsafe partial class Assembler {
 					Directive_LANG();
 					return;
 
+				case VECTOR:
+					Directive_VECTOR();
+					return;
+
 				case MMC:
 					Directive_MMC();
 					return;
@@ -593,7 +609,7 @@ unsafe partial class Assembler {
 			}
 		}
 
-		Error("Unrecognized text", $"\"{directive}\"");
+		Error("Unrecognized text", $"\"{CharSpanHelpers.ClampForMessage(directive)}\"");
 		AbortCommand();
 	}
 

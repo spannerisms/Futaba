@@ -28,22 +28,6 @@ partial class Assembler {
 		return watcher;
 	}
 
-	private void WatchFile(IWatchedFile file) {
-		if (!Incremental) {
-			return;
-		}
-
-		GetWatcher(file.DirectoryName)?.WatchFile(file);
-	}
-
-	private void WatchFile(string path) {
-		if (!Incremental) {
-			return;
-		}
-
-		GetWatcher(Path.GetDirectoryName(path))?.WatchFile(path);
-	}
-
 	private void RaiseSourceChangeEvent(object sender, FileSystemEventArgs e) {
 		if (_disposed || _processedEvent) {
 			return;
@@ -53,15 +37,17 @@ partial class Assembler {
 		_filesChanged?.Invoke(this, e);
 	}
 
-	internal bool TryGetSource(string path, [NotNullWhen(true)] out SourceFile? file) {
+	private bool TryGetWatchedFile<T>(Dictionary<string, T> dictionary, string path, [NotNullWhen(true)] out T? file)
+		where T : class, IWatchedFile, IWatchedFileFactory<T> {
+
 		if (TryGetFileName(path, out var fullPath)) {
-			ref var fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_loadedFiles, fullPath, out _);
+			ref T? fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(dictionary, fullPath, out _);
 
 			if (fileRef is not null) {
 				fileRef.Refresh();
 
 			} else {
-				fileRef = new(fullPath);
+				fileRef = T.Create(fullPath);
 			}
 
 			if (fileRef.Error is not null) {
@@ -70,50 +56,37 @@ partial class Assembler {
 					: CurrentSourceLine;
 
 				Error("Problem loading file", fileRef.Error, eline);
-				WatchFile(fullPath);
+
+				// we still want to watch this path for changes
+				if (Incremental) {
+					GetWatcher(Path.GetDirectoryName(fullPath))?.WatchFile(path);
+				}
+
 				file = null;
 				return false;
+			}
+
+			if (Incremental) {
+				GetWatcher(fileRef.DirectoryName)?.WatchFile(fileRef);
 			}
 
 			fileRef.WasUsed = true;
 
 			file = fileRef;
 			return true;
+
 		} else {
 			file = null;
 			return false;
 		}
 	}
 
+	internal bool TryGetSource(string path, [NotNullWhen(true)] out SourceFile? file) {
+		return TryGetWatchedFile(_loadedFiles, path, out file);
+	}
+
 	internal bool TryGetBinary(string path, [NotNullWhen(true)] out SourceBinary? file) {
-		if (TryGetFileName(path, out var fullPath)) {
-			ref var fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_loadedBinaries, fullPath, out _);
-
-			if (fileRef is not null) {
-				fileRef.Refresh();
-			} else {
-				fileRef = new(fullPath);
-			}
-
-			if (fileRef.Error is not null) {
-				SourceLine eline = _currentSourceObject == SourceFile.Empty
-					? default
-					: CurrentSourceLine;
-
-				Error("Problem loading file", fileRef.Error, eline);
-				WatchFile(fullPath);
-				file = null;
-				return false;
-			}
-
-			fileRef.WasUsed = true;
-
-			file = fileRef;
-			return true;
-		} else {
-			file = null;
-			return false;
-		}
+		return TryGetWatchedFile(_loadedBinaries, path, out file);
 	}
 
 	internal bool TryGetFileName(string path, [NotNullWhen(true)] out string? filePath) {

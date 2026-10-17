@@ -47,15 +47,32 @@ public unsafe abstract partial class Assembler : IDisposable {
 	public FileInfo EntryPoint { get; }
 
 	/// <summary>
-	/// Gets or sets the base binary to patch over.
+	/// Gets or sets the base binary data used to populate the initial buffer.
 	/// If <see langword="null"/>, assembly begins with a zero-filled buffer.
+	/// <para>
+	/// If the size of this array differs from <see cref="InitialRomSize"/>
+	/// then either excess data will be ignored, or the unused space will be
+	/// initialized to zero.
+	/// </para>
 	/// </summary>
 	/// <inheritdoc cref="OverflowAction" path="//remarks|//exception"/>
 	public byte[]? BaseRom {
 		get => _baseRom;
 		set {
 			ThrowIfAssembling();
-			_baseRom = value;
+
+			if (value is null) {
+				_baseRom = null;
+
+			} else {
+				// avoid reallocation when the sizes are identical
+				if (_baseRom is not null && _baseRom.Length == value.Length) {
+					value.CopyTo(_baseRom, 0);
+
+				} else {
+					_baseRom = [.. value];
+				}
+			}
 		}
 	}
 
@@ -146,7 +163,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// <para>
 	/// If an exception is thrown during assembly,
 	/// this will return information about the source line
-	/// that was being handled at the time the exception was thrown.
+	/// that was being handled at the time it occurred.
 	/// </para>
 	/// <para>
 	/// If no exception has occurred, this will return <see langword="null"/>.
