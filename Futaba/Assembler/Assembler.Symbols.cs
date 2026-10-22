@@ -5,24 +5,29 @@ unsafe partial class Assembler {
 	/// <summary>
 	/// Returns a new copy of this instance's symbols dictionary.
 	/// </summary>
-	/// <remarks>
-	/// If the assembler is busy, an empty dictionary will be returned.
-	/// </remarks>
-	public Dictionary<string, Symbol> Symbols => AmBusy() ? [] : _symbols.GetCopy();
+	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
+	public Dictionary<string, Symbol> GetSymbols() {
+		ThrowIfAssembling();
+		return _symbols.GetCopy();
+	}
 
 	/// <summary>
 	/// Returns a new copy of this instance's variables dictionary.
 	/// </summary>
-	/// <inheritdoc cref="Symbols" path="//remarks"/>
-	public Dictionary<string, Variable> Variables => AmBusy() ? [] : _variables.GetCopy();
+	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
+	public Dictionary<string, Variable> GetVariables() {
+		ThrowIfAssembling();
+		return _variables.GetCopy();
+	}
 
 	/// <summary>
 	/// Returns a new copy of this instance's breakpoint list.
 	/// </summary>
-	/// <remarks>
-	/// If the assembler is busy, an empty collection will be returned.
-	/// </remarks>
-	public Breakpoint[] Breakpoints => AmBusy() ? [] : [.. _breakpoints];
+	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
+	public Breakpoint[] GetBreakpoints() {
+		ThrowIfAssembling();
+		return [.. _breakpoints];
+	}
 
 	#region Private fields
 	private List<Breakpoint> _breakpoints = [];

@@ -746,7 +746,7 @@ internal static partial class Igarashi {
 		using var w = new StreamWriter(Helpers.WaitForAndCreateStream(symfile));
 		w.BaseStream.Clear();
 
-		var list = assembler.Symbols.Values;
+		var list = assembler.GetSymbols().Values;
 
 		w.WriteLine("[labels]");
 
@@ -784,7 +784,7 @@ internal static partial class Igarashi {
 		using var w = new StreamWriter(Helpers.WaitForAndCreateStream(symfile));
 		w.BaseStream.Clear();
 
-		var list = assembler.Symbols.Values;
+		var list = assembler.GetSymbols().Values;
 
 		// set up some stack space for hex conversion
 		Span<char> addrHex = stackalloc char[13];
