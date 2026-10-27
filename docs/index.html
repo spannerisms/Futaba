@@ -49,14 +49,9 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 	<li>CLI symbols output not yet validated</li>
 </ul>
 
-
-
-
 <!---Future text
 
 <p id="release_disclaimer">Futaba is currently in a preview stage. This stage is scheduled to end on TIMEITENDS. During this time, syntax for various directives, etc. may change in response to feedback. After this preview stages, Futaba will enter full release, and syntax will no longer change. Until the full release, guarantees about determinism across release should not be considered valid.</p>--->
-
-
 
 <h2 id="quickstart">Quickstart</h2>
 
@@ -195,22 +190,22 @@ F
 <p>Padding only lengthens strings that are too short. To force an exact length instead of a minimum, use the <fblk>len</fblk> function with the same arguments.</p>
 
 <ul><fblk>pad</fblk> modes:
-	<li><ftok>l</ftok> &ndash; pad and left align</li>
-	<li><ftok>r</ftok> &ndash; pad and right align</li>
-	<li><ftok>cl</ftok> &ndash; pad and center-left align (alias: <ftok>c</ftok>)</li>
-	<li><ftok>cr</ftok> &ndash; pad and center-right align</li>
+	<li><ftok>l</ftok> &ndash; pad on left</li>
+	<li><ftok>r</ftok> &ndash; pad on right</li>
+	<li><ftok>cl</ftok> &ndash; pad on both sides and center-right align</li>
+	<li><ftok>cr</ftok> &ndash; pad on both sides and center-left align (alias: <ftok>c</ftok>)</li>
 </ul>
 
 <div class="futexample">
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:l20 <fcom>; "Hello world!        "</fcom>
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:l20'!' <fcom>; "Hello world!!!!!!!!!"</fcom>
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:r20'!' <fcom>; "!!!!!!!!Hello world!"</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:r20 <fcom>; "Hello world!        "</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:r20'!' <fcom>; "Hello world!!!!!!!!!"</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:l20'!' <fcom>; "!!!!!!!!Hello world!"</fcom>
 <asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:c20 <fcom>; "    Hello world     "</fcom>
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:cr20 <fcom>; "     Hello world    "</fcom>
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:cl20 <fcom>; "    Hello world     "</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:cl20 <fcom>; "     Hello world    "</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:cr20 <fcom>; "    Hello world     "</fcom>
 <asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:r5 <fcom>; "Hello world!"</fcom>
 
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///len:l20 <fcom>; "Hello world!        "</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///len:r20 <fcom>; "Hello world!        "</fcom>
 <asmop>db</asmop> <fstr>"Hello world!"</fstr>///len:l5 <fcom>; "Hello"</fcom>
 <asmop>db</asmop> <fstr>"Hello world!"</fstr>///len:r5 <fcom>; "Hello"</fcom>
 </div>
@@ -693,7 +688,6 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 
 <div class="futaba-warn">Note: The plop and pile directives do not affect the position being assembled. For example, the internal variable <fvab>!:pc</fvab> will return the current program counter and not the position of the data. This is intentional behavior that facilitates the creation of vector tables.</div>
 
-
 <h4>Allocations</h4>
 
 <p>The <fkey id="directive-allocate">allocate</fkey> directive can be used to create blocks of allocated address space using the following syntaxes:</p>
@@ -726,7 +720,6 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 
 <fkey>allocate</fkey> * <fcom>; block begins at $7E0210</fcom>
 </div>
-
 
 <p>Allocation blocks are more restricted than code blocks, only allowing the following keywords:</p>
 
@@ -773,7 +766,6 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 ++ -- <fcom>; two on the same line? perfectly valid!</fcom>
 </div>
 
-
 <h4 id="symbol_properties">Symbol properties and context</h4>
 
 <p>All symbols represent at least 3 values: a binary offset, a ROM address, and a provenance.</p>
@@ -787,9 +779,66 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <fkey>print</fkey> Dragon:offset <fcom>; binary offset</fcom>
 </div>
 
+<h4>Interrupt vectors</h4>
+
+<p>The <fkey id="directive-vector">vector</fkey> directive can be used to declare a location as an interrupt vector. Each vector can only be set once, and they must be set in a location that corresponds to bank&nbsp;00. Vectors are added to the table irrespective of header auto-population.</p>
+
+<table id="interrupt-vectors" class="{{ tblclasses }} center">
+	<thead>
+		<tr>
+			<th>Vector</th>
+			<th>Native</th>
+			<th>Emulation</th>
+		</tr>
+	<tbody>
+		<tr>
+			<th>COP</th>
+			<td><fkey>cop</fkey></td>
+			<td><fkey>ecop</fkey></td>
+		</tr>
+		<tr>
+			<th>BRK</th>
+			<td><fkey>brk</fkey></td>
+			<td><farg>&mdash;</farg></td>
+		</tr>
+		<tr>
+			<th>Abort</th>
+			<td><fkey>abort</fkey></td>
+			<td><fkey>eabort</fkey></td>
+		</tr>
+		<tr>
+			<th>NMI</th>
+			<td><fkey>nmi</fkey></td>
+			<td><fkey>enmi</fkey></td>
+		</tr>
+		<tr>
+			<th>Reset</th>
+			<td><farg>&mdash;</farg></td>
+			<td><fkey>reset</fkey></td>
+		</tr>
+		<tr>
+			<th>IRQ</th>
+			<td><fkey>irq</fkey></td>
+			<td><fkey>eirq</fkey></td>
+		</tr>
+	</tbody>
+</table>
+
+<div class="futexample">
+<fkey>vector</fkey> NMI
+<flbl>NMI:</flbl>
+	<asmop>REP</asmop> <immval>#$30</immval>
+<farg>...</farg>
+
+<fkey>vector</fkey> IRQ
+<flbl>IRQ:</flbl>
+	<asmop>REP</asmop> <immval>#$30</immval>
+<farg>...</farg>
+</div>
+
 <h3 id="math">Expressions</h3>
 
-<p>Futaba supports expressions for nearly all operands and arguments. Expressions use standard programmer syntax for mathematical operations with C-style function calls, and several assembly-specific operators.</p>
+<p>Futaba supports expressions for nearly all operands and arguments. Expressions use standard programmer syntax for mathematical operations with C-style function calls and several assembly-specific operators.</p>
 
 <p>Expressions follow C#'s operator precedence with custom operators given the precedence that makes the most sense under those rules.</p>
 
@@ -870,7 +919,6 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 		</tr>
 	{%- endfor -%}
 
-
 </table>
 
 <h4>White space</h4>
@@ -906,9 +954,6 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <fkey>print</fkey> 1 <fop>&amp;</fop> 3 <fcom>; evaluates to 1</fcom>
 <fkey>print</fkey> 1 <fop>&amp;</fop> 3.14 <fcom>; evaluates to 1</fcom>
 </div>
-
-
-
 
 <h3 id="variables">Variables</h3>
 
@@ -969,8 +1014,6 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 		</tr>
 	{%- endfor -%}
 </table>
-
-
 
 <h3 id="functions">Functions</h3>
 

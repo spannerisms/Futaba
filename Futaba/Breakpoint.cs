@@ -1,16 +1,9 @@
 ﻿namespace Futaba;
 
-internal enum BreakpointsControl {
-	Kill = -1,
-	Off = 0,
-	On,
-}
-
 /// <summary>
 /// Represents a breakpoint in assembly code.
 /// </summary>
 public sealed class Breakpoint {
-
 	private readonly BreakpointTriggers _triggers;
 
 	/// <summary>
@@ -38,7 +31,6 @@ public sealed class Breakpoint {
 	/// </summary>
 	public string Comment { get; } = string.Empty;
 
-
 	/// <summary>
 	/// Gets the length of the range of addresses this instance breaks on.
 	/// </summary>
@@ -51,6 +43,12 @@ public sealed class Breakpoint {
 
 }
 
+internal enum BreakpointsControl {
+	Kill = -1,
+	Off = 0,
+	On,
+}
+
 [Flags]
 internal enum BreakpointTriggers {
 	None = 0,
@@ -60,7 +58,6 @@ internal enum BreakpointTriggers {
 
 	RWX = Read | Write | Execute
 }
-
 
 internal enum BreakpointInserts {
 	Nothing = 0,

@@ -8,57 +8,56 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-		if (!FastRead.TryReadIdentifier(ref reading, fileEnd, out macroName)) {
+		if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out macroName)) {
 			Error(MsgInfo.InvalidMacroName);
 			AbortCommand();
 			args = null;
 			return false;
 		}
 
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		if (*reading is not '(') {
+		if (*_reading is not '(') {
 			Error("Missing opening parenthesis");
 			AbortCommand();
 			args = null;
 			return false;
 		}
 
-		reading++;
+		_reading++;
 		args = [];
 
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		if (*reading is ')') {
-			reading++;
+		if (*_reading is ')') {
+			_reading++;
 			return true;
 		}
 
 		while (true) {
-			FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
 			if (AtEndOfCommand()) {
 				Error("Unclosed macro header");
 				return false;
 			}
 
-
-			if (!FastRead.TryReadIdentifier(ref reading, fileEnd, out OperandString nextArg)) {
+			if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString nextArg)) {
 				Error("Missing or invalid macro parameter name");
 				return false;
 			}
 
-			FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
 			args.Add(nextArg);
 
-			if (*reading is ',') {
-				reading++;
+			if (*_reading is ',') {
+				_reading++;
 				continue;
 			}
 
-			if (*reading is ')') {
-				reading++;
+			if (*_reading is ')') {
+				_reading++;
 				break;
 			}
 
@@ -66,10 +65,8 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-
 		return true;
 	}
-
 
 	private void Directive_FUNCTION() {
 		if (!TryReadMacroHeader(out var macroName, out var args)) {
@@ -77,13 +74,13 @@ unsafe partial class Assembler {
 		}
 
 		if (AdvanceOverWhitespace()
-			|| ((reading + 2) >= fileEnd)
-			|| !AsciiHelpers.FastTest(reading, '=', '>')) {
+			|| ((_reading + 2) >= _fileEnd)
+			|| !AsciiHelpers.FastTest(_reading, '=', '>')) {
 			Error("Missing => operator for function declaration");
 			return;
 		}
 
-		reading += 2;
+		_reading += 2;
 
 		if (!RestOfCommand(out char* funcStart, out char* funcEnd)) {
 			Error("Empty function declaration");
@@ -98,8 +95,7 @@ unsafe partial class Assembler {
 			return;
 		}
 
-		ref var getFunc = ref UserFunctionsTable.GetRefOrDefault(funcName);
-
+		ref var getFunc = ref _functions.GetRefOrDefault(funcName);
 
 		if (getFunc is not null) {
 			Error("A user function with this name already exists");
@@ -154,29 +150,29 @@ unsafe partial class Assembler {
 
 	private void Directive_MACRO() {
 		if (TryReadMacroHeader(out var macroName, out var args)) {
-			ref var getMacro = ref MacrosTable.GetRefOrDefault(macroName);
+			ref var getMacro = ref _macros.GetRefOrDefault(macroName);
 
 			if (!AdvanceOverWhitespace()) {
 				Error("Extraneous content after macro header");
 				AbortCommand();
 			}
-			
+
 			if (CaptureBlock(MACRO, ENDMACRO, MACRO) is StringBuilder macroBody) {
 				if (getMacro is not null) {
 					Error("A macro with this name already exists");
 				} else {
-					getMacro = new(new string(macroName), args, macroBody, MacrosTable.Count, CurrentSourceLine);
+					getMacro = new(new string(macroName), args, macroBody, _macros.Count, CurrentSourceLine);
 				}
 			}
 		}
 	}
 
 	private void InvokeMacro() {
-		reading++;
+		_reading++;
 
-		if (!FastRead.TryReadIdentifier(ref reading, fileEnd, out OperandString macroname)) {
+		if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString macroname)) {
 			Error(MsgInfo.InvalidMacroName);
-		} else if (MacrosTable.TryGetValue(macroname, out var macrocalled)) {
+		} else if (_macros.TryGetValue(macroname, out var macrocalled)) {
 			if (ReadOutCommaItemsWithParen(out var macroargs)) {
 				if (macrocalled.TryGetInvoker(CurrentSourceLine, macroargs, out var macrovoke, out var errors)) {
 					FinishCommand();

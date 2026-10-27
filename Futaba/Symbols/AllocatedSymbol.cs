@@ -18,7 +18,6 @@ public sealed class AllocatedSymbol : Symbol {
 	/// </summary>
 	public override int BinaryOffset => -1;
 
-
 	/// <summary>
 	/// Gets the number of bytes allocated to this symbol.
 	/// </summary>

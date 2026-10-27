@@ -8,7 +8,6 @@ internal static class Directives {
 	internal const char SPLAT = '*';
 	internal const char BadChar = '\xBEBE';
 
-
 	internal const char
 		SublabelDelimiter = '.',
 		SymbolContextAccess = ':',
@@ -75,7 +74,6 @@ internal static class Directives {
 		ALIGN                         = "align",
 		ARRANGE                       = "arrange",
 
-
 		INCBIN                        = "incbin",
 		INCSRC                        = "incsrc",
 		ENCODER                       = "encoder",
@@ -89,6 +87,7 @@ internal static class Directives {
 
 		LANG                          = "lang",
 		ARCH                          = "arch",
+		VECTOR                        = "vector",
 
 		PUSHPC                        = "pushpc",
 		PULLPC                        = "pullpc",
@@ -100,23 +99,18 @@ internal static class Directives {
 		ENDIF                         = "endif",
 		ELSE                          = "else",
 
-
 		BREAKPOINTS                   = "breakpoints",
-
 
 		PRINT                         = "print",
 		PRINTF                        = "printf",
 		WARN                          = "warn",
 		ERROR                         = "error";
 
-
-
 	internal const string LongBar = "----------------------------------------------------------------------------------------------------";
 
 	static Directives() {
 		Debug.Assert(LongBar.Length is 100);
 	}
-
 
 	internal static readonly FrozenSet<string> ReservedKeywords = [
 		// 65816 registers

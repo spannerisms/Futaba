@@ -1,20 +1,17 @@
 ﻿namespace Futaba;
 
 unsafe partial class Assembler {
-	private Dictionary<string, Variable> InitialVariables = [];
-	private SpannedLookup<Variable> VariablesTable = new(50);
-
 	private void DeclareVariable() {
 		const string NoCompound = "Cannot perform compound assignment on a variable that does not yet exist.";
-		reading++;
+		_reading++;
 
-		if (*reading is InternalVariableToken) {
+		if (*_reading is InternalVariableToken) {
 			Error("Internal variables are read-only");
 			AbortCommand();
 			return;
 		}
 
-		var vnameRead = FastRead.ReadAlphaNumeric(ref reading, fileEnd);
+		var vnameRead = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
 
 		if (vnameRead.Length < 1) {
 			Error("Variable missing name.");
@@ -24,15 +21,15 @@ unsafe partial class Assembler {
 
 		string varName = vnameRead;
 
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		char assignmentType = *reading;
+		char assignmentType = *_reading;
 
-		ref var theVar = ref VariablesTable.GetRefOrDefault(varName);
+		ref var theVar = ref _variables.GetRefOrDefault(varName);
 
 		switch (assignmentType) {
 			case '=':
-				reading++;
+				_reading++;
 				break;
 
 			case '+':
@@ -40,8 +37,8 @@ unsafe partial class Assembler {
 			case '-':
 			case '*':
 			case '?':
-				if (reading[1] is '=') {
-					reading += 2;
+				if (_reading[1] is '=') {
+					_reading += 2;
 					break;
 				}
 
@@ -53,7 +50,7 @@ unsafe partial class Assembler {
 				return;
 		}
 
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
 		if (!ReadRestOfCommand(out OperandString theRest)) {
 			Error("Missing operand for assignment");
@@ -139,7 +136,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private bool TryReadVariableName(ref char* start, char* end, out CharSpan name) {
 		if (!FastRead.TryReadIdentifier(ref start, end, out name)) {
 			Error("Missing variable name");
@@ -150,25 +146,8 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryGetVariable(CharSpan name, [MaybeNullWhen(false)] out Variable variable) {
-		return VariablesTable.TryGetValue(name, out variable);
+		return _variables.TryGetValue(name, out variable);
 	}
-
-//	private Variable GetOrCreateVariable(CharSpan name) {
-//		ref var getVar = ref VariablesTable.GetRefOrDefault(name);
-//
-//		getVar ??= new Variable(new string(name), 0);
-//
-//		return getVar;
-//	}
-//
-//	private Variable GetOrCreateVariable(string name) {
-//		ref var getVar = ref VariablesTable.GetRefOrDefault(name);
-//
-//		getVar ??= new Variable(name, 0);
-//
-//		return getVar;
-//	}
-
 
 	/// <summary>
 	/// Clears the initial variables dictionary.
@@ -176,16 +155,14 @@ unsafe partial class Assembler {
 	/// <inheritdoc cref="ThrowIfAssembling" path="//remarks|//exception"/>
 	public void ClearInitialVariables() {
 		ThrowIfAssembling();
-		InitialVariables.Clear();
+		_initialVariables.Clear();
 	}
-
 
 	private bool TestAddingVariable(string name) {
 		ThrowIfAssembling();
 
 		return !string.IsNullOrWhiteSpace(name) && !name.ContainsAnyExcept(AsciiHelpers.IdentifierSearch);
 	}
-
 
 	/// <summary>
 	/// Tries to add <paramref name="variable"/> to the assembler's lookup table.
@@ -200,7 +177,7 @@ unsafe partial class Assembler {
 	/// <inheritdoc cref="ThrowIfAssembling" path="//exception"/>
 	public bool TryAddVariable(Variable variable) {
 		if (TestAddingVariable(variable.Name)) {
-			InitialVariables[variable.Name] = variable;
+			_initialVariables[variable.Name] = variable;
 			return true;
 		} else {
 			return false;
@@ -216,7 +193,7 @@ unsafe partial class Assembler {
 	/// <inheritdoc cref="TryAddVariable(Variable)" path="//returns|//remarks|//exception"/>
 	public bool TryAddVariable(string name, string value) {
 		if (TestAddingVariable(name)) {
-			InitialVariables[name] = new(name, value);
+			_initialVariables[name] = new(name, value);
 			return true;
 		} else {
 			return false;
@@ -226,7 +203,7 @@ unsafe partial class Assembler {
 	/// <inheritdoc cref="TryAddVariable(string, string)"/>
 	public bool TryAddVariable(string name, int value) {
 		if (TestAddingVariable(name)) {
-			InitialVariables[name] = new(name, value);
+			_initialVariables[name] = new(name, value);
 			return true;
 		} else {
 			return false;
@@ -236,7 +213,7 @@ unsafe partial class Assembler {
 	/// <inheritdoc cref="TryAddVariable(string, string)"/>
 	public bool TryAddVariable(string name, decimal value) {
 		if (TestAddingVariable(name)) {
-			InitialVariables[name] = new(name, value);
+			_initialVariables[name] = new(name, value);
 			return true;
 		} else {
 			return false;
@@ -256,7 +233,7 @@ unsafe partial class Assembler {
 		ThrowIfAssembling();
 
 		foreach (Variable toAdd in variables) {
-			InitialVariables[toAdd.Name] = toAdd;
+			_initialVariables[toAdd.Name] = toAdd;
 		}
 	}
 
@@ -265,13 +242,9 @@ unsafe partial class Assembler {
 		ThrowIfAssembling();
 
 		foreach (Variable toAdd in variables) {
-			InitialVariables[toAdd.Name] = toAdd;
+			_initialVariables[toAdd.Name] = toAdd;
 		}
 	}
-
-
-
-
 
 	/// <returns><c>0</c> if invalid</returns>
 	internal decimal GetInternalVariable(CharSpan name) {
@@ -280,16 +253,16 @@ unsafe partial class Assembler {
 			name.FastLower(tspan);
 
 			switch (tspan) {
-				case "pc": /*            */ return PC;
+				case "pc": /*            */ return _pc;
 				case "site": /*          */ return Provenance;
 				case "here": /*          */ return Provenance;
-				case "offset": /*        */ return Offset;
-				case "rand": /*          */ return RNG.NextUInt64();
+				case "offset": /*        */ return _offset;
+				case "rand": /*          */ return _random.NextUInt64();
 				case "pi": /*            */ return 3.14159265358979323846264M;
 				case "e": /*             */ return 2.71828182845904523536028M;
 				case "rad": /*           */ return 0.01745329251994329576923M;
 				case "name": /*          */ return 0x03FF;
-				case "line": /*          */ return SourceLineNumber;
+				case "line": /*          */ return _sourceLine;
 				case "version": /*       */ return FutabaApp.VersionDecimal;
 			}
 		}
@@ -324,7 +297,6 @@ unsafe partial class Assembler {
 				return c;
 		}
 	}
-
 
 	private string ExplodeStringContents(CharSpan str) {
 		StringBuilder ret = new();
@@ -384,8 +356,7 @@ unsafe partial class Assembler {
 				ret.Append(c);
 			}
 
-
-			/******************************************/
+			///////////////////////////////////////////////////
 
 			CharSpan ReadIdentifier(CharSpan subsub) {
 				int nomstart = i;
@@ -402,4 +373,3 @@ unsafe partial class Assembler {
 		return ret.ToString();
 	}
 }
-

@@ -44,9 +44,8 @@ unsafe partial class Assembler {
 			case OpSPC.AND6: /*                                                                    */ AssembleOneBitOpsWithNot(6, 0x4A, 0x6A); break;
 			case OpSPC.AND7: /*                                                                    */ AssembleOneBitOpsWithNot(7, 0x4A, 0x6A); break;
 
-
 			case OpSPC.ASL: /*                                                                     */ DoShiftRolls(0x00); break;
-	
+
 			case OpSPC.BBC0: /*                                                                    */ AssembleBranchBitTest(0x13); break;
 			case OpSPC.BBC1: /*                                                                    */ AssembleBranchBitTest(0x33); break;
 			case OpSPC.BBC2: /*                                                                    */ AssembleBranchBitTest(0x53); break;
@@ -73,7 +72,6 @@ unsafe partial class Assembler {
 			case OpSPC.BRA: /*                                                                     */ AssembleBranch(opstr, 0x2F); break;
 			case OpSPC.BVC: /*                                                                     */ AssembleBranch(opstr, 0x50); break;
 			case OpSPC.BVS: /*                                                                     */ AssembleBranch(opstr, 0x70); break;
-
 
 			case OpSPC.BRK: /*                                                                     */ AssembleImplied(opstr, size, 0x0F); break;
 
@@ -562,7 +560,7 @@ unsafe partial class Assembler {
 					}
 				} else if (IsPSW(opstr)) {
 					WriteNoToken(0x8E);
-					return;;
+					return; ;
 				}
 
 				InvalidAddressingMode();
@@ -653,7 +651,6 @@ unsafe partial class Assembler {
 			WriteOpBB(opcode, exprS, exprD);
 		}
 
-
 		void AssembleYAopD(byte opcode) {
 			if (opstr.SplitByComma(out strD, out strS) && IsYA(strD)) {
 				var (targYA, exprYA) = GetOneMode(strS);
@@ -688,13 +685,11 @@ unsafe partial class Assembler {
 			PlaceholderOp(0xAA, 2);
 		}
 
-
 		void AssembleOneBitNot(int bitx) {
 			AggroDotW(size);
 
 			WriteOpW(0xEA, new SpcBitInstruction(ParseOperand(opstr), bitx));
 		}
-
 
 		void AssembleOneBitOps(int bitx, byte opcode) {
 			if (opstr.SplitByComma(out var obopD, out var obopS) && obopD.OnlyChar.CiIs('C')) {
@@ -721,7 +716,6 @@ unsafe partial class Assembler {
 				PlaceholderOp(opcode, 2);
 			}
 		}
-
 
 		void AssembleDirectPageOnly(byte opcode) {
 			var (targ, strOp) = GetOneMode(opstr);
@@ -806,7 +800,6 @@ unsafe partial class Assembler {
 				default: /*                                                                        */ InvalidAddressingMode(); return;
 			}
 		}
-
 
 		void DoStandardAccumulatorModes(byte opbase, SPC700Target destination, IExpressionReturn valD, SPC700Target source, IExpressionReturn valS) {
 			switch (destination) {
@@ -1006,7 +999,6 @@ unsafe partial class Assembler {
 			}
 		}
 
-
 		static bool IsYA(OperandString test) {
 			if (test.Length is 2) {
 				char* yatest = test.Start;
@@ -1038,7 +1030,7 @@ unsafe partial class Assembler {
 
 	private static OpSPC TestForSPC700(OperandString chars) {
 		int len = chars.Length; // copy so we don't need to check chars.Length every time
-		
+
 		// if it's not even 3-5 characters, give up now
 		if (len is < 3) {
 			// and actually take care of 2 letter mnemonics here, since there are only three of those
@@ -1057,15 +1049,13 @@ unsafe partial class Assembler {
 			return OpSPC.NotGood;
 		} else if (len > 4) {
 			// ditto 5 as we did 2
-			
+
 			if (len is 5) {
 				char* read5 = chars.Start;
 
 				char l5a = read5->FastLower();
 
 				ulong l5w;
-
-
 
 				if (l5a is 'p') {
 					if (AsciiHelpers.TestLowercase(read5 + 1, 'c', 'a', 'l', 'l')) return OpSPC.PCALL;
@@ -1342,7 +1332,6 @@ unsafe partial class Assembler {
 
 		return OpSPC.NotGood;
 
-
 		OpSPC SelectBCD(char bc, char cc, char cd, OpSPC op) {
 			if (b == bc) {
 				if (c == cc) {
@@ -1365,8 +1354,6 @@ unsafe partial class Assembler {
 			return OpSPC.NotGood;
 		}
 
-
-
 		OpSPC SelectC(char cc, OpSPC op) {
 			return c == cc ? op : OpSPC.NotGood;
 		}
@@ -1388,7 +1375,6 @@ unsafe partial class Assembler {
 			return OpSPC.NotGood;
 		}
 
-
 		OpSPC SelectCorCD(char cc, char cd, OpSPC op, OpSPC alt) {
 			if (c == cc) {
 				if (len == 3) return op;
@@ -1400,10 +1386,9 @@ unsafe partial class Assembler {
 	}
 }
 
-
 // Special classes to handle these special cases
-file class SpcBitInstruction(IExpressionReturn item, int bitx) : IExpressionReturn {
-	private readonly int BitMask = (bitx << 13) & 0xE000;
+file sealed class SpcBitInstruction(IExpressionReturn item, int bitx) : IExpressionReturn {
+	private readonly int _bitMask = (bitx << 13) & 0xE000;
 
 	public ExpressionState ReturnState => item.ReturnState;
 
@@ -1416,7 +1401,7 @@ file class SpcBitInstruction(IExpressionReturn item, int bitx) : IExpressionRetu
 				return MathHelpers.NaN;
 			}
 
-			return (item.ValueInt32 & 0x1FFF) | BitMask;
+			return (item.ValueInt32 & 0x1FFF) | _bitMask;
 		}
 	}
 
@@ -1425,7 +1410,7 @@ file class SpcBitInstruction(IExpressionReturn item, int bitx) : IExpressionRetu
 	}
 }
 
-file class SpcTcallInstruction(IExpressionReturn item) : IExpressionReturn {
+file sealed class SpcTcallInstruction(IExpressionReturn item) : IExpressionReturn {
 	public ExpressionState ReturnState => item.ReturnState;
 
 	public bool Resolved => item.Resolved;
@@ -1445,7 +1430,6 @@ file class SpcTcallInstruction(IExpressionReturn item) : IExpressionReturn {
 		return item.TryToResolve();
 	}
 }
-
 
 file enum SPC700Target : int {
 	NotGiven = 0,
@@ -1483,7 +1467,6 @@ file enum SPC700Target : int {
 	AbsoluteIndexedX,
 	AbsoluteIndirectIndexedX,
 	AbsoluteIndexedY,
-
 
 	// special cases
 	SPLAT,

@@ -37,7 +37,6 @@ public sealed class AssignedSymbol : Symbol {
 		return false;
 	}
 
-
 	/// <summary>
 	/// Attempts to create a symbol with the given name and the assigned value. Fails if an invalid name is supplied.
 	/// </summary>

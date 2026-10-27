@@ -54,5 +54,4 @@ internal abstract class TernaryExpression(ExpressionItem itema, ExpressionItem i
 		}
 	}
 
-
 }

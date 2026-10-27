@@ -1,8 +1,64 @@
 ﻿namespace Futaba;
 
 unsafe partial class Assembler {
-	protected private virtual void InitializeHeader() {
-		byte* header = RomBuffer + AddressToOffset(RomHeader.ExtendedHeaderLocation);
+	private int? _copVectorNative = null;
+	private int? _brkVector = null;
+	private int? _abortVectorNative = null;
+	private int? _nmiVectorNative = null;
+	private int? _irqVectorNative = null;
+
+	private int? _copVectorEmulation = null;
+	private int? _abortVectorEmulation = null;
+	private int? _nmiVectorEmulation = null;
+	private int? _resetVector = null;
+	private int? _irqVectorEmulation = null;
+
+	private protected virtual void AdjustInterruptVectors() {
+		byte* vectorTable = _romPtr + AddressToOffset(0x00FFE0);
+
+		if (_copVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x04, _copVectorEmulation.Value);
+		}
+
+		if (_brkVector is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x06, _brkVector.Value);
+		}
+
+		if (_abortVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x08, _abortVectorEmulation.Value);
+		}
+
+		if (_nmiVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x0A, _nmiVectorEmulation.Value);
+		}
+
+		if (_irqVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x0E, _irqVectorEmulation.Value);
+		}
+
+		if (_copVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x14, _copVectorEmulation.Value);
+		}
+
+		if (_abortVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x18, _abortVectorEmulation.Value);
+		}
+
+		if (_nmiVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x1A, _nmiVectorEmulation.Value);
+		}
+
+		if (_resetVector is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x1C, _resetVector.Value);
+		}
+
+		if (_irqVectorEmulation is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x1E, _irqVectorEmulation.Value);
+		}
+	}
+
+	private protected virtual void InitializeHeader() {
+		byte* header = _romPtr + AddressToOffset(RomHeader.ExtendedHeaderLocation);
 
 		if (ExtendedHeader) {
 			header[0x2A] = 0x33;
@@ -10,7 +66,7 @@ unsafe partial class Assembler {
 			SnesHelpers.InsertHeaderString(MakerCode, header + 0x00, SnesHelpers.MakerCodeLength);
 			SnesHelpers.InsertHeaderString(GameCode, header + 0x02, SnesHelpers.GameCodeLength);
 
-			*(ulong*) (header + 6) = 0;
+			new Span<byte>(header + 6, 8).Clear();
 
 			header[0x0E] = SpecialVersion;
 			header[0x0F] = CartridgeSubtype;
@@ -27,13 +83,18 @@ unsafe partial class Assembler {
 		// get rom type
 		if (HasCoprocessor) {
 			header[0x26] = (byte) ((int) Coprocessor >> 16);
+
 			header[0x26] |= (HasRam, HasBattery) switch {
 				(false, false) => 0x03,
 				(false, true) => 0x06,
 				(true, false) => 0x04,
 				(true, true) => 0x05,
 			};
-			header[0x0D] = header[0x28];
+
+			if (ExtendedHeader) {
+				header[0x0D] = header[0x28]; // duplicate ram size
+			}
+
 		} else {
 			if (HasRam) {
 				header[0x26] = (byte) (HasBattery ? 0x02 : 0x01);
@@ -42,14 +103,13 @@ unsafe partial class Assembler {
 			}
 		}
 
-
 		header[0x29] = Destination.Value;
 
 		header[0x2B] = RomVersion;
 	}
 
-	protected private virtual void FinalizeHeader() {
-		byte* header = RomBuffer + AddressToOffset(RomHeader.ExtendedHeaderLocation);
+	private protected virtual void FinalizeHeader() {
+		byte* header = _romPtr + AddressToOffset(RomHeader.ExtendedHeaderLocation);
 
 		byte mapcode = MapperCode;
 
@@ -64,14 +124,14 @@ unsafe partial class Assembler {
 		RecalculateChecksum();
 	}
 
-
-
 	/// <summary>
 	/// Gets or sets the software title, automatically sanitized to match the Nintendo specifications
-	/// as outlined in BOOK I, 1-2-12 (page 32)
-	/// <br/>- 21 characters in length
-	/// <br/>- Only printable ASCII (code points 0x20-0x7E)
-	/// <br/>- Padded with spaces
+	/// as outlined in BOOK I, 1-2-12 (page 32):
+	/// <list type="bullet">
+	/// <item>21 characters in length</item>
+	/// <item>Only printable ASCII (code points 0x20-0x7E)</item>
+	/// <item>Padded with spaces</item>
+	/// </list>
 	/// </summary>
 	/// <remarks>
 	/// The value of this property has no effect on the software's ability to function,
@@ -91,7 +151,7 @@ unsafe partial class Assembler {
 	} = "";
 
 	/// <summary>
-	/// Gets or sets whether the internal header is assembled after assembly.
+	/// Gets or sets whether the internal header is populated by the assembler.
 	/// </summary>
 	/// <inheritdoc cref="OverflowAction" path="//remarks|//exception"/>
 	public bool AutoPopulateHeader {
@@ -125,15 +185,15 @@ unsafe partial class Assembler {
 	/// and inserts those values into the header at the appropriate location
 	/// as outlined on page 1-2-21 of BOOK I.
 	/// </summary>
-	protected private virtual void RecalculateChecksum() {
+	private protected virtual void RecalculateChecksum() {
 		// placeholder checksum for calculation
-		ushort* complementPointer = (ushort*) (RomBuffer + AddressToOffset(RomHeader.ExtendedHeaderLocation + 0x2C));
+		ushort* complementPointer = (ushort*) (_romPtr + AddressToOffset(RomHeader.ExtendedHeaderLocation + 0x2C));
 
 		// yes, the complement appears before the checksum in the header
 		complementPointer[1] = 0xBEBE;
 		complementPointer[0] = 0x4141;
 
-		ushort sum = RomHeader.CalculateChecksum(RomBuffer, CurrentRomSize);
+		ushort sum = RomHeader.CalculateChecksum(_romPtr, CurrentRomSize);
 
 		complementPointer[1] = sum;
 		complementPointer[0] = (ushort) ~sum;
@@ -170,8 +230,9 @@ unsafe partial class Assembler {
 
 			if (!IsValidRomSize(value)) {
 				Throw(MinRomSize, MaxRomSize);
-				static void Throw(int min, int max) =>
-					throw new ArgumentOutOfRangeException(nameof(value), $"ROM size must be between {min} and {max}");
+				[StackTraceHidden]
+				static void Throw(int min, int max)
+					=> throw new ArgumentOutOfRangeException(nameof(value), $"ROM size must be between {min} and {max}");
 			}
 
 			field = value;
@@ -186,7 +247,6 @@ unsafe partial class Assembler {
 	/// This may differ from <see cref="InitialRomSize"/> if the ROM grew during assembly.
 	/// </remarks>
 	public int CurrentRomSize { get; private set; }
-
 
 	/// <summary>
 	/// Gets or sets the size of the on-board RAM in bytes.
@@ -234,12 +294,10 @@ unsafe partial class Assembler {
 		}
 	} = true;
 
-
 	/// <summary>
 	/// Returns whether or not this software includes on-board RAM.
 	/// </summary>
 	public bool HasRam => RamSize > 0;
-
 
 	/// <summary>
 	/// Gets or sets the co-processor used by this software.
@@ -305,7 +363,6 @@ unsafe partial class Assembler {
 			field = SnesHelpers.SanitizeString(value, SnesHelpers.MakerCodeLength);
 		}
 	} = "  ";
-
 
 	/// <summary>
 	/// Gets or sets the 4 character game code.

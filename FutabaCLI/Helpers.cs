@@ -26,7 +26,6 @@ internal static class Helpers {
 		}
 	}
 
-
 	public static byte[] GetFileAsArray(FileInfo file) {
 		using FileStream stream = file.OpenRead();
 
@@ -113,7 +112,6 @@ internal static class Helpers {
 		return s.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 	}
 
-
 	extension(Command cmd) {
 		internal void AddArguments(params Argument[] arguments) {
 			foreach (Argument a in arguments) {
@@ -128,16 +126,9 @@ internal static class Helpers {
 		}
 	}
 
-
-	extension (string s) {
+	extension(string s) {
 		public bool EqualsI(string s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
-		public bool EqualsI(Span<char> s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
-	}
-
-
-	extension (ReadOnlySpan<char> s) {
-		public bool EqualsI(string s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
-		public bool EqualsI(Span<char> s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
+		public bool EqualsI(ReadOnlySpan<char> s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
 	}
 
 	public static void WriteHexAddress(int address, Span<char> destination, int offset) {
@@ -146,8 +137,6 @@ internal static class Helpers {
 		BinaryPrimitives.WriteInt32BigEndian(addrBytes, address);
 		_ = Convert.TryToHexString(addrBytes[1..4], destination.Slice(offset, 6), out _);
 	}
-
-
 
 	public static (long, long) HashString(ReadOnlySpan<char> seedString) {
 		Span<long> seed = stackalloc long[2];
@@ -158,7 +147,6 @@ internal static class Helpers {
 
 		return (0, 0);
 	}
-
 
 	public static bool TryParseByte(ReadOnlySpan<char> s, out byte value) {
 		if (s.Length > 0) {
@@ -198,10 +186,7 @@ internal static class Helpers {
 		return false;
 	}
 
-
-
 	public static bool TryParseValue(ReadOnlySpan<char> s, out decimal value) {
-
 		if (s.Length > 0) {
 			if (s.Length > 1) {
 				char c = s[0];
@@ -219,8 +204,6 @@ internal static class Helpers {
 		value = 0M;
 		return false;
 	}
-
-
 
 	// We want RNG to never change across builds
 	// but we also want the benefits of xoshiro
@@ -241,7 +224,6 @@ internal static class Helpers {
 	//       copies or substantial portions of the Software.
 	// Licensed to the .NET Foundation under one or more agreements.
 	// The .NET Foundation licenses this file to you under the MIT license.
-
 	internal static unsafe void FillRandom(ulong seed1, ulong seed2, Span<byte> buffer) {
 		ulong s0 = 0xBEBE_6368_6565_7365ul; // need not all 0s, and this will guarantee that
 		ulong s1 = seed1; // make this the most interesting
@@ -278,9 +260,5 @@ internal static class Helpers {
 			}
 		}
 	}
-
-
-
-
 
 }

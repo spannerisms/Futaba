@@ -3,9 +3,9 @@
 unsafe partial class Assembler {
 	private void GenerateAddressMarker() {
 		// try reading hex digits until colon or bar
-		char* read = reading + 1;
+		char* read = _reading + 1;
 
-		char* theend = fileEnd; // force end into a register
+		char* theend = _fileEnd; // force end into a register
 
 		int action = AsciiHelpers.AddressMarker_Unclosed;
 		bool invalid = false;
@@ -46,17 +46,17 @@ unsafe partial class Assembler {
 
 		if (invalid) {
 			Warning(MsgInfo.BadAddressMarker, MsgInfo.InvalidHex);
-		} else if (PC != address) {
-			Warning("Disagreement between program counter and address marker", $"{PC:X6} != {address:X6}");
+		} else if (_pc != address) {
+			Warning("Disagreement between program counter and address marker", $"{_pc:X6} != {address:X6}");
 		}
 
 		read++;
 
 		if (action is AsciiHelpers.AddressMarker_Bar) {
-			if (InProvenance) {
+			if (_inProvenance) {
 				Warning("No provenance provided in address marker.");
 			}
-			reading = read;
+			_reading = read;
 			return;
 		}
 
@@ -101,36 +101,35 @@ unsafe partial class Assembler {
 		read++;
 
 		if (action == AsciiHelpers.AddressMarker_Colon) {
-			reading = read - 1;
+			_reading = read - 1;
 			UnexpectedCharacter();
 			AbortCommand();
 			return;
 		} else if (invalid) {
 			Warning(MsgInfo.BadAddressMarker, MsgInfo.InvalidHex);
-		} else if (!InProvenance) {
+		} else if (!_inProvenance) {
 			Warning("Provenance provided in address marker when not relevant.");
 		} else if (Provenance != address) {
 			Warning("Disagreement between provenance and address marker", $"{Provenance:X6} != {address:X6}");
 		}
 
-		reading = read;
+		_reading = read;
 		return;
 
 		Unclosed:
 		Error(MsgInfo.BadAddressMarker, "unclosed address marker.");
 
-		reading = read;
+		_reading = read;
 
 		if (*read is ';') {
-			FastRead.ReadUntilLineEnd(ref reading, fileEnd);
+			FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
 		} else {
 			AbortCommand();
 		}
 	}
 
-
 	private void DoDataItems(int size) {
-		if (!reading->IsSkippableSpace) {
+		if (!_reading->IsSkippableSpace) {
 			UnexpectedCharacter();
 			AbortCommand();
 			return;
@@ -142,7 +141,7 @@ unsafe partial class Assembler {
 		}
 
 		bool more;
-		
+
 		do {
 			more = ReadToNextComma(out var next);
 
@@ -153,7 +152,7 @@ unsafe partial class Assembler {
 				if (TryGetVariable(next.AsSpan(1), out var vari)) {
 					switch (vari.VarType) {
 						case VariableType.String:
-							WriteString(vari.Contents, CurrentEncoder);
+							WriteString(vari.Contents, _currentEncoder);
 							break;
 
 						case VariableType.Value:
@@ -161,7 +160,6 @@ unsafe partial class Assembler {
 							WriteData(datval, size);
 							break;
 					}
-
 
 				} else {
 					Error(MsgInfo.VariableNotFound(next));
@@ -173,15 +171,13 @@ unsafe partial class Assembler {
 				WriteData(datval, size);
 			}
 
-
 		} while (more);
-
 
 		void WriteString(string str, SnesEncoder encoder) {
 			int len = str.Length * size;
 
 			if (TryAdvanceProgramCounter(len)) {
-				InsertEncodedString(Offset, size, str, encoder);
+				InsertEncodedString(_offset, size, str, encoder);
 				TrackAndStep(len);
 			}
 		}
@@ -189,8 +185,8 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryGetAllocatedDataStatement(string directiveName, out int size) {
-		if (!AdvanceOverWhitespace() && *reading++ is 'd' or 'D' && !AtEndOfCommand()) {
-			switch (*reading++) {
+		if (!AdvanceOverWhitespace() && *_reading++ is 'd' or 'D' && !AtEndOfCommand()) {
+			switch (*_reading++) {
 				case 'b' or 'B':
 					size = 1;
 					return TestDataStatement();
@@ -226,8 +222,6 @@ unsafe partial class Assembler {
 
 	}
 
-
-
 	private void Directive_PILE() {
 		if (!DemandSpaceWithError()) return;
 
@@ -248,10 +242,11 @@ unsafe partial class Assembler {
 			return;
 		}
 
-		if (AdvanceOverWhitespace() || !FastRead.IsAllocator(reading)) {
+		if (AdvanceOverWhitespace() || !FastRead.IsAllocator(_reading)) {
 			Error(MsgInfo.MissingAllocator);
+
 		} else {
-			reading += 2;
+			_reading += 2;
 			if (TryGetAllocatedDataStatement(PILE, out int size)) {
 				bool more;
 
@@ -267,7 +262,7 @@ unsafe partial class Assembler {
 						if (TryGetVariable(next.AsSpan(1), out var vari)) {
 							switch (vari.VarType) {
 								case VariableType.String:
-									WriteString(vari.Contents, CurrentEncoder);
+									WriteString(vari.Contents, _currentEncoder);
 									break;
 
 								case VariableType.Value:
@@ -341,7 +336,7 @@ unsafe partial class Assembler {
 					if (TryGetVariable(next.AsSpan(1), out var vari)) {
 						switch (vari.VarType) {
 							case VariableType.String:
-								WriteString(vari.Contents, CurrentEncoder);
+								WriteString(vari.Contents, _currentEncoder);
 								break;
 
 							case VariableType.Value:
@@ -361,7 +356,6 @@ unsafe partial class Assembler {
 				}
 			} while (more);
 
-
 			void WriteString(string str, SnesEncoder encoder) {
 				int len = str.Length * size;
 
@@ -376,7 +370,6 @@ unsafe partial class Assembler {
 			}
 		}
 	}
-
 
 	private void Directive_INCSRC() {
 		if (!DemandSpaceWithError()) return;
@@ -406,19 +399,19 @@ unsafe partial class Assembler {
 
 		string? labelName = null;
 		int binsize = 0;
-		int labelOffset = Offset;
-		int binaddress = PC;
+		int labelOffset = _offset;
+		int binaddress = _pc;
 		int binsite = Provenance;
 
-		if (*reading is '[') {
-			reading++;
+		if (*_reading is '[') {
+			_reading++;
 
 			if (!AdvanceOverWhitespace()
 				&& TryReadAnyLabelName(out var fullName, out var chunkName, out int depth)
 				&& !AdvanceOverWhitespace()
-				&& *reading is ']') {
+				&& *_reading is ']') {
 				labelName = fullName;
-				reading++;
+				_reading++;
 			} else {
 				UnexpectedCharacter();
 				AbortCommand();
@@ -433,7 +426,6 @@ unsafe partial class Assembler {
 		}
 
 		bool moreFiles;
-
 
 		// TODO needs stress testing
 		do {
@@ -456,7 +448,7 @@ unsafe partial class Assembler {
 				pathString = ExplodeStringContents(pstart + 1, pread);
 				pread++;
 			} else {
-				UnexpectedCharacter(pread);
+				UnexpectedCharacter(*pread);
 				continue;
 			}
 
@@ -466,7 +458,7 @@ unsafe partial class Assembler {
 				break;
 			}
 
-			int binlen = (int) binFile.Length;
+			int binlen = binFile.Length;
 			int binstart = 0; // static analysis can't seem to figure out these are guaranteed to be initialized
 			int binend = binlen;
 
@@ -516,7 +508,6 @@ unsafe partial class Assembler {
 									continue;
 								}
 
-
 							} else {
 								Error("Too many allocators.");
 								continue;
@@ -526,14 +517,13 @@ unsafe partial class Assembler {
 							continue;
 						}
 					} else {
-						UnexpectedCharacter(pcheck);
+						UnexpectedCharacter(*pcheck);
 						continue;
 					}
 				} else {
-					UnexpectedCharacter(pread);
+					UnexpectedCharacter(*pread);
 					continue;
 				}
-
 
 			}
 
@@ -557,7 +547,7 @@ unsafe partial class Assembler {
 				continue;
 			} else {
 				if (TryAdvanceProgramCounter(binlen)) {
-					Span<byte> filler = new(PcPointer, binlen);
+					Span<byte> filler = new(_pcPtr, binlen);
 
 					if (binFile.TryGetSpan(binstart, binend - binstart, out var binSpan)) {
 						binSpan.CopyTo(filler);
@@ -576,11 +566,10 @@ unsafe partial class Assembler {
 		FinishCommand();
 	}
 
-
 	private void Directive_LANG() {
 		if (!DemandSpaceWithError()) return;
 
-		var langname = FastRead.ReadAlphaNumeric(ref reading, fileEnd);
+		var langname = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
 
 		if (langname.IsEmpty) {
 			Error("Missing architecture name.");
@@ -596,19 +585,19 @@ unsafe partial class Assembler {
 					case "wdc65816":
 					case "65c816":
 					case "wdc65c816":
-						arch = SnesArchitecture.WDC65816;
+						_architecture = SnesArchitecture.WDC65816;
 						FinishCommand();
 						return;
 
 					case "spc":
 					case "spc700":
-						arch = SnesArchitecture.SPC700;
+						_architecture = SnesArchitecture.SPC700;
 						FinishCommand();
 						return;
 
 					case "sfx":
 					case "superfx":
-						arch = SnesArchitecture.SuperFX;
+						_architecture = SnesArchitecture.SuperFX;
 						FinishCommand();
 						return;
 				}
@@ -618,7 +607,6 @@ unsafe partial class Assembler {
 			FinishCommand();
 		}
 	}
-
 
 	private void Directive_RAW() {
 		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString arg)) {
@@ -630,7 +618,7 @@ unsafe partial class Assembler {
 
 			if (TryAdvanceProgramCounter(len)) {
 				if (good) {
-					byte* writeTo = PcPointer;
+					byte* writeTo = _pcPtr;
 					char* rawread = arg.Start;
 
 					for (int i = 0; i < len; i++, writeTo++) {
@@ -656,12 +644,10 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
 	private void Directive_REBANK() {
 		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString arg)) {
 			if (arg.OnlyCharIs(SPLAT)) {
-				InProvenance = false;
+				_inProvenance = false;
 			} else {
 				int address = Provenance & SnesHelpers.AbsoluteMask;
 
@@ -689,7 +675,6 @@ unsafe partial class Assembler {
 			}
 		}
 	}
-
 
 	private void Directive_FILL() {
 		const string BadFillCommand = "Malformatted fill command";
@@ -821,7 +806,7 @@ unsafe partial class Assembler {
 						validFill = false;
 						Error(BadAlignSize);
 					} else {
-						blockSize = PC % alignVal;
+						blockSize = _pc % alignVal;
 
 						if (blockSize is 0) {
 							validFill = false;
@@ -897,38 +882,33 @@ unsafe partial class Assembler {
 		if (validFill && TryAdvanceProgramCounter(blockSize)) {
 			if (random) {
 				XoRandom source = fillvalstr.IsNull
-					? RNG // use current RNG
+					? _random // use current RNG
 					: new(CharSpanHelpers.HashString(fillvalstr));
 
-				Span<byte> randfill = new(PcPointer, blockSize);
+				Span<byte> randfill = new(_pcPtr, blockSize);
 				source.NextBytes(randfill);
 			} else if (fillvalexpr!.NeedsRequest) {
-				FillRequests.Add(new(fillvalexpr, Offset, blockSize, fillwordsize, WriteTime, CurrentSourceLine));
+				_fillRequests.Add(new(fillvalexpr, _offset, blockSize, fillwordsize, _time, CurrentSourceLine));
 			} else {
-				PerformBlockFill(PcPointer, blockSize, fillwordsize, fillvalexpr.ValueInt32);
+				PerformBlockFill(_pcPtr, blockSize, fillwordsize, fillvalexpr.ValueInt32);
 			}
 
 			TrackAndStep(blockSize);
 		}
 	}
 
-	private BreakpointsControl BreakpointsAre = BreakpointsControl.Off;
-	private BreakpointInserts DefaultBreakpointInsert = BreakpointInserts.Nothing;
-	private BreakpointTriggers DefaultBreakpointTriggers = BreakpointTriggers.RWX;
-
-
 	private (BreakpointTriggers, BreakpointInserts) GetBreakPointParams() {
 		// just return the current default if none is specified
 		BreakpointInserts inserts;
 		BreakpointTriggers triggers;
 
-		char* read = reading;
-		char* theend = fileEnd;
+		char* read = _reading;
+		char* theend = _fileEnd;
 
 		var targ = FastRead.ReadAlphaNumericSpan(ref read, theend);
 
 		if (targ.Length is 0) {
-			triggers = DefaultBreakpointTriggers;
+			triggers = _defaultBpTriggers;
 		} else {
 			triggers = BreakpointTriggers.None;
 
@@ -939,9 +919,9 @@ unsafe partial class Assembler {
 					case 'X': triggers |= BreakpointTriggers.Execute; continue;
 				}
 
-				UnexpectedCharacter(&c);
+				UnexpectedCharacter(c);
 				AbortCommand();
-				return (DefaultBreakpointTriggers, DefaultBreakpointInsert);
+				return (_defaultBpTriggers, _defaultBpInsert);
 			}
 		}
 
@@ -979,27 +959,25 @@ unsafe partial class Assembler {
 					}
 			}
 		} else {
-			inserts = DefaultBreakpointInsert;
+			inserts = _defaultBpInsert;
 		}
 
-		reading = read;
+		_reading = read;
 		FinishCommand();
 
 		return (triggers, inserts);
 	}
 
-
-
 	private void Directive_BREAKPOINTS() {
-		if (BreakpointsAre is BreakpointsControl.Kill) {
+		if (_bpControl is BreakpointsControl.Kill) {
 			AbortCommand();
 			return;
 		}
 
 		if (!DemandSpaceWithError()) return;
 
-		char* read = reading;
-		char* theend = fileEnd;
+		char* read = _reading;
+		char* theend = _fileEnd;
 
 		var bpcheck = FastRead.ReadAlphaNumeric(ref read, theend);
 
@@ -1012,12 +990,12 @@ unsafe partial class Assembler {
 
 			switch (bpcheck) {
 				case "off":
-					BreakpointsAre = BreakpointsControl.Off;
+					_bpControl = BreakpointsControl.Off;
 					FinishCommand();
 					return;
 
 				case "kill":
-					BreakpointsAre = BreakpointsControl.Kill;
+					_bpControl = BreakpointsControl.Kill;
 					FinishCommand();
 					return;
 			}
@@ -1025,19 +1003,19 @@ unsafe partial class Assembler {
 
 		var (triggers, inserts) = GetBreakPointParams();
 
-		BreakpointsAre = BreakpointsControl.On;
-		DefaultBreakpointInsert = inserts;
-		DefaultBreakpointTriggers = triggers;
+		_bpControl = BreakpointsControl.On;
+		_defaultBpInsert = inserts;
+		_defaultBpTriggers = triggers;
 
 	}
 
 	private void GenerateBreakpoint() {
-		if (BreakpointsAre <= BreakpointsControl.Off) {
+		if (_bpControl <= BreakpointsControl.Off) {
 			AbortCommand();
 			return;
 		}
 
-		reading++;
+		_reading++;
 
 		var (triggers, inserts) = GetBreakPointParams();
 
@@ -1045,7 +1023,7 @@ unsafe partial class Assembler {
 
 		_breakpoints.Add(addbk);
 
-		switch (inserts, arch) {
+		switch (inserts, _architecture) {
 			case (BreakpointInserts.Nothing, _): break;
 
 			case (BreakpointInserts.NOP, SnesArchitecture.WDC65816): WriteOpImplied(0xEA); break;
@@ -1068,7 +1046,7 @@ unsafe partial class Assembler {
 					_ /*                         */ => "instruction"
 				};
 
-				string archName = arch switch {
+				string archName = _architecture switch {
 					SnesArchitecture.WDC65816 /*   */ => "WDC65816",
 					SnesArchitecture.SPC700 /*     */ => "SPC700",
 					SnesArchitecture.SuperFX /*    */ => "SuperFX",
@@ -1094,7 +1072,7 @@ unsafe partial class Assembler {
 
 			switch (clow) {
 				case "pc":
-					contents = $"{PC:X6}";
+					contents = $"{_pc:X6}";
 					return true;
 
 				case "bar":
@@ -1106,7 +1084,7 @@ unsafe partial class Assembler {
 					return true;
 
 				case "offset":
-					contents = $"{Offset:X6}";
+					contents = $"{_offset:X6}";
 					return true;
 			}
 		}
@@ -1116,8 +1094,8 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryGetPrintContents(out string? contents) {
-		if (!reading->IsSkippableSpace) {
-			if (reading->IsLineEnd) {
+		if (!_reading->IsSkippableSpace) {
+			if (_reading->IsLineEnd) {
 				contents = null;
 				return true;
 			} else {
@@ -1130,9 +1108,8 @@ unsafe partial class Assembler {
 
 		if (AdvanceOverWhitespace()) {
 			contents = null;
-			return false;
+			return true;
 		}
-
 
 		StringBuilder printer = new();
 
@@ -1161,8 +1138,8 @@ unsafe partial class Assembler {
 	private void Directive_PRINTF() {
 		const string MissingFormat = "Missing format string.";
 
-		if (!reading->IsSkippableSpace) {
-			if (reading->IsLineEnd) {
+		if (!_reading->IsSkippableSpace) {
+			if (_reading->IsLineEnd) {
 				Warning(MissingFormat);
 				return;
 			} else {
@@ -1219,56 +1196,50 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
-
-	
-
 	private void Directive_ALLOCATE() {
 		int blockAddress = -1;
 		int blockEnd = -1;
 		bool sizedBlock = false;
 
 		// just restart the command so we can reuse all the code
-		reading = lastCommandStart;
+		_reading = _commandStart;
 
-		var parentState = previousState;
+		var parentState = _previousState;
 
-		if (pooling) {
+		if (_pooling) {
 			Error("Close pool before beginning allocation block.");
 			ClearPools();
 		}
 
-
 		do {
-			while (reading < fileEnd) {
-				char c = *reading;
+			while (_reading < _fileEnd) {
+				char c = *_reading;
 
 				if (c.IsSkippableSpace) {
-					reading++;
+					_reading++;
 					continue;
 				} else if (c is NewLine) {
-					reading++;
-					SourceLineNumber++;
+					_reading++;
+					_sourceLine++;
 					continue;
 				}
 
-				lastCommandStart = reading;
+				_commandStart = _reading;
 
-				c = *reading;
+				c = *_reading;
 
 				switch (c) {
 					// skip over comments
 					case ';':
-						FastRead.ReadUntilLineEnd(ref reading, fileEnd);
+						FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
 						continue;
 
 					case ':':
-						if (FastRead.ColonIsSeparator(reading)) {
-							reading += 2;
+						if (FastRead.ColonIsSeparator(_reading)) {
+							_reading += 2;
 						} else {
 							UnexpectedCharacter();
-							reading++;
+							_reading++;
 						}
 						continue;
 
@@ -1286,14 +1257,14 @@ unsafe partial class Assembler {
 
 							bool goodName = TryFullyExpandLabelName(depth, chunkName, out string? fullName);
 
-							if (AdvanceOverWhitespace() || !FastRead.IsAllocator(reading)) {
+							if (AdvanceOverWhitespace() || !FastRead.IsAllocator(_reading)) {
 								if (goodName) {
 									AssignedSymbol addsym = new(fullName!, blockAddress);
 									AddOrReplaceSymbol(addsym);
 								}
 							} else {
 								if (goodName) {
-									reading += 2;
+									_reading += 2;
 									TryToAllocate(fullName!);
 								}
 							}
@@ -1306,12 +1277,12 @@ unsafe partial class Assembler {
 							'N' or 'O' or 'P' or 'Q' or 'R' or 'S' or 'T' or 'U' or 'V' or 'W' or 'X' or 'Y' or 'Z' or
 							'a' or 'b' or 'c' or 'd' or 'e' or 'f' or 'g' or 'h' or 'i' or 'j' or 'k' or 'l' or 'm' or
 							'n' or 'o' or 'p' or 'q' or 'r' or 's' or 't' or 'u' or 'v' or 'w' or 'x' or 'y' or 'z' or '_':
-						CharSpan labelName = FastRead.ReadSublabelChunk(ref reading, fileEnd);
+						CharSpan labelName = FastRead.ReadSublabelChunk(ref _reading, _fileEnd);
 
-						char dpeek = *reading;
+						char dpeek = *_reading;
 
 						if (dpeek is ':') {
-							reading++;
+							_reading++;
 							if (DemandSpaceAfterColon()) {
 								AssignedSymbol addLabel = new(new string(labelName), blockAddress);
 
@@ -1322,16 +1293,16 @@ unsafe partial class Assembler {
 							continue;
 						}
 
-						char* peeking = reading;
+						char* peeking = _reading;
 
-						FastRead.SkipInlineWhitespace(ref peeking, fileEnd);
+						FastRead.SkipInlineWhitespace(ref peeking, _fileEnd);
 
 						if (*peeking is '=') {
-							reading = peeking + 1;
+							_reading = peeking + 1;
 							CreateAssignedSymbol(labelName);
 
 						} else if (FastRead.IsAllocator(peeking)) {
-							reading = peeking + 2;
+							_reading = peeking + 2;
 							TryToAllocate(new string(labelName));
 
 						} else if (labelName.MatchesIgnoreCase(ALLOCATE)) {
@@ -1364,13 +1335,13 @@ unsafe partial class Assembler {
 							}
 
 							if (addrContents.OnlyCharIs(SPLAT)) {
-								if (NextAllocBlockStart is < 0) {
+								if (_nextAllocBlockStart is < 0) {
 									Error("No previous allocation in allocation block.");
 									PanicAllocation();
 									continue;
 								}
 
-								blockAddress = NextAllocBlockStart;
+								blockAddress = _nextAllocBlockStart;
 
 							} else {
 								IExpressionReturn addrLoc = ParseOperand(addrContents);
@@ -1388,7 +1359,7 @@ unsafe partial class Assembler {
 									PanicAllocation();
 									continue;
 								} else {
-									NextAllocBlockStart = blockAddress;
+									_nextAllocBlockStart = blockAddress;
 								}
 							}
 
@@ -1409,7 +1380,7 @@ unsafe partial class Assembler {
 									Error("Block allocation size must be greater than 0");
 								} else {
 									sizedBlock = true;
-									NextAllocBlockStart = blockEnd;
+									_nextAllocBlockStart = blockEnd;
 								}
 							}
 						} else if (labelName.MatchesIgnoreCase(ENDALLOCATE)) {
@@ -1438,7 +1409,7 @@ unsafe partial class Assembler {
 									blockEnd = int.MaxValue;
 								}
 							} else {
-								NextAllocBlockStart = blockAddress;
+								_nextAllocBlockStart = blockAddress;
 							}
 						}
 
@@ -1463,7 +1434,7 @@ unsafe partial class Assembler {
 
 						void PanicAllocation() {
 							blockAddress = 0;
-							NextAllocBlockStart = -1;
+							_nextAllocBlockStart = -1;
 						}
 
 					default:
@@ -1473,19 +1444,15 @@ unsafe partial class Assembler {
 				}
 			}
 
-			if (previousState == parentState) {
+			if (_previousState == parentState) {
 				Error("Unclosed allocation block.");
 				return;
 			}
 		} while (PopSourceControl());
 	}
 
-
-
-
-
 	private bool TryGetEncoder(CharSpan encoderName, [NotNullWhen(true)] out SnesEncoder? encoder) {
-		if (Encoders.TryGetValue(encoderName, out encoder)) {
+		if (_encoders.TryGetValue(encoderName, out encoder)) {
 			return true;
 
 		} else if (encoderName is "ascii") {
@@ -1508,7 +1475,7 @@ unsafe partial class Assembler {
 	private void Directive_ENCODER() {
 		if (!DemandSpaceWithError()) return;
 
-		if (!FastRead.TryReadIdentifier(ref reading, fileEnd, out CharSpan encoderName)) {
+		if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out CharSpan encoderName)) {
 			Error(MsgInfo.BadIdentifier);
 			AbortCommand();
 			return;
@@ -1519,7 +1486,7 @@ unsafe partial class Assembler {
 		// we hit the end, so just use the encoder
 		if (AdvanceOverWhitespace()) {
 			if (encoderExists) {
-				CurrentEncoder = encoder!;
+				_currentEncoder = encoder!;
 			} else {
 				Error("No such encoder");
 			}
@@ -1531,16 +1498,16 @@ unsafe partial class Assembler {
 		}
 
 		// otherwise it needs to be an assignment
-		if (*reading is not '=') {
+		if (*_reading is not '=') {
 			Error("Expected an equals sign (=)");
 			AbortCommand();
 			return;
 		}
 
-		reading++;
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		_reading++;
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		if (TryReadAndExplodeStringContents(ref reading, fileEnd, out string? encPath)) {
+		if (TryReadAndExplodeStringContents(ref _reading, _fileEnd, out string? encPath)) {
 			if (!TryGetSource(encPath, out var encoderFile)) {
 				AbortCommand();
 				return;
@@ -1608,7 +1575,6 @@ unsafe partial class Assembler {
 						lastChar = defChar;
 						continue;
 					}
-
 
 					if (FastRead.SkipInlineWhitespaceWithEndCheck(ref cptr, cend)) {
 						ErrorInEncoderFile($"Missing operator");
@@ -1685,7 +1651,6 @@ unsafe partial class Assembler {
 						lastValue = lv;
 					}
 
-
 					void TryAddChar(char toAdd, int addValue) {
 						if (encoding.ContainsKey(toAdd)) {
 							Warning($"Duplicate definition for '{toAdd}' on line {line} of {encPath}");
@@ -1706,7 +1671,7 @@ unsafe partial class Assembler {
 			if (!encoderExists) {
 				string encNom = new(encoderName);
 				SnesEncoder addEnc = new SnesEncoder.UserDefined(encNom, encoding);
-				Encoders.Add(encNom, addEnc);
+				_encoders.Add(encNom, addEnc);
 			}
 
 			FinishCommand();
@@ -1717,12 +1682,11 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private void Directive_IF() {
 		if (!DemandSpaceWithError()) return;
 
 		if (TryReadRestAsExpression("if", SymbolContext.Default, out var ifval)) {
-			ifstack = new(ifstack);
+			_ifChain = new(_ifChain);
 
 			if (ifval.Value.IsFalse()) {
 				SkipToElseOrEndIf();
@@ -1733,13 +1697,13 @@ unsafe partial class Assembler {
 	}
 
 	private void SkipToElseOrEndIf() {
-		while (reading < fileEnd) {
+		while (_reading < _fileEnd) {
 			if (CaptureLine(out CharSpan blockLine)) {
 				if (blockLine.BeginsWithIgnoreCaseAndSpace(IF)) {
 					SkipToEndIf(); // this will also skip any ELSE inherently
 
 					// special case for when endif is last thing in file
-					if (reading >= fileEnd) {
+					if (_reading >= _fileEnd) {
 						return;
 					}
 				} else if (blockLine.MatchesIgnoreCase(ELSE) || blockLine.MatchesIgnoreCase(ENDIF)) {
@@ -1754,7 +1718,7 @@ unsafe partial class Assembler {
 	private void SkipToEndIf() {
 		int blockDepth = 1;
 
-		while (reading < fileEnd) {
+		while (_reading < _fileEnd) {
 			if (CaptureLine(out CharSpan blockLine)) {
 				if (blockLine.BeginsWithIgnoreCaseAndSpace(IF)) {
 					blockDepth++;
@@ -1770,64 +1734,126 @@ unsafe partial class Assembler {
 	}
 
 	private void Directive_ELSE() {
-		if (ifstack?.HitElse ?? true) {
+		if (_ifChain?.HitElse ?? true) {
 			Error($"Unexpected {ELSE}");
 			AbortCommand();
 		} else {
-			ifstack.HitElse = true;
+			_ifChain.HitElse = true;
 			FinishCommand();
 			SkipToElseOrEndIf();
 		}
 	}
 
 	private void Directive_ENDIF() {
-		if (ifstack is null) {
+		if (_ifChain is null) {
 			Error($"Unexpected {ENDIF}");
 			AbortCommand();
 		} else {
-			ifstack = ifstack.Parent;
+			_ifChain = _ifChain.Parent;
 			FinishCommand();
 		}
 	}
-
-
 
 	private protected virtual void Directive_MMC() {
 		Error("MMC rebanking is not enabled for this mapper mode.");
 	}
 
-
 	private void Directive_BANKGUARD() {
-		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString guardMode)) {
-			int len = guardMode.Length;
+		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString contents)) {
+			int len = contents.Length;
 
-			if (guardMode.Length < 6) {
-				Span<char> test = stackalloc char[guardMode.Length];
-				guardMode.FastLower(test);
+			if (contents.Length < 6) {
+				Span<char> test = stackalloc char[contents.Length];
+				contents.FastLower(test);
 
 				switch (test) {
 					case "off":
-						BankGuardMask = BankGuardMask_Off;
+						_bankGuardMask = BankGuardMask_Off;
 						return;
 
 					case "half":
-						BankGuardMask = BankGuardMask_Half;
+						_bankGuardMask = BankGuardMask_Half;
 						return;
 
 					case "full":
-						BankGuardMask = BankGuardMask_Full;
+						_bankGuardMask = BankGuardMask_Full;
 						return;
 				}
 			}
 
-			string? argWrite = null;
-
-			if (len > 20) {
-				argWrite = $"{guardMode[..20]}...";
-			}
-
-			Error($"Invalid bank guard name: {argWrite ?? guardMode}");
+			Error($"Invalid bank guard name: {CharSpanHelpers.ClampForMessage(contents)}");
 		}
 	}
 
+	private void Directive_VECTOR() {
+		if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString contents)) {
+			if (contents.Length < 10) {
+				Span<char> contentsLower = stackalloc char[contents.Length];
+
+				contents.FastLower(contentsLower);
+
+				switch (contentsLower) {
+					case "cop":
+						TrySetVector(ref _copVectorNative, "native COP");
+						return;
+
+					case "brk":
+						TrySetVector(ref _brkVector, "native BRK");
+						return;
+
+					case "abort":
+						TrySetVector(ref _abortVectorNative, "native abort");
+						return;
+
+					case "nmi":
+						TrySetVector(ref _nmiVectorNative, "native NMI");
+						return;
+
+					case "irq":
+						TrySetVector(ref _irqVectorNative, "native IRQ");
+						return;
+
+					case "reset":
+						TrySetVector(ref _resetVector, "reset");
+						return;
+
+					case "ecop":
+						TrySetVector(ref _copVectorEmulation, "emulation mode COP");
+						return;
+
+					case "eabort":
+						TrySetVector(ref _abortVectorEmulation, "emulation mode abort");
+						return;
+
+					case "enmi":
+						TrySetVector(ref _nmiVectorEmulation, "emulation mode NMI");
+						return;
+
+					case "eirq":
+						TrySetVector(ref _irqVectorEmulation, "emulation mode IRQ/BRK");
+						return;
+				}
+			}
+
+			Error($"Invalid vector name: {CharSpanHelpers.ClampForMessage(contents)}");
+
+			void TrySetVector(ref int? vector, string name) {
+				if (Mapper is MapperMode.None or MapperMode.Invalid) {
+					Error("This assembly mapper cannot apply interrupt vectors.");
+					return;
+				}
+
+				if (vector is not null) {
+					Error($"The {name} vector has already been defined.");
+
+				} else {
+					if (JumpTargetMakesSense(_pc, 0x00_FFE0)) {
+						vector = _pc;
+					} else {
+						Error("Vectors must be in bank 00 or mirror.");
+					}
+				}
+			}
+		}
+	}
 }

@@ -26,7 +26,6 @@ public sealed class Piling : Symbol {
 	/// </summary>
 	public int Capacity { get; }
 
-
 	internal int MaxOffset => BinaryOffset + Capacity;
 
 	internal Piling(string name, int address, int romaddress, int offset, int size) : base(name) {

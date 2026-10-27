@@ -1,23 +1,23 @@
 ﻿namespace Futaba;
 
 internal unsafe struct StringSplitter {
-	private readonly char* Start;
-	private readonly char* End;
+	private readonly char* _start;
+	private readonly char* _end;
 	private char* _current;
 
 	internal StringSplitter(char* start, char* end) {
-		Start = start;
-		End = end;
+		_start = start;
+		_end = end;
 		_current = start;
 	}
 
 	public void Reset() {
-		_current = Start;
+		_current = _start;
 	}
 
 	/// <returns><see langword="true"/>If there are potentially more strings to find</returns>
 	public bool GetNextComma(out OperandString next) {
-		char* theend = End;
+		char* theend = _end;
 
 		if (!FastRead.SkipInlineWhitespaceWithEndCheck(ref _current, theend)) {
 			char* read = _current;
@@ -53,7 +53,7 @@ internal unsafe struct StringSplitter {
 	}
 
 	public bool GetNextChar(char delim, out OperandString next) {
-		char* theend = End;
+		char* theend = _end;
 
 		if (!FastRead.SkipInlineWhitespaceWithEndCheck(ref _current, theend)) {
 			char* read = _current;
@@ -89,7 +89,7 @@ internal unsafe struct StringSplitter {
 	}
 
 	public bool GetNextDoubleChar(char delim, out OperandString next) {
-		char* theend = End;
+		char* theend = _end;
 
 		if (FastRead.SkipInlineWhitespaceWithEndCheck(ref _current, theend)) {
 			char* read = _current;
@@ -129,14 +129,13 @@ internal unsafe struct StringSplitter {
 		return false;
 	}
 
-
 	// This type also behaves as OperandString's enumerator,
 	// because it has everything required already
 	public readonly char Current => *_current;
 	public bool MoveNext() {
 		char* read = _current + 1;
 
-		if (read < End) {
+		if (read < _end) {
 			_current = read;
 			return true;
 		} else {

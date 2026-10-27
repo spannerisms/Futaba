@@ -39,13 +39,11 @@ public static class RomHeader {
 	/// </summary>
 	/// <param name="title">The game title to sanitize.</param>
 	/// <returns>A header-compliant title.</returns>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static string SanitizeTitle(string title) {
 		Debug.Assert(TitleLength == 21);
 
 		return SnesHelpers.SanitizeString(title, TitleLength);
 	}
-
 
 	/// <summary>
 	/// Attempts to get a <see cref="MapperMode"/> enum by name.
@@ -75,7 +73,6 @@ public static class RomHeader {
 
 		return mode != MapperMode.Invalid;
 	}
-
 
 	/// <summary>
 	/// Returns a new array containing all valid ROM size tokens in lowercase form.
@@ -186,7 +183,6 @@ public static class RomHeader {
 		return RamSizeLookup.TryGetValue(token, out size);
 	}
 
-
 	/// <summary>
 	/// Tries parsing a token as a RAM size.
 	/// </summary>
@@ -231,7 +227,6 @@ public static class RomHeader {
 	/// <returns><see langword="true"/> if <paramref name="token"/> identifies a valid size; otherwise <see langword="false"/></returns>
 	public static bool IsValidRomSize(string token) => RomSizeLookup.ContainsKey(token);
 
-
 	/// <summary>
 	/// Tests the given value for being a valid range size.
 	/// </summary>
@@ -243,7 +238,6 @@ public static class RomHeader {
 	public static bool IsValidRamSize(int size) {
 		return size is >= 0 and <= MaxRamSize;
 	}
-
 
 	/// <summary>
 	/// Calculates the checksum over a given collection of <see langword="byte"/> values
@@ -257,7 +251,7 @@ public static class RomHeader {
 	/// <returns>A 16-bit checksum</returns>
 	public static short CalculateChecksum(byte[] data) {
 		unsafe {
-			fixed(byte* baseptr = data) {
+			fixed (byte* baseptr = data) {
 				return (short) CalculateChecksum(baseptr, data.Length);
 			}
 		}
@@ -266,7 +260,7 @@ public static class RomHeader {
 	/// <inheritdoc cref="CalculateChecksum(byte[])"/>
 	public static short CalculateChecksum(ReadOnlySpan<byte> data) {
 		unsafe {
-			fixed(byte* baseptr = data) {
+			fixed (byte* baseptr = data) {
 				return (short) CalculateChecksum(baseptr, data.Length);
 			}
 		}
@@ -289,7 +283,7 @@ public static class RomHeader {
 			return sum;
 		}
 
-		// otherwise, we need to loop over the final segment
+		// otherwise, we need to repeatedly sum over the final segment
 		// until we've summed a number of bytes equal to the main chunk size again
 		byte* remainderPointer = baseptr + mainChunkSize;
 
@@ -308,38 +302,49 @@ public static class RomHeader {
 
 		//////////////////////////////////////////////////////////////////
 
-		static ushort SumChunk(byte* cp, int sumCount) {
+		static ushort SumChunk(byte* ptr, int sumCount) {
 			ushort retsum = 0;
+
+			if (Vector256.IsHardwareAccelerated) {
+				for (; sumCount >= Vector256<byte>.Count; sumCount -= Vector256<byte>.Count) {
+					var chunk = Vector256.Load(ptr);
+
+					var (chunk1, chunk2) = Vector256.Widen(chunk);
+					retsum += Vector256.Sum(chunk1);
+					retsum += Vector256.Sum(chunk2);
+
+					ptr += Vector256<byte>.Count;
+				}
+			}
 
 			if (Vector128.IsHardwareAccelerated) {
 				for (; sumCount >= Vector128<byte>.Count; sumCount -= Vector128<byte>.Count) {
-					var chunk = Vector128.Load(cp);
+					var chunk = Vector128.Load(ptr);
 
 					var (chunk1, chunk2) = Vector128.Widen(chunk);
 					retsum += Vector128.Sum(chunk1);
 					retsum += Vector128.Sum(chunk2);
 
-					cp += Vector128<byte>.Count;
+					ptr += Vector128<byte>.Count;
 				}
 			}
 
-			// can potentially cover the remainder for Vector128
 			if (Vector64.IsHardwareAccelerated) {
 				for (; sumCount >= Vector64<byte>.Count; sumCount -= Vector64<byte>.Count) {
-					var chunk = Vector64.Load(cp);
+					var chunk = Vector64.Load(ptr);
 
 					var (chunk1, chunk2) = Vector64.Widen(chunk);
 					retsum += Vector64.Sum(chunk1);
 					retsum += Vector64.Sum(chunk2);
 
-					cp += Vector64<byte>.Count;
+					ptr += Vector64<byte>.Count;
 				}
 			}
 
 			// vector fall back and also covers any remainder
 			for (; sumCount > 0; sumCount--) {
-				retsum += *cp;
-				cp++;
+				retsum += *ptr;
+				ptr++;
 			}
 
 			return retsum;

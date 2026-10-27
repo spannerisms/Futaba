@@ -20,7 +20,7 @@
     <PackageTags>snes;assembler;assembly;65816;spc700;superfx</PackageTags>
     <Title>Futaba</Title>
     <Description>Futaba is a symbolic assembler targetting the Super Famicom and Super Nintendo Entertainment System.</Description>
-    <VersionPrefix>0.2.1.0</VersionPrefix>
+    <VersionPrefix>0.3.0.0</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>
     <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>

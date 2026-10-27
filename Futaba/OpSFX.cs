@@ -1,4 +1,5 @@
 ﻿namespace Futaba;
+
 internal enum OpSFX {
 	NotGood = 0,
 

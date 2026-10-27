@@ -16,7 +16,7 @@
     <Authors>kan</Authors>
     <Copyright>(c) 2026</Copyright>
     <PackageProjectUrl>https://spannerisms.github.io/futaba</PackageProjectUrl>
-    <VersionPrefix>0.2.1.0</VersionPrefix>
+    <VersionPrefix>0.3.0.0</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>
     <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>

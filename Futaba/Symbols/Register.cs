@@ -19,7 +19,6 @@ public sealed class Register : Symbol {
 	/// <inheritdoc/>
 	public override int BinaryOffset => 0;
 
-
 	internal Register(string name, int value) : base(name) {
 		_value = value;
 	}

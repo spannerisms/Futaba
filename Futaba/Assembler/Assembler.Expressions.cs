@@ -18,14 +18,11 @@ unsafe partial class Assembler {
 		return ParseOperand(operand.Start, operand.End, context);
 	}
 
-
-
 	// TODO consider a WriteOperand that directly writes bytes to bypass making tons of wrapper objects for numbers when not needed
 	// GC is kinda really good though... using a singleton didn't have a performance benefit whatsoever
 	// jpdasm: 676000 allocs for number
 	// usdasm: 300000
 	// push: 6000
-
 	private IExpressionReturn ParseOperand(char* opreading, char* opend, SymbolContext context) {
 		FastRead.TrimWhiteSpace(ref opreading, ref opend);
 
@@ -105,7 +102,7 @@ unsafe partial class Assembler {
 				break;
 
 			// symbol or function
-			case	'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
+			case 'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
 					'N' or 'O' or 'P' or 'Q' or 'R' or 'S' or 'T' or 'U' or 'V' or 'W' or 'X' or 'Y' or 'Z' or
 					'a' or 'b' or 'c' or 'd' or 'e' or 'f' or 'g' or 'h' or 'i' or 'j' or 'k' or 'l' or 'm' or
 					'n' or 'o' or 'p' or 'q' or 'r' or 's' or 't' or 'u' or 'v' or 'w' or 'x' or 'y' or 'z' or
@@ -445,7 +442,7 @@ unsafe partial class Assembler {
 					goto Advance1;
 
 				// symbol or function
-				case	'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
+				case 'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
 						'N' or 'O' or 'P' or 'Q' or 'R' or 'S' or 'T' or 'U' or 'V' or 'W' or 'X' or 'Y' or 'Z' or
 						'a' or 'b' or 'c' or 'd' or 'e' or 'f' or 'g' or 'h' or 'i' or 'j' or 'k' or 'l' or 'm' or
 						'n' or 'o' or 'p' or 'q' or 'r' or 's' or 't' or 'u' or 'v' or 'w' or 'x' or 'y' or 'z' or
@@ -610,7 +607,7 @@ unsafe partial class Assembler {
 				// DOUBLE QUOTE
 				case '"':
 					if (TryReadAndExplodeStringContents(ref exprReading, exprEnd, out string? str)) {
-						last = new StringToken(str, CurrentEncoder);
+						last = new StringToken(str, _currentEncoder);
 						tokens.Add(last);
 						continue;
 					} else {
@@ -637,9 +634,8 @@ unsafe partial class Assembler {
 					goto Finished;
 			}
 
-
 			InvalidCharacter:
-			UnexpectedCharacter(exprReading);
+			UnexpectedCharacter(*exprReading);
 
 			Invalid:
 			return false;
@@ -677,7 +673,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private bool TryMakeCharacterToken(ref char* lread, char* lend, [NotNullWhen(true)] out NumberToken? charOut) {
 		char quotedChar;
 		char* cread = lread;
@@ -694,7 +689,7 @@ unsafe partial class Assembler {
 			}
 
 			if (++cread < lend && *cread is CharDelim) {
-				charOut = new NumberToken(CurrentEncoder.Encode(quotedChar));
+				charOut = new NumberToken(_currentEncoder.Encode(quotedChar));
 				lread = cread + 1;
 				return true;
 			}
@@ -724,7 +719,7 @@ unsafe partial class Assembler {
 					if (TryGetVariable(varName, out var theVar)) {
 						getVar = theVar.VarType switch {
 							VariableType.Value => new ValueVariableToken(theVar),
-							VariableType.String => new StringVariableToken(theVar, CurrentEncoder),
+							VariableType.String => new StringVariableToken(theVar, _currentEncoder),
 							_ => new NullVariableToken(theVar.Name)
 						};
 					} else {
@@ -739,7 +734,6 @@ unsafe partial class Assembler {
 		getVar = null;
 		return false;
 	}
-
 
 	private ExpressionSymbol MakeSymbolToken(CharSpan symbolName, SymbolContext context, ref char* lread, char* lend) {
 		if (*lread is SymbolContextAccess) {
@@ -775,7 +769,6 @@ unsafe partial class Assembler {
 			return context;
 		}
 	}
-
 
 	private ExpressionItem CreateExpressionTree(List<IToken> tokens) {
 		int index = 0;
@@ -827,7 +820,6 @@ unsafe partial class Assembler {
 			return ErrorOut();
 		}
 
-
 		ExpressionItem Call() {
 			if (index >= max) return ErrorOut();
 
@@ -867,7 +859,7 @@ unsafe partial class Assembler {
 
 				if (FunctionCall.BuiltInFunctions.TryGetValue(funcName, out var funcMaker)) {
 					return funcMaker(this, args) ?? ErrorOut();
-				} else if (UserFunctionsTable.TryGetValue(funcName, out var thefunc)) {
+				} else if (_functions.TryGetValue(funcName, out var thefunc)) {
 					return thefunc.GetNewInstance(this, args) ?? ErrorOut();
 				} else {
 					Error($"Function {funcName} not found");
@@ -893,7 +885,6 @@ unsafe partial class Assembler {
 			return left;
 		}
 
-
 		ExpressionItem Unary() {
 			if (index >= max) return ErrorOut();
 
@@ -906,7 +897,6 @@ unsafe partial class Assembler {
 
 			return Postfix();
 		}
-
 
 		ExpressionItem Multiplicative() {
 			ExpressionItem left = Unary();

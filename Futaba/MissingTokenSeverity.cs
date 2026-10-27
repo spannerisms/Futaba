@@ -1,7 +1,7 @@
 ﻿namespace Futaba;
 
 /// <summary>
-/// Contains values that dictate the maximum warning level to emit for instructions without an operand size token.
+/// Dictates the maximum warning level to emit for instructions without an operand size token.
 /// </summary>
 public enum MissingTokenSeverity {
 	/// <summary>

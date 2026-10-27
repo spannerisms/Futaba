@@ -23,9 +23,6 @@ internal abstract class BinaryExpression(ExpressionItem left, ExpressionItem rig
 		return (MathHelpers.NaN, _state = state);
 	}
 
-
-
-
 	internal abstract class SafeBinary(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
 		protected abstract bool Validate(decimal a, decimal b);
 
@@ -47,12 +44,6 @@ internal abstract class BinaryExpression(ExpressionItem left, ExpressionItem rig
 			return (MathHelpers.NaN, _state = state);
 		}
 	}
-
-
-
-
-
-
 
 	public sealed class Addition(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
 		public override ExpressionItem Clone() => new Addition(Left.Clone(), Right.Clone());
@@ -94,7 +85,6 @@ internal abstract class BinaryExpression(ExpressionItem left, ExpressionItem rig
 			return (MathHelpers.NaN, _state = state);
 		}
 	}
-
 
 	public sealed class Division(ExpressionItem left, ExpressionItem right) : BinaryDivision(left, right) {
 		public override ExpressionItem Clone() => new Division(Left.Clone(), Right.Clone());
@@ -222,7 +212,7 @@ internal abstract class BinaryExpression(ExpressionItem left, ExpressionItem rig
 		}
 	}
 
-	internal class NullCoalesce(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+	public sealed class NullCoalesce(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
 		public override ExpressionItem Clone() => new NullCoalesce(Left.Clone(), Right.Clone());
 
 		public override (decimal, ExpressionState) TryEvaluate() {

@@ -2,8 +2,6 @@ mnemonics:
   one_bit_dotless: [ "mov", "or", "and", "eor", "not", "set", "clr" ]
   one_bit_bittest: [ "bbc", "bbs" ]
 
-
-
 operators:
   binary:
     - name: "+"
@@ -30,7 +28,6 @@ operators:
       desc: "bitwise OR"
     - name: "^"
       desc: "bitwise EOR"
-
 
   binary_logic:
     - name: "=="
@@ -91,9 +88,6 @@ operators:
       desc: "null coalescence"
       usage: "<fblk>a</fblk> if resolved; otherwise <fblk>0</fblk>"
 
-
-
-
 internal_variables:
   - name: version
     desc: Assembler version
@@ -102,7 +96,7 @@ internal_variables:
   - name: site
     desc: Current provenance
   - name: here
-    desc: Alias for site
+    desc: Alias for <fvab>!:site</fvab>
   - name: offset
     desc: Current binary offset
   - name: line
@@ -117,8 +111,6 @@ internal_variables:
     desc: "<fblk>0.01745329251994329576923</fblk> (&pi;/180)"
   - name: name
     desc: "Tile name mask: <fblk>$03FF</fblk>"
-
-
 
 functions:
   - name: "sin"
@@ -187,9 +179,12 @@ functions:
   - name: "rtn"
     args: [ "a" ]
     desc: "Returns <fblk>%1&minus;1</fblk>; useful for self-documenting stack return addresses"
+  - name: "argof"
+    args: [ "a" ]
+    desc: "Returns <fblk>%1+1</fblk>; useful for self-documenting operand references"
   - name: "rebank"
     args: [ "a", "b" ]
-    desc: "Returns a new 24-bit address where the bank byte of %1 has been replaced with %2"
+    desc: "Returns a 24-bit address where the bank byte of %1 has been replaced with %2"
   - name: "floor"
     args: [ "n" ]
     desc: "Returns %1 rounded to the nearest whole number less-than-or-equal to %1"
@@ -228,17 +223,16 @@ functions:
     desc: "Returns 1 if strings %1 and %2 contain the same contents; otherwise 0"
   - name: "exists"
     args: [ "v" ]
-    desc: "Returns 1 if variable %1 exists when this expression is encountered; otherwise 0"
+    desc: "Returns 1 if variable %1 exists at the time this function is evaluated; otherwise 0"
   - name: "read"
-    args: [ file ]
+    args: [ "file" ]
     desc: "Returns the 8-bit value from position 0 of %1"
   - name: "read"
-    args: [ file,i ]
+    args: [ "file", "i" ]
     desc: "Returns the 8-bit value from position %2 of %1"
   - name: "read"
-    args: [ file,i,s ]
+    args: [ "file", "i", "s" ]
     desc: "Returns the %3-byte value from position %2 of %1; 1&le;%3&le;8"
-
 
 cli_args:
   categories:
@@ -300,6 +294,11 @@ cli_args:
           desc: Seeds the assembler for deterministic random numbers using the given string
         - name: base
           desc: Relative path to a file to use as a base binary
+        - name: incremental
+          desc: |
+            When true, the application will listen for changes to the manifest or
+            source files to automatically restart assembly.
+          values: &BoolInputs [ "true", "false" ]
     - name: header
       items:
         - name: mapmode
@@ -308,7 +307,7 @@ cli_args:
           required: true
         - name: autofill
           desc: Automatically populates the ROM header using the data supplied in this block.
-          values: &BoolInputs [ "true", "false" ]
+          values: *BoolInputs
           default: "false"
         - name: checksum
           desc: Calculate and insert a checksum at the end of assembly.
@@ -363,7 +362,7 @@ cli_args:
           desc: Treat warnings as errors during assembly.
           values: *BoolInputs
         - name: maxerrors
-          desc: Set the maximum number of errors. If this limit is exceeded, assembly immediately halts.
+          desc: Set the maximum number of errors. If this limit is exceeded, an exception is thrown.
     - name: disassembly
       items:
         - name: crc

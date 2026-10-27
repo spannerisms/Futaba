@@ -1,6 +1,4 @@
-﻿using System.Xml.Linq;
-
-namespace Futaba;
+﻿namespace Futaba;
 
 unsafe partial class Assembler {
 	private void FinishCommand() {
@@ -14,12 +12,10 @@ unsafe partial class Assembler {
 	/// returns true if hit end of command
 	/// </summary>
 	private bool AdvanceOverWhitespace() {
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		char c = *reading;
-
-		if (c is CommentChar) {
-			FastRead.ReadUntilLineEnd(ref reading, fileEnd);
+		if (*_reading is CommentChar) {
+			FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
 			return true;
 		}
 
@@ -27,22 +23,21 @@ unsafe partial class Assembler {
 	}
 
 	private bool AtEndOfCommand() {
-		char* rd = reading;
+		char* rd = _reading;
 
-		if (rd >= fileEnd) {
+		if (rd >= _fileEnd) {
 			return true;
 		}
 
 		return (*rd is NewLine or CommentChar) || FastRead.TestIfColonAndSeparator(rd);
 	}
 
-
 	/// <summary>
 	/// Returns false and aborts if no space
 	/// </summary>
 	private bool DemandSpaceWithError() {
-		if (reading->IsSkippableSpace) {
-			FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		if (_reading->IsSkippableSpace) {
+			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 			return true;
 		} else {
 			if (AtEndOfCommand()) {
@@ -53,12 +48,11 @@ unsafe partial class Assembler {
 			}
 			return false;
 		}
-
 	}
 
 	private void AbortCommand() {
-		char* read = reading;
-		char* theend = fileEnd;
+		char* read = _reading;
+		char* theend = _fileEnd;
 
 		while (read < theend) {
 			char c = *read;
@@ -79,7 +73,7 @@ unsafe partial class Assembler {
 			read++;
 		}
 
-		reading = read;
+		_reading = read;
 	}
 
 	private bool TestIsQuotedStringAndExplode(CharSpan arg, [NotNullWhen(true)] out string? exploded) {
@@ -103,16 +97,15 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private SizeToken GetSizeToken() {
-		char* read = reading;
+		char* read = _reading;
 
 		if (*read is '.') {
 			read += 2;
 
 			if (read->IsSkippableSpace) {
 				read++;
-				reading = read;
+				_reading = read;
 				char tok = (read - 2)->FastLower();
 
 				switch (tok) {
@@ -123,7 +116,7 @@ unsafe partial class Assembler {
 
 				Error(MsgInfo.InvalidAddressingMode, details: $"invalid size token: {tok}.");
 			} else {
-				reading = read;
+				_reading = read;
 				UnexpectedCharacter();
 			}
 		} else if (read->IsNiceBoundary) {
@@ -136,8 +129,8 @@ unsafe partial class Assembler {
 	}
 
 	private bool ReadUntilAllocator(out OperandString conts) {
-		char* theend = fileEnd;
-		char* read = reading;
+		char* theend = _fileEnd;
+		char* read = _reading;
 		char* constart = read;
 
 		for (; read < theend; read++) {
@@ -155,29 +148,28 @@ unsafe partial class Assembler {
 			if (c is ':') {
 				if (FastRead.ColonIsSeparator(read)) {
 					conts = new(constart, read);
-					reading = read + 1;
+					_reading = read + 1;
 					return false;
 				}
 
 				if (read[1] is ':') {
 					conts = new(constart, read);
-					reading = read + 2;
+					_reading = read + 2;
 					return true;
 				}
 				continue;
 			}
 		}
 
-		reading = read;
+		_reading = read;
 		conts = OperandString.CreateTrimmed(constart, read);
 		return false;
 	}
 
-
 	private bool ReadForAllocator(out OperandString postContents) {
 		if (!AdvanceOverWhitespace()) {
-			if (FastRead.IsAllocator(reading)) {
-				reading += 2;
+			if (FastRead.IsAllocator(_reading)) {
+				_reading += 2;
 				ReadRestOfCommand(out postContents);
 				return true;
 			}
@@ -203,9 +195,9 @@ unsafe partial class Assembler {
 	}
 
 	private CharSpan GetNextKeyword() {
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		var cspan = FastRead.ReadAlphaNumericSpan(ref reading, fileEnd);
+		var cspan = FastRead.ReadAlphaNumericSpan(ref _reading, _fileEnd);
 
 		int len = cspan.Length;
 
@@ -219,7 +211,6 @@ unsafe partial class Assembler {
 		cspan.FastLower(dspan);
 		return new string(dspan);
 	}
-
 
 	/// <inheritdoc cref="RestOfCommand(out char*, out char*)"/>
 	private bool ReadRestOfCommand(out CharSpan operand) {
@@ -252,25 +243,23 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	private bool CaptureLine(out CharSpan operand) {
 		bool ret = ReadRestOfCommand(out operand);
 
-		if (*reading is NewLine) {
-			SourceLineNumber++;
-			reading++;
+		if (*_reading is NewLine) {
+			_sourceLine++;
+			_reading++;
 		}
 
 		return ret;
 	}
 
-
 	/// <summary>
 	/// returns false if nothing is found. trims ends of string
 	/// </summary>
 	private bool RestOfCommand(out char* opstart, out char* opend) {
-		opstart = reading;
-		char* theend = fileEnd;
+		opstart = _reading;
+		char* theend = _fileEnd;
 
 		char* read = opstart;
 
@@ -284,14 +273,14 @@ unsafe partial class Assembler {
 			}
 
 			if (c is CommentChar) {
-				reading = read + 1;
-				FastRead.ReadUntilLineEnd(ref reading, theend);
+				_reading = read + 1;
+				FastRead.ReadUntilLineEnd(ref _reading, theend);
 
 				goto FinishUp;
 			}
 
 			if (FastRead.TestIfColonAndSeparator(read)) {
-				reading = read + 2;
+				_reading = read + 2;
 				goto FinishUp;
 			}
 
@@ -300,7 +289,7 @@ unsafe partial class Assembler {
 			}
 		}
 
-		reading = read;
+		_reading = read;
 
 		FinishUp:
 
@@ -310,13 +299,13 @@ unsafe partial class Assembler {
 		return opstart != opend;
 	}
 
-	/// <returns>true if theres another comma</returns>
+	/// <returns><see langword="true"/> if theres another comma</returns>
 	private bool ReadToNextComma(out OperandString stuff) {
-		char* theend = fileEnd;
+		char* theend = _fileEnd;
 
-		FastRead.SkipInlineWhitespace(ref reading, theend);
+		FastRead.SkipInlineWhitespace(ref _reading, theend);
 
-		char* read = reading;
+		char* read = _reading;
 		char* start = read;
 
 		for (; read < theend; read++) {
@@ -342,12 +331,12 @@ unsafe partial class Assembler {
 
 			if (c is ',') {
 				stuff = OperandString.CreateTrimmed(start, read);
-				reading = read + 1;
+				_reading = read + 1;
 				return true;
 			}
 		}
 
-		reading = read;
+		_reading = read;
 
 		stuff = OperandString.CreateTrimmed(start, read);
 		return false;
@@ -359,7 +348,7 @@ unsafe partial class Assembler {
 		int blockDepth = 1;
 
 		while (blockDepth > 0) {
-			if (reading >= fileEnd) {
+			if (_reading >= _fileEnd) {
 				Error($"Unclosed {blockTypeName} block");
 				return null;
 			}
@@ -404,10 +393,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
-
-
 	private bool TryReadAndExplodeStringContents(ref char* stread, char* stend, [NotNullWhen(true)] out string? str) {
 		if (FastRead.TryReadOutQuotedString(ref stread, stend, out CharSpan span)) {
 			str = ExplodeStringContents(span);
@@ -418,110 +403,28 @@ unsafe partial class Assembler {
 		}
 	}
 
-	internal bool TryGetSource(string path, [NotNullWhen(true)] out SourceFile? file) {
-		if (TryGetFileName(path, out var fullPath)) {
-			ref var fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(LoadedFiles, fullPath, out _);
-
-			if (fileRef is not null) {
-				fileRef.Refresh();
-			} else {
-				fileRef = new(fullPath);
-			}
-
-			if (fileRef.Error is not null) {
-				SourceLine eline = CurrentSourceObject == SourceFile.Empty
-					? default
-					: CurrentSourceLine;
-
-				Error("Problem loading file", fileRef.Error, eline);
-
-				file = null;
-				return false;
-			}
-
-			fileRef.WasUsed = true;
-
-			file = fileRef;
-			return true;
-		} else {
-			file = null;
-			return false;
-		}
-	}
-
-	internal bool TryGetBinary(string path, [NotNullWhen(true)] out SourceBinary? file) {
-		if (TryGetFileName(path, out var fullPath)) {
-			ref var fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(LoadedBinaries, fullPath, out _);
-
-			if (fileRef is not null) {
-				fileRef.Refresh();
-			} else {
-				fileRef = new(fullPath);
-			}
-
-			if (fileRef.Error is not null) {
-				SourceLine eline = CurrentSourceObject == SourceFile.Empty
-					? default
-					: CurrentSourceLine;
-
-				Error("Problem loading file", fileRef.Error, eline);
-
-				file = null;
-				return false;
-			}
-
-			fileRef.WasUsed = true;
-
-			file = fileRef;
-			return true;
-		} else {
-			file = null;
-			return false;
-		}
-	}
-
-
-	internal bool TryGetFileName(string path, [NotNullWhen(true)] out string? filePath) {
-		if (Path.IsPathFullyQualified(path)) {
-			filePath = path;
-			return true;
-
-		} else if (CurrentSourceObject.FileInfo?.Directory is DirectoryInfo dir) {
-			// fully qualify it
-			filePath = Path.Join(dir.FullName, path);
-			return true;
-
-		} else {
-			Error("Unable to find current directory.");
-			filePath = null;
-			return false;
-		}
-	}
-
 	private bool ReadOutCommaItemsWithParen([NotNullWhen(true)] out List<OperandString>? args) {
-		FastRead.SkipInlineWhitespace(ref reading, fileEnd);
+		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-		if (*reading is not '(') {
+		if (*_reading is not '(') {
 			args = null;
 			Error("Missing opening parenthesis");
 			return false;
 		}
 
-
 		args = [];
-		char* theend = fileEnd;
+		char* theend = _fileEnd;
 
-		char* read = reading + 1;
+		char* read = _reading + 1;
 		char* start = read;
 
 		FastRead.SkipInlineWhitespace(ref read, theend);
 
 		if (read < theend && *read is ')') {
 			read++;
-			reading = read;
+			_reading = read;
 			return true;
 		}
-
 
 		for (; read < theend; read++) {
 			char c = *read;
@@ -550,7 +453,7 @@ unsafe partial class Assembler {
 			if (c is ')') {
 				args.Add(OperandString.CreateTrimmed(start, read));
 				read++;
-				reading = read;
+				_reading = read;
 				return true;
 			}
 
@@ -560,14 +463,15 @@ unsafe partial class Assembler {
 		}
 
 		Error("Mismatched parentheses");
-		reading = read;
+		_reading = read;
 		args = null;
 		return false;
 	}
 
 	// TODO add mask functions for AND / OR / XOR
+	// TODO maybe turn this into an object return...?
 	private bool TryReadStringWithParams(OperandString strArg, [NotNullWhen(true)] out string? strparsed, out SnesEncoder encoding) {
-		encoding = CurrentEncoder;
+		encoding = _currentEncoder;
 
 		if (strArg.First is not '"') {
 			strparsed = null;
@@ -581,12 +485,9 @@ unsafe partial class Assembler {
 			return false;
 		}
 
-
 		// we have a string, so check for the next character
 		if (FastRead.SkipInlineWhitespaceWithEndCheck(ref read, theend)) {
-			// no next character, so it's a normal string
-
-			strparsed = ExplodeStringContents(contents);
+			strparsed = ExplodeStringContents(contents); // no next character, so it's a normal string
 			return true;
 		}
 
@@ -610,9 +511,7 @@ unsafe partial class Assembler {
 		bool casingHappened = false;
 		bool encoderHappened = false;
 
-		// check each rule
-
-		StringBuilder bld = new(strparsed);
+		StringBuilder manipBuilder = new(strparsed);
 
 		Span<char> cmdlbuffer = stackalloc char[10];
 
@@ -696,21 +595,27 @@ unsafe partial class Assembler {
 					}
 
 					char dir = cmdWhole[i];
-					int strlen = bld.Length;
+					int strlen = manipBuilder.Length;
 
 					switch (dir) {
 						case 'c' or 'C':
+							i++;
 							dir = cmdWhole[i + 1];
 
 							bool alignedLeft;
 							switch (dir) {
-								case 'l' or 'L'
-									or '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9': // to account for size being next
-									alignedLeft = true;
+								case 'l' or 'L':
+									alignedLeft = false;
+									i++;
 									break;
 
 								case 'r' or 'R':
-									alignedLeft = false;
+									alignedLeft = true;
+									i++;
+									break;
+								// to account for size being next
+								case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
+									alignedLeft = true;
 									break;
 
 								default:
@@ -730,7 +635,7 @@ unsafe partial class Assembler {
 							if (strlen < lenArg) {
 								// padding commands dont resize
 								if (!isPad) {
-									bld.Length = lenArg;
+									manipBuilder.Length = lenArg;
 								}
 
 								return;
@@ -742,28 +647,22 @@ unsafe partial class Assembler {
 
 								string padStr = new(padChar, diff / 2);
 
-								
-								bld.Insert(0, padStr);
-								bld.Append(padStr);
+								manipBuilder.Insert(0, padStr);
+								manipBuilder.Append(padStr);
 
 								// if they're even, just add to both ends and we're done
 								if ((diff & 1) is 1) {
 									if (alignedLeft) {
-										bld.Append(padChar);
+										manipBuilder.Append(padChar);
 									} else {
-										bld.Insert(0, padChar);
+										manipBuilder.Insert(0, padChar);
 									}
 								}
-
-								return;
-							} else {
-								return;
 							}
-
-
-
+							return;
 
 						case 'l' or 'L' or 'r' or 'R':
+							i++;
 							if (!TryGetLength(out lenArg)) {
 								return;
 							}
@@ -773,10 +672,10 @@ unsafe partial class Assembler {
 								return;
 							}
 
-							if (strlen < lenArg) {
-								// padding commands dont resize
-								if (!isPad) {
-									bld.Length = lenArg;
+							// too short
+							if (strlen > lenArg) {
+								if (!isPad) { // padding commands don't shorten
+									manipBuilder.Length = lenArg;
 								}
 
 								return;
@@ -784,18 +683,16 @@ unsafe partial class Assembler {
 
 							// otherwise, it's too long
 							if (TryGetPadder(out padChar)) {
-								string padStr = new(padChar, lenArg - strlen);
+								int count = lenArg - strlen;
 
-								if (dir is 'r' or 'R') {
-									bld.Insert(0, padStr);
+								if (dir is 'l' or 'L') {
+									manipBuilder.Insert(0, new string(padChar, count));
 								} else {
-									bld.Append(padStr);
+									manipBuilder.Append(padChar, count);
 								}
-
-								return;
-							} else {
-								return;
 							}
+
+							return;
 
 						default:
 							Warning("Bad padding mode");
@@ -836,7 +733,7 @@ unsafe partial class Assembler {
 						if (cmdWhole.TryReadInlineDecimalInteger(ref i, out len)) {
 							return true;
 						} else {
-							Error("Invalid length argument in resize command");
+							Error("Missing length argument in resize command");
 							return false;
 						}
 					}
@@ -848,8 +745,8 @@ unsafe partial class Assembler {
 						Warning("Duplicate casing command in string");
 					}
 
-					for (int i = 0, len = bld.Length; i < len; i++) {
-						bld[i] = transform(bld[i]);
+					for (int i = 0, len = manipBuilder.Length; i < len; i++) {
+						manipBuilder[i] = transform(manipBuilder[i]);
 					}
 
 					casingHappened = true;
@@ -858,9 +755,9 @@ unsafe partial class Assembler {
 
 			Error($"Missing or invalid string argument: {cmd}");
 
-
 		} while (more);
 
+		strparsed = manipBuilder.ToString();
 		return true;
 	}
 }

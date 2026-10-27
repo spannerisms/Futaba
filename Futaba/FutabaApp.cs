@@ -1,16 +1,13 @@
-﻿global using System.Runtime.CompilerServices;
-global using System.Runtime.InteropServices;
+﻿global using System.Buffers;
+global using System.Buffers.Binary;
 global using System.Diagnostics;
 global using System.Diagnostics.CodeAnalysis;
+global using System.Runtime.CompilerServices;
+global using System.Runtime.InteropServices;
 global using System.Text;
-global using System.Buffers;
-global using System.Buffers.Binary;
-
 global using Futaba.Snes;
 global using Futaba.Symbols;
-
 global using static Futaba.Directives;
-
 // We use these a lot and I got tired of typing it out
 global using CharSpan = System.ReadOnlySpan<char>;
 

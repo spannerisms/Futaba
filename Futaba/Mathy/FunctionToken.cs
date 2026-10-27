@@ -1,6 +1,6 @@
 ﻿namespace Futaba;
 
-internal class FunctionToken(string name) : IToken {
+internal sealed class FunctionToken(string name) : IToken {
 	public string Name => name;
 
 	public TokenType Type => TokenType.FunctionCall;

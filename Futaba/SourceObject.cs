@@ -10,32 +10,39 @@ internal unsafe abstract class SourceObject : IDisposable {
 	public char* SourceEnd { get; protected set; }
 
 	internal abstract bool IsMacro { get; }
+	protected bool _disposed = false;
 
 	~SourceObject() {
-		Dispose();
+		Dispose(false);
 	}
-
 
 	protected void ApplyPadding() {
 		// add some padding to obviate bounds checking
-		new Span<char>(SourceEnd, BufferPadding ).Fill(BadChar);
+		new Span<char>(SourceEnd, BufferPadding).Fill(BadChar);
 		new Span<char>(AllocBlock, BufferPadding).Fill(BadChar);
 	}
 
 	protected static char* Allocate(int length) {
-		return NativeMemory.AllocNice<char>(length + BufferPadding * sizeof(char));
+		return NativeMemory.AllocNice<char>(length + BufferPadding * 2);
 	}
 
-	protected bool disposed = false;
-
-	/// <inheritdoc cref="IDisposable.Dispose()"/>
+	/// <inheritdoc/>
 	public virtual void Dispose() {
-		if (disposed) return;
-
-		disposed = true;
-
-		NativeMemory.AlignedFree(AllocBlock);
-
+		Dispose(true);
 		GC.SuppressFinalize(this);
 	}
+
+	private void Dispose(bool disposing) {
+		if (_disposed) return;
+
+		if (disposing) {
+			DisposeResources();
+		}
+
+		_disposed = true;
+
+		NativeMemory.AlignedFree(AllocBlock);
+	}
+
+	protected abstract void DisposeResources();
 }

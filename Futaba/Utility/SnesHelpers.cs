@@ -1,7 +1,6 @@
 ﻿namespace Futaba;
 
-internal class SnesHelpers {
-
+internal static class SnesHelpers {
 	public const int BankSize = 32768;
 
 	public const int MaxRegularSize = BankSize * 128;
@@ -15,20 +14,17 @@ internal class SnesHelpers {
 	internal const int MirroredBankMask = 0x7F_FFFF;
 	internal const int HalfBankMask = 0x7FFF;
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static int LoromToOffset(int address) => address & 0x7FFF | (address & 0x7F0000) >> 1;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static int OffsetToLorom(int offset) => (offset & 0x7FFF) | 0x8000 | ((offset & 0x7F8000) << 1);
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static int HiromToOffset(int address) => address & 0x3F_FFFF;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static int OffsetToHirom(int offset) => offset | 0xC0_0000;
-
 
 	[DebuggerStepThrough]
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -60,49 +56,41 @@ internal class SnesHelpers {
 		}
 	}
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal unsafe static void FillBlockB(byte* pointer, byte value, int count) {
+	internal static unsafe void FillBlockB(byte* pointer, byte value, int count) {
 		new Span<byte>(pointer, count).Fill(value);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal unsafe static void FillBlockW(byte* pointer, ushort value, int count) {
+	internal static unsafe void FillBlockW(byte* pointer, ushort value, int count) {
 		new Span<ushort>(pointer, count).Fill(FixBigEndian(value));
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal unsafe static void FillBlockD(byte* pointer, int value, int count) {
+	internal static unsafe void FillBlockD(byte* pointer, int value, int count) {
 		new Span<int>(pointer, count).Fill(FixBigEndian(value));
 	}
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal unsafe static void WriteW(byte* ptr, int value) {
+	internal static unsafe void WriteW(byte* ptr, int value) {
 		*(ushort*) ptr = FixBigEndian((ushort) value);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal unsafe static void WriteW(byte* ptr, ushort value) {
+	internal static unsafe void WriteW(byte* ptr, ushort value) {
 		*(ushort*) ptr = FixBigEndian(value);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal unsafe static void WriteL(byte* ptr, int value) {
+	internal static unsafe void WriteL(byte* ptr, int value) {
 		*(ushort*) ptr = FixBigEndian((ushort) value);
 		ptr[2] = (byte) (value >> 16);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal unsafe static void WriteD(byte* ptr, int value) {
+	internal static unsafe void WriteD(byte* ptr, int value) {
 		*(int*) ptr = FixBigEndian(value);
 	}
-
-
-
-
-
-
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static bool FitsIn8(int v) {
@@ -122,7 +110,7 @@ internal class SnesHelpers {
 		}
 	}
 
-	internal unsafe static void InsertHeaderString(string str, byte* ptr, int len) {
+	internal static unsafe void InsertHeaderString(string str, byte* ptr, int len) {
 		new Span<byte>(ptr, len).Fill((byte) ' ');
 
 		len = Math.Min(str.Length, len);
@@ -132,13 +120,10 @@ internal class SnesHelpers {
 		}
 	}
 
-
-
 	internal static byte GetHeaderSizeByte(int value) {
 		return (byte) System.Numerics.BitOperations.Log2(
 			System.Numerics.BitOperations.RoundUpToPowerOf2((uint) value));
 	}
-
 
 	internal static (bool valid, int distance) TestGetBranchDistance(int location, int target) {
 		int v = target - location;
@@ -146,13 +131,11 @@ internal class SnesHelpers {
 		return (v == distance, distance);
 	}
 
-
 	internal static (bool valid, int distance) TestGetBranchDistanceLong(int location, int target) {
 		int v = target - location;
 		int distance = (short) v;
 		return (v == distance, distance);
 	}
-
 
 	public const int GameCodeLength = 4;
 	public const int MakerCodeLength = 2;
@@ -220,7 +203,6 @@ internal class SnesHelpers {
 			return false;
 		}
 
-
 		if (IsMirroredWram(addrB)) {
 			return IsInMirroredBank(addrA);
 		}
@@ -240,7 +222,6 @@ internal class SnesHelpers {
 		if (bankChange is 0) {
 			return true;
 		}
-
 
 		if (IsMirroredWram(addrB)) {
 			return IsInMirroredBank(addrA);
@@ -266,7 +247,6 @@ internal class SnesHelpers {
 		return false;
 	}
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static bool IsValidBusAddress(int addr) {
 		return (uint) addr <= 0xFF_FFFF;
@@ -283,7 +263,6 @@ internal class SnesHelpers {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static bool IsCommonMirror(int addr) => (addr & 0x40_8000) < 0x8000;
 
-
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static bool IsWramMirror(int addr) => (addr & 0x40_FFFF) < 0x2000;
 
@@ -292,7 +271,6 @@ internal class SnesHelpers {
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static bool IsWram(int addr) => (addr & 0xFE_0000) >= 0x7E_0000;
-
 
 	internal static int GetAllocationSize(int desired) {
 		return desired switch {

@@ -1,6 +1,6 @@
 ﻿namespace Futaba;
 
-internal class NumberToken(decimal val) : ExpressionItem, IReturnableToken, IToken, IExpressionReturn {
+internal sealed class NumberToken(decimal val) : ExpressionItem, IReturnableToken, IToken, IExpressionReturn {
 	public TokenType Type => TokenType.Number;
 
 	public TokenRule Rule => TokenRule.Primary;

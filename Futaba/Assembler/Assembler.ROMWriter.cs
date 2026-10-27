@@ -2,65 +2,104 @@
 
 unsafe partial class Assembler {
 	private const int RomBufferPadding = 128;
+
+	// We're always going to allocate a power of 2 plus a little extra.
+	// This mainly comes into play when dealing with the Grow option,
+	// and we don't want to be reallocating 1 byte at a time.
+	private int _allocatedLength = 0;
+
+	/// <summary>
+	/// Current program counter.
+	/// </summary>
+	private protected int _pc = 0;
+
+	/// <summary>
+	/// Current provenance.
+	/// </summary>
+	private int _site = 0;
+
+	/// <summary>
+	/// Pointer to address 0 of the ROM buffer.
+	/// </summary>
+	private byte* _romPtr;
+
+	/// <summary>
+	/// Pointer to current working address.
+	/// </summary>
+	private byte* _pcPtr;
+
+	/// <summary>
+	/// Manually handled difference between working pointer and base pointer.
+	/// </summary>
+	internal int _offset;
+
+	// This represents when a write occurred.
+	// As a single pass assembler, we don't have another way to tell the order of code
+	// if it's handled in a different order than encountered--namely, when dealing with requests.
+	// To compensate for that, we track the strict order of any write or request made
+	// and use that to determine if something is allowed to write.
+	// This technically has a potential to overflow,
+	// but, given the nature of the consumers, this should never happen.
+	/// <summary>
+	/// Current write ordinal.
+	/// </summary>
+	private uint _time = 0;
 	private const int TimeSize = sizeof(uint);
 
-	private protected int PC = 0;
-	private int Site = 0;
+	/// <summary>
+	/// Current ordinal address.
+	/// </summary>
+	private uint* _timePtr;
 
-	private byte* RomBuffer;
-	private uint* TimeBuffer;
-	private byte* PcPointer;
-	private int AllocatedRomLength = 0;
-
-	private uint WriteTime = 0;
-
-	internal int Offset;
-
-
-	private bool InProvenance = false;
+	private bool _inProvenance = false;
 
 	internal int Provenance {
-		get => InProvenance ? Site : PC;
+		get => _inProvenance ? _site : _pc;
 		set {
-			InProvenance = true;
-			Site = value;
+			_inProvenance = true;
+			_site = value;
 		}
 	}
 
-	private bool ShutUpAboutAddresses = false;
+	// Warning throttles
+	private bool _shutUpAboutAddresses = false;
+	private bool _shutUpAboutSegments = false;
 
-	private Stack<int> PCStack = new(64);
-	private Stack<long> PVStack = new(64);
+	private List<Dock> _segments = [];
+	private Dock? _currentSegment = null;
+
+	private Stack<int> _pcStack = new(64);
+	private Stack<int?> _provStack = new(64);
 
 	private void PushPC() {
-		PCStack.Push(PC);
+		_pcStack.Push(_pc);
 	}
 
 	private void PullPC() {
-		if (PCStack.TryPop(out int newpc)) {
-			PC = newpc;
-			Offset = AddressToOffset(PC);
-			PcPointer = RomBuffer + Offset;
+		if (_pcStack.TryPop(out int newpc)) {
+			_pc = newpc;
+			_offset = AddressToOffset(_pc);
+			_pcPtr = _romPtr + _offset;
 		} else {
 			Error("No program counter to pop from stack.");
 		}
 	}
 
 	private void PushProvenance() {
-		if (InProvenance) {
-			PVStack.Push(Site);
+		if (_inProvenance) {
+			_provStack.Push(_site);
 		} else {
-			PVStack.Push(long.MinValue);
+			_provStack.Push(null);
 		}
 	}
 
 	private void PullProvenance() {
-		if (PVStack.TryPop(out long newpv)) {
-			if (newpv is long.MinValue) {
-				InProvenance = false;
+		if (_provStack.TryPop(out int? newpv)) {
+			if (newpv is null) {
+				_inProvenance = false;
 			} else {
-				Site = (int) newpv;
-				InProvenance = true;
+				_site = (int) newpv;
+				_inProvenance = true;
 			}
 		} else {
 			Error("No address to pop from stack.");
@@ -78,8 +117,8 @@ unsafe partial class Assembler {
 	/// </summary>
 	private void PlaceholderOp(byte opcode, int operandSize) {
 		if (TryAdvanceProgramCounter(operandSize + 1)) {
-			PcPointer[0] = opcode;
-			new Span<byte>(PcPointer + 1, operandSize).Clear();
+			_pcPtr[0] = opcode;
+			new Span<byte>(_pcPtr + 1, operandSize).Clear();
 			AdvanceProgramCounter(operandSize);
 		}
 	}
@@ -87,11 +126,10 @@ unsafe partial class Assembler {
 	/// <inheritdoc cref="PlaceholderOp(byte, int)"/>
 	private void PlaceholderOp(byte opcode) {
 		if (TryAdvanceProgramCounter(1)) {
-			PcPointer[0] = opcode;
+			_pcPtr[0] = opcode;
 			TrackAndStep1();
 		}
 	}
-
 
 	private void WarningIfWeirdLocalJump(int addr, int dest) {
 		if (!JumpTargetMakesSense(addr, dest)) {
@@ -169,7 +207,6 @@ unsafe partial class Assembler {
 
 				break;
 
-
 			default:
 				for (int start = 0; start < wordsize; start++) {
 					byte fillval = (byte) val;
@@ -188,8 +225,8 @@ unsafe partial class Assembler {
 			return;
 		}
 
-		byte* writePtr = RomBuffer + offset; // put these into registers
-		uint* timePtr = TimeBuffer + offset;
+		byte* writePtr = _romPtr + offset; // put these into registers without the additional offset
+		uint* timePtr = _timePtr + offset;
 
 		if (wordsize is 1) {
 			byte addVal = (byte) val;
@@ -217,28 +254,26 @@ unsafe partial class Assembler {
 		}
 	}
 
-	
-
 	private void WriteData(IExpressionReturn val, int size) {
 		if (TryAdvanceProgramCounter(size)) {
 			if (val.NeedsRequest) {
-				CreateSimpleRequest(val, Offset, size);
+				CreateSimpleRequest(val, _offset, size);
 			} else {
 				switch (size) {
 					case 1:
-						PcPointer[0] = (byte) val.ValueInt32;
+						_pcPtr[0] = (byte) val.ValueInt32;
 						break;
 
 					case 2:
-						SnesHelpers.WriteW(PcPointer, val.ValueInt32);
+						SnesHelpers.WriteW(_pcPtr, val.ValueInt32);
 						break;
 
 					case 3:
-						SnesHelpers.WriteL(PcPointer, val.ValueInt32);
+						SnesHelpers.WriteL(_pcPtr, val.ValueInt32);
 						break;
 
 					case 4:
-						SnesHelpers.WriteD(PcPointer, val.ValueInt32);
+						SnesHelpers.WriteD(_pcPtr, val.ValueInt32);
 						break;
 				}
 			}
@@ -248,17 +283,17 @@ unsafe partial class Assembler {
 	}
 
 	private void TrackAndStep(int step) {
-		new Span<uint>(TimeBuffer + Offset, step).Fill(WriteTime++);
+		new Span<uint>(_timePtr + _offset, step).Fill(_time++);
 		AdvanceProgramCounter(step);
 	}
-
 
 	private void WriteData(int offset, IExpressionReturn val, int size) {
 		if (TestOffsetBounds(offset + size)) {
 			if (val.NeedsRequest) {
 				CreateSimpleRequest(val, offset, size);
+
 			} else {
-				byte* wrTemp = RomBuffer + offset;
+				byte* wrTemp = _romPtr + offset;
 
 				switch (size) {
 					case 1:
@@ -285,7 +320,7 @@ unsafe partial class Assembler {
 
 	private void WriteData(int offset, int value, int size) {
 		if (TestOffsetBounds(offset + size)) {
-			byte* wrTemp = RomBuffer + offset;
+			byte* wrTemp = _romPtr + offset;
 
 			switch (size) {
 				case 1:
@@ -313,7 +348,7 @@ unsafe partial class Assembler {
 	private void InsertEncodedString(int offset, int wordsize, string text, SnesEncoder encoder) {
 		int length = text.Length;
 
-		byte* bufferB = RomBuffer + offset;
+		byte* bufferB = _romPtr + offset;
 		var enc = encoder.EncoderFunction;
 
 		switch (wordsize) {
@@ -356,7 +391,7 @@ unsafe partial class Assembler {
 	}
 
 	private void ReserveRange(int offset, int count) {
-		new Span<uint>(TimeBuffer + offset, count).Fill(WriteTime++);
+		new Span<uint>(_timePtr + offset, count).Fill(_time++);
 	}
 
 	// The routines in this region are roughly organized such that
@@ -364,13 +399,12 @@ unsafe partial class Assembler {
 	// just to maybe influence cleaner compilation wrt cache
 	#region writes
 
-
 	private void WriteOpImplied(IExpressionReturn opcode) {
 		if (TryAdvanceProgramCounter(1)) {
 			if (opcode.NeedsRequest) {
-				CreateSimpleRequest(opcode, Offset, 1);
+				CreateSimpleRequest(opcode, _offset, 1);
 			} else {
-				PcPointer[0] = (byte) opcode.ValueInt32;
+				_pcPtr[0] = (byte) opcode.ValueInt32;
 			}
 
 			TrackAndStep1();
@@ -391,17 +425,15 @@ unsafe partial class Assembler {
 
 	private void WriteOpImplied(byte opcode) {
 		if (TryAdvanceProgramCounter(1)) {
-			PcPointer[0] = opcode;
+			_pcPtr[0] = opcode;
 			TrackAndStep1();
 		}
 	}
 
 	private void TrackAndStep1() {
-		TimeBuffer[Offset] = WriteTime++;
+		_timePtr[_offset] = _time++;
 		AdvanceProgramCounter(1);
 	}
-
-
 
 	private void AssembleBranch(OperandString argstr, byte opcode) {
 		int len = argstr.Length;
@@ -434,15 +466,14 @@ unsafe partial class Assembler {
 		}
 	}
 
-
-
 	private void WriteOpRel8(byte opcode, IExpressionReturn val) {
 		if (TryAdvanceProgramCounter(2)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val.NeedsRequest) {
-				BranchRequests.Add(new BranchRequest(val, Offset + 1, Provenance + 2, WriteTime, CurrentSourceLine));
+				_branchRequests.Add(new BranchRequest(val, _offset + 1, Provenance + 2, _time, CurrentSourceLine));
+
 			} else {
 				var (good, distance) = SnesHelpers.TestGetBranchDistance(Provenance + 2, val.ValueInt32);
 
@@ -460,7 +491,7 @@ unsafe partial class Assembler {
 
 	private void WriteOpBrop(byte opcode) {
 		if (TryAdvanceProgramCounter(2)) {
-			PcPointer[0] = opcode;
+			_pcPtr[0] = opcode;
 			// Operand write intentionally skipped
 			TrackAndStep2();
 		}
@@ -468,7 +499,7 @@ unsafe partial class Assembler {
 
 	private void WriteOpB(byte opcode, byte val) {
 		if (TryAdvanceProgramCounter(2)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 			wr[1] = val;
 			TrackAndStep2();
@@ -477,11 +508,11 @@ unsafe partial class Assembler {
 
 	private void WriteOpB(byte opcode, IExpressionReturn val) {
 		if (TryAdvanceProgramCounter(2)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val.NeedsRequest) {
-				CreateSimpleRequest(val, Offset + 1, 1);
+				CreateSimpleRequest(val, _offset + 1, 1);
 			} else {
 				wr[1] = (byte) val.ValueInt32;
 			}
@@ -491,27 +522,26 @@ unsafe partial class Assembler {
 	}
 
 	private void TrackAndStep2() {
-		uint* mod = TimeBuffer + Offset;
-		uint wt = WriteTime++;
+		uint* mod = _timePtr + _offset;
+		uint wt = _time++;
 		mod[0] = wt;
 		mod[1] = wt;
 		AdvanceProgramCounter(2);
 	}
 
-
 	private void WriteOpBB(byte opcode, IExpressionReturn val1, IExpressionReturn val2) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val1.NeedsRequest) {
-				CreateSimpleRequest(val1, Offset + 1, 1);
+				CreateSimpleRequest(val1, _offset + 1, 1);
 			} else {
 				wr[1] = (byte) val1.ValueInt32;
 			}
 
 			if (val2.NeedsRequest) {
-				CreateSimpleRequest(val2, Offset + 2, 1);
+				CreateSimpleRequest(val2, _offset + 2, 1);
 			} else {
 				wr[2] = (byte) val2.ValueInt32;
 			}
@@ -522,12 +552,12 @@ unsafe partial class Assembler {
 
 	private void WriteOpBB(byte opcode, IExpressionReturn val1, byte val2) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 			wr[2] = val2;
 
 			if (val1.NeedsRequest) {
-				CreateSimpleRequest(val1, Offset + 1, 1);
+				CreateSimpleRequest(val1, _offset + 1, 1);
 			} else {
 				wr[1] = (byte) val1.ValueInt32;
 			}
@@ -538,12 +568,12 @@ unsafe partial class Assembler {
 
 	private void WriteOpBB(byte opcode, byte val1, IExpressionReturn val2) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 			wr[1] = val1;
 
 			if (val2.NeedsRequest) {
-				CreateSimpleRequest(val2, Offset + 2, 1);
+				CreateSimpleRequest(val2, _offset + 2, 1);
 			} else {
 				wr[2] = (byte) val2.ValueInt32;
 			}
@@ -554,17 +584,18 @@ unsafe partial class Assembler {
 
 	private void WriteOpBRel(byte opcode, IExpressionReturn val1, IExpressionReturn val2) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val1.NeedsRequest) {
-				CreateSimpleRequest(val1, Offset + 1, 1);
+				CreateSimpleRequest(val1, _offset + 1, 1);
 			} else {
 				wr[1] = (byte) val1.ValueInt32;
 			}
 
 			if (val2.NeedsRequest) {
-				BranchRequests.Add(new BranchRequest(val2, Offset + 2, Provenance + 3, WriteTime, CurrentSourceLine));
+				_branchRequests.Add(new BranchRequest(val2, _offset + 2, Provenance + 3, _time, CurrentSourceLine));
+
 			} else {
 				var (good, distance) = SnesHelpers.TestGetBranchDistance(Provenance + 3, val2.ValueInt32);
 
@@ -582,11 +613,11 @@ unsafe partial class Assembler {
 
 	private void WriteOpBBrop(byte opcode, IExpressionReturn val1) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val1.NeedsRequest) {
-				CreateSimpleRequest(val1, Offset + 1, 1);
+				CreateSimpleRequest(val1, _offset + 1, 1);
 			} else {
 				wr[1] = (byte) val1.ValueInt32;
 			}
@@ -602,14 +633,14 @@ unsafe partial class Assembler {
 	/// </summary>
 	private void WriteOpWBank00(byte opcode, IExpressionReturn val) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val.NeedsRequest) {
 				if (MissingTokenSeverity >= MissingTokenSeverity.AbsolutePointers) {
-					JumpRequests.Add(new DirectBankPointerRequest(val, Offset + 1, Provenance, WriteTime, CurrentSourceLine));
+					_jumpRequests.Add(new DirectBankPointerRequest(val, _offset + 1, Provenance, _time, CurrentSourceLine));
 				} else {
-					CreateSimpleRequest(val, Offset + 1, 2);
+					CreateSimpleRequest(val, _offset + 1, 2);
 				}
 			} else {
 				int vval = val.ValueInt32 & SnesHelpers.AbsoluteMask;
@@ -618,7 +649,7 @@ unsafe partial class Assembler {
 					WarningIfWeirdLocalJump(vval, Provenance);
 				}
 
-				SnesHelpers.WriteW(wr + 1, val.ValueInt32);
+				SnesHelpers.WriteW(wr + 1, vval);
 			}
 
 			TrackAndStep3();
@@ -627,11 +658,11 @@ unsafe partial class Assembler {
 
 	private void WriteOpRel16(byte opcode, IExpressionReturn val) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val.NeedsRequest) {
-				BranchRequests.Add(new BranchRequestLong(val, Offset + 1, Provenance + 3, WriteTime, CurrentSourceLine));
+				_branchRequests.Add(new BranchRequestLong(val, _offset + 1, Provenance + 3, _time, CurrentSourceLine));
 			} else {
 				var (good, distance) = SnesHelpers.TestGetBranchDistanceLong(Provenance + 3, val.ValueInt32);
 
@@ -647,20 +678,19 @@ unsafe partial class Assembler {
 		}
 	}
 
-
 	/// <summary>
 	/// For absolute jumps and calls
 	/// </summary>
 	private void WriteOpJ(byte opcode, IExpressionReturn val) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val.NeedsRequest) {
 				if (MissingTokenSeverity >= MissingTokenSeverity.AbsolutePointers) {
-					JumpRequests.Add(new AbsolutePointerRequest(val, Offset + 1, Provenance, WriteTime, CurrentSourceLine));
+					_jumpRequests.Add(new AbsolutePointerRequest(val, _offset + 1, Provenance, _time, CurrentSourceLine));
 				} else {
-					CreateSimpleRequest(val, Offset + 1, 2);
+					CreateSimpleRequest(val, _offset + 1, 2);
 				}
 			} else {
 				int vval = val.ValueInt32;
@@ -668,7 +698,8 @@ unsafe partial class Assembler {
 				if (MissingTokenSeverity >= MissingTokenSeverity.AbsolutePointers) {
 					WarningIfWeirdLocalJump(vval, Provenance);
 				}
-				SnesHelpers.WriteW(wr + 1, val.ValueInt32);
+
+				SnesHelpers.WriteW(wr + 1, vval);
 			}
 			TrackAndStep3();
 		}
@@ -676,7 +707,7 @@ unsafe partial class Assembler {
 
 	private void WriteOpW(byte opcode, int val) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 			SnesHelpers.WriteW(wr + 1, val);
 
@@ -686,11 +717,11 @@ unsafe partial class Assembler {
 
 	private void WriteOpW(byte opcode, IExpressionReturn val) {
 		if (TryAdvanceProgramCounter(3)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val.NeedsRequest) {
-				CreateSimpleRequest(val, Offset + 1, 2);
+				CreateSimpleRequest(val, _offset + 1, 2);
 			} else {
 				SnesHelpers.WriteW(wr + 1, val.ValueInt32);
 			}
@@ -700,8 +731,8 @@ unsafe partial class Assembler {
 	}
 
 	private void TrackAndStep3() {
-		uint* mod = TimeBuffer + Offset;
-		uint wt = WriteTime++;
+		uint* mod = _timePtr + _offset;
+		uint wt = _time++;
 		mod[0] = wt;
 		mod[1] = wt;
 		mod[2] = wt;
@@ -710,11 +741,11 @@ unsafe partial class Assembler {
 
 	private void WriteOpL(byte opcode, IExpressionReturn val) {
 		if (TryAdvanceProgramCounter(4)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			if (val.NeedsRequest) {
-				CreateSimpleRequest(val, Offset + 1, 3);
+				CreateSimpleRequest(val, _offset + 1, 3);
 			} else {
 				SnesHelpers.WriteL(wr + 1, val.ValueInt32);
 			}
@@ -725,7 +756,7 @@ unsafe partial class Assembler {
 
 	private void WriteOpL(byte opcode, int val) {
 		if (TryAdvanceProgramCounter(4)) {
-			byte* wr = PcPointer;
+			byte* wr = _pcPtr;
 			wr[0] = opcode;
 
 			SnesHelpers.WriteL(wr + 1, val);
@@ -735,8 +766,8 @@ unsafe partial class Assembler {
 	}
 
 	private void TrackAndStep4() {
-		uint* mod = TimeBuffer + Offset;
-		uint wt = WriteTime++;
+		uint* mod = _timePtr + _offset;
+		uint wt = _time++;
 		mod[0] = wt;
 		mod[1] = wt;
 		mod[2] = wt;
@@ -751,26 +782,25 @@ unsafe partial class Assembler {
 	private const int BankGuardMask_Half = unchecked((int) 0xFF_FF_8000);
 	private const int BankGuardMask_Full = unchecked((int) 0xFF_FF_0000);
 
-
-	private int BankGuardMask = BankGuardMask_Half;
+	private int _bankGuardMask = BankGuardMask_Half;
 
 	internal bool TryAdvanceProgramCounter(int step) {
-		if (!TestOffsetBounds(Offset + step)) {
-			if (!ShutUpAboutAddresses) {
+		if (!TestOffsetBounds(_offset + step)) {
+			if (!_shutUpAboutAddresses) {
 				Error("The program counter has escaped the valid ROM region.");
-				ShutUpAboutAddresses = true;
+				_shutUpAboutAddresses = true;
 			}
 			return false;
 		}
 
-		int pctest = PC + step - 1;
-		pctest ^= PC;
-		pctest &= BankGuardMask;
+		int pctest = _pc + step - 1;
+		pctest ^= _pc;
+		pctest &= _bankGuardMask;
 
 		if (pctest is not 0) {
-			if (!ShutUpAboutAddresses) {
+			if (!_shutUpAboutAddresses) {
 				Error("A protected bank boundary was crossed during assembly.");
-				ShutUpAboutAddresses = true;
+				_shutUpAboutAddresses = true;
 			}
 
 			AdvanceProgramCounter(step); // advance anyways
@@ -782,11 +812,6 @@ unsafe partial class Assembler {
 
 	#region Address move tests
 
-	private List<Dock> Segments = [];
-	private Dock? currentSegment = null;
-
-	private bool ShutUpAboutSegments = false;
-
 	private void TryMovePC(IExpressionReturn oper) {
 		int addr;
 		int offset;
@@ -794,22 +819,23 @@ unsafe partial class Assembler {
 		if (oper is ExpressionSymbol el && el.Item is Dock seg && el.Context is SymbolContext.RomAddress) {
 			addr = seg.Address;
 			offset = seg.BinaryOffset;
-			currentSegment = seg;
+			_currentSegment = seg;
+
 		} else {
 			addr = oper.ValueInt32;
 			offset = AddressToOffset(addr);
-			currentSegment = null;
+			_currentSegment = null;
 		}
 
 		if (TestOffsetBounds(offset)) {
 			if (AddressIsRom(addr)) {
 				// TODO make a single MovePc(int) and use that for all explicit moves
-				PC = addr;
-				Offset = offset;
-				PcPointer = RomBuffer + offset;
+				_pc = addr;
+				_offset = offset;
+				_pcPtr = _romPtr + offset;
 
-				ShutUpAboutAddresses = false;
-				ShutUpAboutSegments = false;
+				_shutUpAboutAddresses = false;
+				_shutUpAboutSegments = false;
 
 				TestProtectedSegments(offset);
 			} else {
@@ -819,40 +845,40 @@ unsafe partial class Assembler {
 	}
 
 	private void AdvanceProgramCounter(int step) {
-		PcPointer += step;
-		Site += step;
-		Offset += step;
+		_pcPtr += step;
+		_site += step;
+		_offset += step;
 
 		StepPC(step);
 
-		if (Segments.Count > 0) {
+		if (_segments.Count > 0) {
 			StepCurrentSegment(step);
-			TestProtectedSegments(Offset - 1);
+			TestProtectedSegments(_offset - 1);
 		}
 	}
 
 	private void StepCurrentSegment(int step) {
-		Dock? curSeg = currentSegment;
+		Dock? curSeg = _currentSegment;
 
 		if (curSeg is not null) {
 			curSeg.Advance(step, OffsetToAddress);
 
-			if (!ShutUpAboutSegments && curSeg.State is DockState.Overflowed) {
+			if (!_shutUpAboutSegments && curSeg.State is DockState.Overflowed) {
 				Error($"Assembly of segment \"{curSeg}\" has escaped its protected region.");
-				ShutUpAboutSegments = true;
+				_shutUpAboutSegments = true;
 			}
 		}
 	}
 
 	private void TestProtectedSegments(int offset) {
-		if (!ShutUpAboutSegments) {
-			Dock? curSeg = currentSegment;
+		if (!_shutUpAboutSegments) {
+			Dock? curSeg = _currentSegment;
 
-			foreach (Dock ptest in Segments) {
+			foreach (Dock ptest in _segments) {
 				if (ptest != curSeg) {
 					if (ptest.OffsetIsInRegion(offset)) {
 						Error($"Assembly has entered protected region \"{curSeg}\"");
-						ShutUpAboutSegments = true;
+						_shutUpAboutSegments = true;
 						break;
 					}
 				}
@@ -863,9 +889,9 @@ unsafe partial class Assembler {
 	private bool TryToResize(int newSize) {
 		switch (OverflowAction) {
 			case RomOverflowAction.Error:
-				if (!ShutUpAboutAddresses) {
+				if (!_shutUpAboutAddresses) {
 					Error("Cannot assemble outside the ROM's binary range.");
-					ShutUpAboutAddresses = true;
+					_shutUpAboutAddresses = true;
 				}
 				return false;
 
@@ -873,17 +899,17 @@ unsafe partial class Assembler {
 			case RomOverflowAction.Expand:
 				if (ResizeRom(newSize)) {
 					if (OverflowAction is RomOverflowAction.Expand) {
-						CurrentRomSize = AllocatedRomLength;
+						CurrentRomSize = _allocatedLength;
 					}
 
 					return true;
 				}
 
-				if (!ShutUpAboutAddresses) {
+				if (!_shutUpAboutAddresses) {
 					Error("The ROM cannot be enlarged any further.");
-					ShutUpAboutAddresses = true;
+					_shutUpAboutAddresses = true;
 				}
-				
+
 				return false;
 		}
 
@@ -902,14 +928,14 @@ unsafe partial class Assembler {
 		}
 
 		int newAllocSize = SnesHelpers.GetAllocationSize(desiredSize);
-		int oldAlloc = AllocatedRomLength;
+		int oldAlloc = _allocatedLength;
 
 		if (newAllocSize != oldAlloc) {
 			ReallocRomBuffer(newAllocSize);
 
 			// clear the newly allocated memory
 			if (newAllocSize > oldAlloc) {
-				new Span<byte>(RomBuffer + oldAlloc, newAllocSize - oldAlloc).Clear();
+				new Span<byte>(_romPtr + oldAlloc, newAllocSize - oldAlloc).Clear();
 			}
 		}
 
@@ -918,58 +944,48 @@ unsafe partial class Assembler {
 	}
 
 	private void ReallocRomBuffer(int size) {
-		RomBuffer = NativeMemory.ReAllocNice(RomBuffer, size + RomBufferPadding);
-		TimeBuffer = NativeMemory.ReAllocNice(TimeBuffer, size + RomBufferPadding);
-		AllocatedRomLength = size;
+		_romPtr = NativeMemory.ReAllocNice(_romPtr, size + RomBufferPadding);
+		_timePtr = NativeMemory.ReAllocNice(_timePtr, size + RomBufferPadding);
+		_allocatedLength = size;
 
-		PcPointer = RomBuffer + Offset;
+		_pcPtr = _romPtr + _offset;
 	}
 
 	/// <summary>
 	/// Clean up the unmanaged buffers.
 	/// </summary>
 	private void DeallocRomBuffer() {
-		if (RomBuffer != default) {
-			NativeMemory.AlignedFree(RomBuffer);
-			RomBuffer = default;
+		if (_romPtr != default) {
+			NativeMemory.AlignedFree(_romPtr);
+			_romPtr = default;
 		}
 
-		if (TimeBuffer != default) {
-			NativeMemory.AlignedFree(TimeBuffer);
-			TimeBuffer = default;
+		if (_timePtr != default) {
+			NativeMemory.AlignedFree(_timePtr);
+			_timePtr = default;
 		}
 
-		PcPointer = default;
+		_pcPtr = default;
 	}
 
 	private void ResetRomBuffer() {
 		CurrentRomSize = InitialRomSize;
 		ReallocRomBuffer(SnesHelpers.GetAllocationSize(InitialRomSize));
-		NativeMemory.Clear(TimeBuffer, (nuint) (TimeSize * AllocatedRomLength));
+		NativeMemory.Clear(_timePtr, (nuint) (TimeSize * _allocatedLength));
 
-		// the baserom should count as 0
-		WriteTime = 1;
+		_time = 1; // the baserom should count as 0
 
-		if (BaseRom is null) {
-			NativeMemory.Clear(RomBuffer, (nuint) AllocatedRomLength);
-		} else {
-			int baseromlen = BaseRom.Length;
-			int remaining  = AllocatedRomLength - baseromlen;
+		Span<byte> rom = new(_romPtr, _allocatedLength);
 
-			if (remaining < 0) {
-				remaining = 0;
-				baseromlen = AllocatedRomLength;
-			}
+		if (_baseRom is not null) {
+			int baseromlen = Math.Min(_baseRom.Length, _allocatedLength);
 
-			fixed (byte* filler = BaseRom) {
-				Buffer.MemoryCopy(filler, RomBuffer, baseromlen, baseromlen);
+			_baseRom.AsSpan().CopyTo(rom[..baseromlen]);
 
-			}
-
-			if (remaining > 0) {
-				new Span<byte>(RomBuffer + baseromlen, remaining).Clear();
-			}
+			rom = rom[baseromlen..];
 		}
+
+		rom.Clear();
 	}
 
 	#endregion

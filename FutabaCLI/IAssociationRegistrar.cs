@@ -1,4 +1,4 @@
-namespace FutabaCLI;
+﻿namespace FutabaCLI;
 
 /// <summary>
 /// Registers or removes the OS-level command shortcut and .futaba file association.

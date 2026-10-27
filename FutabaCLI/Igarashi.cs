@@ -13,8 +13,6 @@ using System.Text;
 
 namespace FutabaCLI;
 
-
-// TODO add a template command
 internal static partial class Igarashi {
 	public static readonly Version Version;
 
@@ -40,6 +38,8 @@ internal static partial class Igarashi {
 		Arg_Entry.AcceptExistingOnly();
 		Arg_PatchBase.AcceptExistingOnly();
 		Arg_MapMode.AcceptOnlyFromAmong("none", "lorom", "hirom", "exlorom", "exhirom", "loromsa1", "hiromsa1");
+
+		Option_ProjectType.AcceptOnlyFromAmong("new", "homebrew", "patch", "hack", "disassembly", "other");
 
 		Option_Size.Validators.Add(res => {
 			if (res.GetValue(Option_Size) is string s) {
@@ -73,7 +73,6 @@ internal static partial class Igarashi {
 		manifestBuild.AddOptions(Option_AssembleOnce, Option_PreserveConsole, Option_PauseAfter, Option_Timer);
 		manifestBuild.SetAction(Assemble);
 
-
 		Command registerCommand = new("register", "Register as a system command and enable direct opening of .futaba files");
 		registerCommand.SetAction(RegisterFutaba);
 
@@ -88,12 +87,17 @@ internal static partial class Igarashi {
 			Arg_Entry, Arg_PatchBase, Arg_OutputRom
 		};
 
+		Command template = new("template", "Create a new empty manifest file") {
+			Arg_OutputManifest
+		};
+		template.SetAction(CreateTemplateFile);
+		template.AddOptions(Option_ProjectType);
+
 		Command checksums = new("checksum", "Calculate various checksums for a file") {
 			Arg_TargetRom
 		};
 
 		checksums.SetAction(ChecksumFile);
-
 
 		quicky.AddOptions(Arg_MapMode, Option_FixChecksum, Option_Size, Option_Timer);
 		patch.AddOptions(Arg_MapMode, Option_FixChecksum, Option_Size, Option_Timer);
@@ -104,7 +108,6 @@ internal static partial class Igarashi {
 		Command futaba = new("igarashi") { Hidden = true };
 		futaba.SetAction(PrintFutaba);
 		rootaba.Add(futaba);
-
 
 		VersionOption cmdversion = new("--version") {
 			Action = new ShowVersionThing(() => {
@@ -119,6 +122,7 @@ internal static partial class Igarashi {
 		rootaba.Add(quicky);
 		rootaba.Add(patch);
 		rootaba.Add(checksums);
+		rootaba.Add(template);
 		rootaba.Add(registerCommand);
 		rootaba.Add(unregisterCommand);
 		rootaba.Options.Remove(rootaba.Options.First(o => o is VersionOption));
@@ -129,6 +133,53 @@ internal static partial class Igarashi {
 #endif
 	}
 
+	static int CreateTemplateFile(ParseResult res) {
+		string fileName = res.GetRequiredValue(Arg_OutputManifest);
+
+		if (!Path.HasExtension(fileName)) {
+			fileName += ".futaba";
+		}
+
+		string? projectType = res.GetValue(Option_ProjectType);
+
+		bool makingDisassembly = projectType?.EqualsI("disassembly") ?? false;
+
+		FileInfo templateFile = new(fileName);
+
+		if (templateFile.Exists) {
+			Console.ForegroundColor = ConsoleColor.Yellow;
+			if (!GetYN($"The file '{fileName}' already exists. Would you like to overwrite it?")) {
+				return Exit_Good;
+			}
+		}
+
+		try {
+			using var stream = templateFile.CreateText();
+
+			stream.BaseStream.Clear();
+
+			stream.WriteLine("[FUTABA:assemble]");
+
+			foreach (var (cat, list) in ManifestContainer.ManifestKeywords) {
+				if (cat is "disassembly" && !makingDisassembly) {
+					continue;
+				}
+
+				stream.WriteLine();
+				stream.WriteLine($"{cat}:");
+
+				foreach (string key in list) {
+					stream.WriteLine($"\t{key,-20}= ");
+				}
+			}
+
+		} catch (Exception e) {
+			Error($"Error writing file: {e.Message}");
+			return Exit_Error;
+		}
+
+		return Exit_Good;
+	}
 
 	static int ChecksumFile(ParseResult res) {
 		try {
@@ -288,11 +339,67 @@ internal static partial class Igarashi {
 		}
 	}
 
-		
-
 	static void DrainKeyBuffer() {
 		while (Console.KeyAvailable) {
 			Console.ReadKey(true);
+		}
+	}
+
+	private class IncrementalManifestWaiter {
+		private readonly ManualResetEventSlim _manifestWait = new (false);
+
+		public bool PressedEscape { get; private set; }
+
+		public bool CodeChanged { get; private set; }
+
+		private bool Abort = false;
+
+		public void Wait() {
+			PressedEscape = false;
+			DrainKeyBuffer();
+
+			while (!_manifestWait.IsSet) {
+				while (Console.KeyAvailable) {
+					if (Console.ReadKey(true).Key is ConsoleKey.Escape) {
+						PressedEscape = true;
+						goto Exit;
+					}
+				}
+			}
+
+			Exit:
+			return;
+		}
+
+		public void Reset() {
+			PressedEscape = false;
+			CodeChanged = false;
+			Abort = false;
+			_manifestWait.Reset();
+
+			DrainKeyBuffer();
+		}
+
+		private void SomethingChanged(object source, FileSystemEventArgs e) {
+			if (Abort) {
+				return;
+			}
+			CodeChanged = true;
+			_manifestWait.Set();
+		}
+
+		private void EscapePressed(object source, FileSystemEventArgs e) {
+			PressedEscape = true;
+			Abort = true;
+			_manifestWait.Set();
+		}
+
+		public void Subscribe(ManifestContainer manifest) {
+			manifest.SourceChange += SomethingChanged;
+		}
+
+		public void Unsubscribe(ManifestContainer manifest) {
+			manifest.SourceChange -= SomethingChanged;
 		}
 	}
 
@@ -300,6 +407,8 @@ internal static partial class Igarashi {
 	private const string FinishedAssembly = "Assembly complete!";
 	private const string StarSep = "****************************************************************************************************";
 	private const string LineSep = "----------------------------------------------------------------------------------------------------";
+
+	private static readonly IncrementalManifestWaiter _manifestWaiter = new();
 
 	static int Assemble(ParseResult args) {
 		if (args.GetValue(Arg_ManifestFile) is not FileInfo manifestFile) {
@@ -310,7 +419,6 @@ internal static partial class Igarashi {
 		bool clearConsole = !args.GetValue(Option_PreserveConsole);
 		bool showTimer = args.GetValue(Option_Timer);
 		bool pauseAfter = args.GetValue(Option_PauseAfter);
-
 
 		int retcode = 0;
 
@@ -323,32 +431,73 @@ internal static partial class Igarashi {
 		using ManifestContainer manifest = new(manifestFile);
 
 		do {
+			_manifestWaiter.Reset();
+
 			retcode = AssembleOne(manifest);
 
 			DrainKeyBuffer();
 
-			if (redoAssembly) {
+			if (manifest.Incremental) {
+				_manifestWaiter.Subscribe(manifest);
 				Console.WriteLine();
-				Notice("Press ENTER to rerun assembly. Press any other key to exit.");
 
-				var key = Console.ReadKey(false).Key;
-				redoAssembly = key == ConsoleKey.Enter;
+				NoLineNotice("Assembling in incremental mode. Press ESCAPE to stop.");
+
+				_manifestWaiter.Wait();
+
+				Console.WriteLine();
+
+				if (_manifestWaiter.PressedEscape) {
+					break;
+				}
+
+				Thread.Sleep(200); // give files a moment to calm down
+
+				redoAssembly = true;
+
+				if (clearConsole) {
+					Console.Clear();
+				} else {
+					Notice("Changes detected.");
+				}
+
+			} else if (redoAssembly) {
+				_manifestWaiter.Unsubscribe(manifest);
+				Console.WriteLine();
+
+				NoLineNotice("Press ENTER to rerun assembly. Press ESCAPE to stop.");
+
+				while (true) {
+					ConsoleKey key = Console.ReadKey(true).Key;
+
+					if (key == ConsoleKey.Escape) {
+						redoAssembly = false;
+						break;
+
+					} else if (key == ConsoleKey.Enter) {
+						redoAssembly = true;
+						break;
+					}
+				}
 
 				if (redoAssembly) {
 					if (clearConsole) {
 						Console.Clear();
 					} else {
 						Console.WriteLine();
+						Console.WriteLine();
 					}
 				}
+
 			} else if (pauseAfter) {
-				Console.ReadKey(false);
+				Console.ReadKey(true);
 			}
 		} while (redoAssembly);
 
 		return retcode;
 
 		int AssembleOne(ManifestContainer manifest) {
+			Assembler? assembler = null;
 			try {
 				manifest.ParseManifest();
 				manifest.Configure();
@@ -358,7 +507,7 @@ internal static partial class Igarashi {
 					return Exit_Error;
 				}
 
-				Assembler assembler = manifest.GetAssembler();
+				assembler = manifest.GetAssembler();
 
 				Notice(StartedAssembly);
 
@@ -409,10 +558,7 @@ internal static partial class Igarashi {
 
 				return manifest.ManifestGood ? Exit_Good : Exit_Error;
 
-
 				//////////////////////////////////////////////////////////////////
-
-
 
 				void AddOutputHeader() {
 					if (!didAnalysisSep) {
@@ -423,8 +569,12 @@ internal static partial class Igarashi {
 						didAnalysisSep = true;
 					}
 				}
+
 			} catch (Exception e) {
 				Console.WriteLine(e.GetType());
+				if (assembler?.ErrorLine is string el) {
+					Console.Error.WriteLine($"Suspected line: {el}");
+				}
 				FatalError(e);
 				return e.HResult;
 			}
@@ -487,9 +637,19 @@ internal static partial class Igarashi {
 					const int diffCharSpanLength = hexCharSpanLength + bytesPerRow - 1;
 					const int fullAddressLineLength = addressLineLength + diffCharSpanLength;
 
+					diffWriter.Write("Total bytes difference: ");
+					diffWriter.Flush();
+					long totalOffset = diffWriter.BaseStream.Position;
+					const string TotalBytesDifferencePlaceHolder = "          ";
+					diffWriter.WriteLine(TotalBytesDifferencePlaceHolder);
+					diffWriter.WriteLine("");
+					diffWriter.WriteLine("==================================");
+					diffWriter.WriteLine("offset (snesbus) | <build>");
+					diffWriter.WriteLine("                 | <expected>");
+					int totalDiffs = 0;
+
 					char* hexCharPtr = stackalloc char[hexCharSpanLength];
 					char* addressCharPtr = stackalloc char[fullAddressLineLength];
-
 
 					char* diffWriteBase = addressCharPtr + addressLineLength;
 
@@ -528,7 +688,6 @@ internal static partial class Igarashi {
 							*(uint*) diffWritePtr = *(uint*) hexWritePtr;
 						}
 
-
 						Helpers.WriteHexAddress(i, addressLineSpan, 0);
 						Helpers.WriteHexAddress(offsetToAddress(i), addressLineSpan, 9);
 						diffWriter.WriteLine(addressLineSpan[..(addressLineLength + (rem * 3 - 1))]);
@@ -537,20 +696,24 @@ internal static partial class Igarashi {
 						Convert.TryToHexString(nomSlice, hexCharSpan, out _);
 
 						// reformat the converted hex string to have spaces between each hex number
-
 						diffWritePtr = diffWriteBase;
 						hexWritePtr = hexCharPtr;
 
 						for (int k = 0; k < romSlice.Length; k++, hexWritePtr += 2, diffWritePtr += 3) {
 							if (romSlice[k] != nomSlice[k]) {
+								totalDiffs++;
 								*(uint*) diffWritePtr = *(uint*) hexWritePtr;
 							}
 						}
 
 						diffWriter.Write("                 | ");
 						diffWriter.WriteLine(diffCharSpan[..(rem * 3 - 1)]);
-
 					}
+
+					diffWriter.Flush();
+					diffWriter.BaseStream.Position = totalOffset;
+					diffWriter.Write($"{totalDiffs}".PadLeft(TotalBytesDifferencePlaceHolder.Length));
+					diffWriter.Flush();
 				}
 			}
 		}
@@ -563,7 +726,7 @@ internal static partial class Igarashi {
 		} else {
 			Console.WriteLine("No differences found between output and nominal.");
 		}
-	} 
+	}
 
 	static void FatalError(Exception e) {
 		DrainKeyBuffer();
@@ -572,21 +735,31 @@ internal static partial class Igarashi {
 
 		Console.BackgroundColor = ConsoleColor.Red;
 		Console.ForegroundColor = ConsoleColor.White;
-		Console.Write("Print trace? (Y/N) ");
-		Console.ResetColor();
 
-		while (true) {
-			var key = Console.ReadKey(false).Key;
-
-			if (key is ConsoleKey.Y) {
-				Console.Error.WriteLine();
-				Error(e.StackTrace ?? "\tStack trace not available.");
-			} else if (key is ConsoleKey.N or ConsoleKey.Enter) {
-				break;
-			}
+		if (GetYN("Print trace ?")) {
+			Error(e.StackTrace ?? "\tStack trace not available.");
 		}
 	}
 
+	private static bool GetYN(string text) {
+		Console.Write(text);
+		Console.Write(" (Y/N)");
+		Console.ResetColor();
+		Console.Write(" ");
+
+		while (true) {
+			var key = Console.ReadKey(true).Key;
+
+			if (key is ConsoleKey.Y) {
+				Console.WriteLine();
+				return true;
+
+			} else if (key is ConsoleKey.N or ConsoleKey.Enter or ConsoleKey.Escape) {
+				Console.WriteLine();
+				return false;
+			}
+		}
+	}
 
 	internal static void ExportSymbols_Wla(string outputPath, Assembler assembler) {
 		FileInfo symfile = new(Path.ChangeExtension(outputPath, ".sym"));
@@ -594,14 +767,13 @@ internal static partial class Igarashi {
 		using var w = new StreamWriter(Helpers.WaitForAndCreateStream(symfile));
 		w.BaseStream.Clear();
 
-		var list = assembler.Symbols.Values;
+		var list = assembler.GetSymbols().Values;
 
 		w.WriteLine("[labels]");
 
 		Span<char> symaddress = stackalloc char[7];
 		symaddress[2] = ':';
 		symaddress[6] = ' ';
-
 
 		foreach (var s in list) {
 			int wval = s.DefaultValue;
@@ -616,7 +788,6 @@ internal static partial class Igarashi {
 			w.Write(' ');
 			w.WriteLine(s.Name);
 		}
-
 
 		static char GetCharFromNum(int n) {
 			n &= 0xF;
@@ -634,7 +805,7 @@ internal static partial class Igarashi {
 		using var w = new StreamWriter(Helpers.WaitForAndCreateStream(symfile));
 		w.BaseStream.Clear();
 
-		var list = assembler.Symbols.Values;
+		var list = assembler.GetSymbols().Values;
 
 		// set up some stack space for hex conversion
 		Span<char> addrHex = stackalloc char[13];
@@ -699,10 +870,9 @@ internal static partial class Igarashi {
 
 			w.Write(':');
 			w.WriteLine(s.Name);
-			
+
 		}
 	}
-
 
 	static bool AddressIsBwram(int addr, out int offset) {
 		if (((uint) addr & 0xFFF0_0000u) is 0x40_0000) {
@@ -748,8 +918,6 @@ internal static partial class Igarashi {
 		offset = 0;
 		return false;
 	}
-
-
 
 	static int PrintFutaba(ParseResult _) {
 		string w =
@@ -840,7 +1008,6 @@ internal static partial class Igarashi {
 		return 251689658;
 	}
 
-
 	static void WriteTimer(long started, long finished) {
 		Console.ForegroundColor = ConsoleColor.Blue;
 		Console.Write($"Completed in {Stopwatch.GetElapsedTime(started, finished).TotalMilliseconds:#}ms");
@@ -867,6 +1034,12 @@ internal static partial class Igarashi {
 		Console.Write(s);
 		Console.ResetColor();
 		Console.WriteLine();
+	}
+
+	internal static void NoLineNotice(string s) {
+		Console.ForegroundColor = ConsoleColor.Cyan;
+		Console.Write(s);
+		Console.ResetColor();
 	}
 
 	internal static void PostErrors(Assembler assembler) {
@@ -901,7 +1074,6 @@ internal static partial class Igarashi {
 		Console.WriteLine();
 	}
 
-
 	// lazy load these to minimize allocations
 	internal static string ValidRomSizeStrings => field ??= string.Join(", ", RomHeader.GetValidRomSizeTokens().Select(o => $"'{o}'"));
 	internal static Register[] DMA => field ??= Register.DmaRegisters;
@@ -914,40 +1086,11 @@ internal static partial class Igarashi {
 	internal static Register[] SPC => field ??= Register.Spc700Registers;
 	internal static Register[] SuperFX => field ??= Register.SuperFxRegisters;
 
-
-
-
-
+	// Arguments
 	static readonly Argument<FileInfo> Arg_ManifestFile = new("manifest"){
 		Description = "manifest file with assembly configuration",
 		Arity = ArgumentArity.ExactlyOne,
 	};
-
-	static readonly Option<bool> Option_PreserveConsole = new("--keep-old-logs", "-k") {
-		Description = "Disables clearing the console on each assembly",
-		Arity = ArgumentArity.Zero,
-	};
-
-	static readonly Option<bool> Option_AssembleOnce = new("--no-retry", "-1") {
-		Description = "Skips the retry prompt after assembly",
-		Arity = ArgumentArity.Zero,
-	};
-
-	static readonly Option<bool> Option_PauseAfter = new("--pause") {
-		Description = "Waits for input after assembly. Only applicable with --no-retry",
-		Arity = ArgumentArity.Zero,
-	};
-
-	static readonly Option<bool> Option_Timer = new("--show-time", "-t") {
-		Description = "Enable a timer",
-		Arity = ArgumentArity.Zero,
-#if DEBUG
-		DefaultValueFactory = _ => true,
-#endif
-		Hidden = true,
-	};
-
-
 
 	static readonly Argument<FileInfo> Arg_Entry = new("entry"){
 		Description = "assembly entry",
@@ -975,11 +1118,37 @@ internal static partial class Igarashi {
 		Arity = ArgumentArity.ExactlyOne,
 	};
 
+	static readonly Argument<string> Arg_OutputManifest = new("manifest") {
+		Description = "target project name",
+		Arity = ArgumentArity.ExactlyOne,
+	};
+
+	// Options
+	static readonly Option<bool> Option_PreserveConsole = new("--keep-old-logs", "-k") {
+		Description = "Disables clearing the console on each assembly",
+		Arity = ArgumentArity.Zero,
+	};
+
+	static readonly Option<bool> Option_AssembleOnce = new("--no-retry", "-1") {
+		Description = "Skips the retry prompt after assembly",
+		Arity = ArgumentArity.Zero,
+	};
+
+	static readonly Option<bool> Option_PauseAfter = new("--pause") {
+		Description = "Waits for input after assembly. Only applicable with --no-retry",
+		Arity = ArgumentArity.Zero,
+	};
+
+	static readonly Option<bool> Option_Timer = new("--show-time", "-t") {
+		Description = "Enable a timer",
+		Arity = ArgumentArity.Zero,
+		Hidden = true,
+	};
+
 	static readonly Option<MapperMode> Arg_MapMode = new("--mapmode", "-m") {
 		Description = "Mapper mode used for assembly",
 		Arity = ArgumentArity.ExactlyOne,
 	};
-
 
 	static readonly Option<string> Option_Size = new("--size", "-s") {
 		Description = "Output ROM size",
@@ -990,6 +1159,11 @@ internal static partial class Igarashi {
 	static readonly Option<bool> Option_FixChecksum = new("--fix-checksum", "-c") {
 		Description = "Automatically adjusts the checksum",
 		Arity = ArgumentArity.Zero,
+	};
+
+	static readonly Option<string?> Option_ProjectType = new("--type") {
+		Description = "Automatically adjusts the checksum",
+		Arity = ArgumentArity.ZeroOrOne,
 	};
 
 }

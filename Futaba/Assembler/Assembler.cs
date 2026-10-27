@@ -8,35 +8,38 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// <inheritdoc cref="FutabaApp.Version"/>
 	public static Version Version => FutabaApp.Version;
 
-	// private fields
-	private SnesArchitecture arch = SnesArchitecture.WDC65816;
+	#region Private fields
+	private SnesArchitecture _architecture = SnesArchitecture.WDC65816;
 
-	private SnesEncoder CurrentEncoder = SnesEncoder.ASCII;
+	private SnesEncoder _currentEncoder = SnesEncoder.ASCII;
+	private SpannedLookup<SnesEncoder> _encoders = new(32);
 
-	private SpannedLookup<SnesEncoder> Encoders = new(32);
+	private Dictionary<string, SourceFile> _loadedFiles = new(32);
+	private Dictionary<string, SourceBinary> _loadedBinaries = new(64);
+	private List<SourceObject> _loadedSourceObjects = new(128);
 
-	private readonly DirectoryInfo directory;
+	private int _nextAllocBlockStart = -1;
 
-	private Dictionary<string, SourceFile> LoadedFiles = new(32);
-	private Dictionary<string, SourceBinary> LoadedBinaries = new(64);
-	private List<SourceObject> LoadedSources = new(128);
+	private BreakpointsControl _bpControl = BreakpointsControl.Off;
+	private BreakpointInserts _defaultBpInsert = BreakpointInserts.Nothing;
+	private BreakpointTriggers _defaultBpTriggers = BreakpointTriggers.RWX;
 
-	private int NextAllocBlockStart = -1;
-	private bool disposed;
+	private FileSystemEventHandler? _filesChanged;
+	private bool _processedEvent = true; // Prevents more than one event from firing.
+	private bool _disposed = false;
+	private Dictionary<string, FileWatcher> _watchedFiles = [];
 
-	private SpannedLookup<MacroCall> MacrosTable = new(128);
-	private SpannedLookup<UserFunction> UserFunctionsTable = new(128);
+	private byte[]? _baseRom = null;
 
+	private UInt128 _randomSeed = new((ulong) DateTime.Now.Ticks, (ulong) DateTime.UtcNow.Ticks);
+	internal readonly XoRandom _random = new(0);
 
 	// need to use private fields for these
 	// so they can be removed during disposal without throwing an exception
 	private TextWriter _messageOut = Console.Out;
 	private TextWriter _errorOut = Console.Error;
-	private byte[]? _baseRom = null;
 
-
-
-
+	#endregion
 
 	/// <summary>
 	/// Gets the file that acts as the entry point of assembly.
@@ -44,21 +47,34 @@ public unsafe abstract partial class Assembler : IDisposable {
 	public FileInfo EntryPoint { get; }
 
 	/// <summary>
-	/// Gets or sets the base binary to patch over.
+	/// Gets or sets the base binary data used to populate the initial buffer.
 	/// If <see langword="null"/>, assembly begins with a zero-filled buffer.
+	/// <para>
+	/// If the size of this array differs from <see cref="InitialRomSize"/>
+	/// then either excess data will be ignored, or the unused space will be
+	/// initialized to zero.
+	/// </para>
 	/// </summary>
 	/// <inheritdoc cref="OverflowAction" path="//remarks|//exception"/>
 	public byte[]? BaseRom {
 		get => _baseRom;
 		set {
 			ThrowIfAssembling();
-			_baseRom = value;
+
+			if (value is null) {
+				_baseRom = null;
+
+			} else {
+				// avoid reallocation when the sizes are identical
+				if (_baseRom is not null && _baseRom.Length == value.Length) {
+					value.CopyTo(_baseRom, 0);
+
+				} else {
+					_baseRom = [.. value];
+				}
+			}
 		}
 	}
-
-	private UInt128 RNGSeed = new((ulong) DateTime.Now.Ticks, (ulong) DateTime.UtcNow.Ticks);
-
-	internal readonly XoRandom RNG = new(0);
 
 	/// <summary>
 	/// Seeds the internal RNG to allow deterministic output.
@@ -66,7 +82,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// <inheritdoc cref="ThrowIfAssembling" path="//remarks|//exception"/>
 	public void SeedRNG(long seed1, long seed2) {
 		ThrowIfAssembling();
-		RNGSeed = new((ulong) seed1, (ulong) seed2);
+		_randomSeed = new((ulong) seed1, (ulong) seed2);
 	}
 
 	/// <summary>
@@ -85,7 +101,6 @@ public unsafe abstract partial class Assembler : IDisposable {
 		}
 	} = RomOverflowAction.Error;
 
-
 	/// <summary>
 	/// Get or set the warning level for missing tokens.
 	/// </summary>
@@ -97,7 +112,6 @@ public unsafe abstract partial class Assembler : IDisposable {
 			field = value;
 		}
 	} = MissingTokenSeverity.Ambiguous;
-
 
 	/// <summary>
 	/// Returns whether or not any breaking errors occured during assembly.
@@ -149,7 +163,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// <para>
 	/// If an exception is thrown during assembly,
 	/// this will return information about the source line
-	/// that was being handled at the time the exception was thrown.
+	/// that was being handled at the time it occurred.
 	/// </para>
 	/// <para>
 	/// If no exception has occurred, this will return <see langword="null"/>.
@@ -179,7 +193,6 @@ public unsafe abstract partial class Assembler : IDisposable {
 		}
 	}
 
-
 	/// <summary>
 	/// Gets or sets where error and warning messages are printed.
 	/// Defaults to <see cref="Console.Error"/>.
@@ -194,18 +207,28 @@ public unsafe abstract partial class Assembler : IDisposable {
 	}
 
 	/// <summary>
+	/// Gets or sets whether the assembler operates in incremental mode,
+	/// allowing it to detect and raise events about file changes.
+	/// </summary>
+	public bool Incremental {
+		get;
+		set {
+			ThrowIfAssembling();
+			field = value;
+		}
+	}
+
+	/// <summary>
 	/// Creates a new assembler object using the given file as its entry point.
 	/// </summary>
 	private protected Assembler(FileInfo entry) {
 		EntryPoint = entry;
 
-		directory = entry.Directory ?? throw new DirectoryNotFoundException();
+		_romPtr = default;
+		_timePtr = default;
+		_pcPtr = default;
 
-		RomBuffer = default;
-		TimeBuffer = default;
-		PcPointer = default;
-
-		Offset = 0;
+		_offset = 0;
 
 		InitialRomSize = MinRomSize;
 	}
@@ -228,9 +251,11 @@ public unsafe abstract partial class Assembler : IDisposable {
 		try {
 			TryAssembly();
 
-			return [.. new ReadOnlySpan<byte>(RomBuffer, CurrentRomSize)];
+			return [.. new ReadOnlySpan<byte>(_romPtr, CurrentRomSize)];
+
 		} catch {
 			throw;
+
 		} finally {
 			DeallocRomBuffer();
 		}
@@ -252,15 +277,16 @@ public unsafe abstract partial class Assembler : IDisposable {
 			stream.Position = 0;
 			stream.SetLength(0);
 
-			stream.Write(new ReadOnlySpan<byte>(RomBuffer, CurrentRomSize));
+			stream.Write(new ReadOnlySpan<byte>(_romPtr, CurrentRomSize));
 			stream.Flush(true);
+
 		} catch {
 			throw;
+
 		} finally {
 			DeallocRomBuffer();
 		}
 	}
-
 
 	/// <inheritdoc cref="AssembleFile(string)"/>
 	public void AssembleFile(FileInfo outputFile) {
@@ -272,11 +298,15 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// Attempting to do so will throw an <see cref="InvalidOperationException"/>.
 	/// </remarks>
 	/// <exception cref="InvalidOperationException">If the assembler is busy with assembly.</exception>
+	[StackTraceHidden]
 	private void ThrowIfAssembling() {
-		if (AmBusy()) {
+		ObjectDisposedException.ThrowIf(_disposed, this);
+
+		if (Busy) {
 			ThrowBusy();
 
 			[DoesNotReturn]
+			[StackTraceHidden]
 			static void ThrowBusy() {
 				throw new InvalidOperationException("This action cannot be performed while assembly is occurring.");
 			}
@@ -284,28 +314,15 @@ public unsafe abstract partial class Assembler : IDisposable {
 	}
 
 	/// <summary>
-	/// Just a wrapper so that it can handle disposal exceptions too.
-	/// </summary>
-	private bool AmBusy() {
-		ObjectDisposedException.ThrowIf(disposed, this);
-		return Busy;
-	}
-
-
-
-
-	/// <summary>
 	/// Finalizer.
 	/// </summary>
 	~Assembler() {
-		// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-		Dispose(disposing: false);
+		Dispose(false);
 	}
 
 	/// <inheritdoc/>
 	public void Dispose() {
-		// Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-		Dispose(disposing: true);
+		Dispose(true);
 		GC.SuppressFinalize(this);
 	}
 
@@ -313,20 +330,30 @@ public unsafe abstract partial class Assembler : IDisposable {
 	protected virtual void Dispose(bool disposing) {
 		Busy = true;
 
-		if (disposed) {
+		if (_disposed) {
 			return;
 		}
-		disposed = true;
+
+		_disposed = true;
+
+		_filesChanged = null;
+
 		if (disposing) {
 			// managed resources
-			if (LoadedFiles is not null) {
-				foreach (var (_, f) in LoadedFiles) {
+			if (_watchedFiles is not null) {
+				foreach (var f in _watchedFiles.Values) {
 					f?.Dispose();
 				}
 			}
 
-			if (LoadedBinaries is not null) {
-				foreach (var (_, f) in LoadedBinaries) {
+			if (_loadedFiles is not null) {
+				foreach (var f in _loadedFiles.Values) {
+					f?.Dispose();
+				}
+			}
+
+			if (_loadedBinaries is not null) {
+				foreach (var f in _loadedBinaries.Values) {
 					f?.Dispose();
 				}
 			}
@@ -335,57 +362,59 @@ public unsafe abstract partial class Assembler : IDisposable {
 		// unmanaged resources
 		DeallocRomBuffer();
 
-		CurrentSourceObject = default!;
+		_currentSourceObject = default!;
 
-		LoadedFiles?.Clear();
-		LoadedFiles = null!;
+		_loadedFiles?.Clear();
+		_loadedFiles = null!;
 
-		LoadedBinaries?.Clear();
-		LoadedBinaries = null!;
+		_loadedBinaries?.Clear();
+		_loadedBinaries = null!;
 
-		SymbolsTable.Clear();
-		SymbolsTable = default;
+		_watchedFiles?.Clear();
+		_watchedFiles = null!;
 
-		InitialVariables.Clear();
-		InitialVariables = default!;
+		_symbols.Clear();
+		_symbols = default;
 
-		VariablesTable.Clear();
-		VariablesTable = default;
+		_initialVariables.Clear();
+		_initialVariables = default!;
 
-		LoadedSources.Clear();
-		LoadedSources = default!;
+		_variables.Clear();
+		_variables = default;
 
-		MacrosTable.Clear();
-		MacrosTable = default!;
+		_loadedSourceObjects.Clear();
+		_loadedSourceObjects = default!;
 
-		UserFunctionsTable.Clear();
-		UserFunctionsTable = default;
+		_macros.Clear();
+		_macros = default!;
 
-		Encoders.Clear();
-		Encoders = default;
-		CurrentEncoder = default!;
+		_functions.Clear();
+		_functions = default;
 
-		previousState = default;
-		ifstack = default;
+		_encoders.Clear();
+		_encoders = default;
+		_currentEncoder = default!;
 
-		SimpleRequests.Clear();
-		SimpleRequests = default!;
+		_previousState = default;
+		_ifChain = default;
 
-		FillRequests.Clear();
-		FillRequests = default!;
+		_simpleRequests.Clear();
+		_simpleRequests = default!;
 
-		JumpRequests.Clear();
-		JumpRequests = default!;
+		_fillRequests.Clear();
+		_fillRequests = default!;
 
-		BranchRequests.Clear();
-		BranchRequests = default!;
+		_jumpRequests.Clear();
+		_jumpRequests = default!;
 
-		Segments.Clear();
-		Segments = default!;
+		_branchRequests.Clear();
+		_branchRequests = default!;
+
+		_segments.Clear();
+		_segments = default!;
 
 		_messageOut = default!;
 		_errorOut = default!;
 		_baseRom = null;
 	}
-
 }

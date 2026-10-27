@@ -23,7 +23,6 @@ internal abstract class SnesEncoder {
 		}
 	}
 
-
 	private sealed class AsciiSnesEncoder : SnesEncoder {
 		internal override string Name => "ascii";
 
@@ -32,7 +31,6 @@ internal abstract class SnesEncoder {
 			return c is > '\u001F' and < '\u007F' ? c : 0x20u;
 		}
 	}
-
 
 	private sealed class UnicodeSnesEncoder : SnesEncoder {
 		internal override string Name => "unicode";
@@ -43,8 +41,5 @@ internal abstract class SnesEncoder {
 			return c;
 		}
 	}
-
-
-
 
 }

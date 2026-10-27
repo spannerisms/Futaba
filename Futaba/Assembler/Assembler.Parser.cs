@@ -3,36 +3,34 @@
 unsafe partial class Assembler {
 	private const int MaxChain = 512;
 
-
 	/// <summary>
 	/// Returns whether or not this instance is busy with assembly.
 	/// </summary>
 	public bool Busy { get; private set; } = false;
 
-	private SourcePointers? previousState = null;
+	private SourcePointers? _previousState = null;
+	private SourceObject _currentSourceObject = SourceFile.Empty;
+	private SourceLine CurrentSourceLine => new(_currentSourceObject, _sourceLine, _commandStart);
 
-	private SourceObject CurrentSourceObject = SourceFile.Empty;
-	private SourceLine CurrentSourceLine => new(CurrentSourceObject, SourceLineNumber, lastCommandStart);
-
-	private char* reading = default;
-	private char* lastCommandStart = default;
-	private char* fileEnd = default;
-	private IfLink? ifstack = null;
-	private int SourceLineNumber = 0;
+	private char* _reading = default;
+	private char* _fileEnd = default;
+	private char* _commandStart = default;
+	private IfLink? _ifChain = null;
+	private int _sourceLine = 0;
 
 	/// <summary>
 	/// Things that should be done both before and after assembly
-	/// both to reduce allocations and have a consistent outside state
+	/// to clean up allocations and maintain a consistent public state.
 	/// </summary>
 	private protected virtual void RequiredInitAndCleanUp() {
-		CurrentEncoder = SnesEncoder.ASCII;
+		_currentEncoder = SnesEncoder.ASCII;
 
-		previousState = null;
-		ifstack = null;
-		currentSegment = null;
+		_previousState = null;
+		_ifChain = null;
+		_currentSegment = null;
 
-		Array.Fill(LabelNameHierarchy, string.Empty);
-		Array.Clear(QuayHierarchy);
+		Array.Fill(_nameHierarchy, string.Empty);
+		Array.Clear(_pcHierarchy);
 
 		ClearPools();
 	}
@@ -40,6 +38,19 @@ unsafe partial class Assembler {
 	private void TryAssembly() {
 		try {
 			Busy = true;
+
+			// clear file watchers
+			_processedEvent = true;
+
+			foreach (FileWatcher w in _watchedFiles.Values) {
+				if (w.IsEmpty) {
+					w.Enabled = false;
+				} else {
+					w.Clear();
+				}
+			}
+
+			_processedEvent = false;
 
 			MessageOut.Reset();
 			ErrorOut.Reset();
@@ -53,10 +64,10 @@ unsafe partial class Assembler {
 				return;
 			}
 
-			ShutUpAboutAddresses = false;
-			ShutUpAboutSegments = false;
+			_shutUpAboutAddresses = false;
+			_shutUpAboutSegments = false;
 
-			RNG.Reseed(RNGSeed);
+			_random.Reseed(_randomSeed);
 
 			ResetRomBuffer();
 
@@ -65,134 +76,147 @@ unsafe partial class Assembler {
 				InitializeHeader();
 			}
 
-			arch = SnesArchitecture.WDC65816;
-			BankGuardMask = BankGuardMask_Half;
+			_architecture = SnesArchitecture.WDC65816;
+			_bankGuardMask = BankGuardMask_Half;
 
-			BreakpointsAre = BreakpointsControl.Off;
-			InProvenance = false;
-			NextAllocBlockStart = -1;
+			_bpControl = BreakpointsControl.Off;
+			_inProvenance = false;
+			_nextAllocBlockStart = -1;
 
 			// reset symbols
-			SymbolsTable.Clear();
-			SymbolsTable.CopyEntries(initialsymbols);
+			_symbols.Clear();
+			_symbols.CopyEntries(_initialSymbols);
 
-			Array.Clear(pluslabels);
-			Array.Clear(minuslabels);
+			Array.Clear(_pluslabels);
+			Array.Clear(_minuslabels);
 
-			VariablesTable.Clear();
+			_variables.Clear();
 
-			foreach ((string k, Variable v) in InitialVariables) {
-				VariablesTable.Add(k, v.Clone());
+			foreach ((string k, Variable v) in _initialVariables) {
+				_variables.Add(k, v.Clone());
 			}
+
+			_copVectorNative = null;
+			_brkVector = null;
+			_abortVectorNative = null;
+			_nmiVectorNative = null;
+			_irqVectorNative = null;
+			_copVectorEmulation = null;
+			_abortVectorEmulation = null;
+			_nmiVectorEmulation = null;
+			_resetVector = null;
+			_irqVectorEmulation = null;
 
 			RequiredInitAndCleanUp();
 
 			// reset source state
-			previousState = null;
+			_previousState = null;
 			TransferSourceControl(entryObj);
 
 			StartAssembly();
 			ResolveAllRequests();
+
+			AdjustInterruptVectors();
 
 			if (AutoPopulateHeader) {
 				FinalizeHeader();
 			} else if (CalculateChecksum) {
 				RecalculateChecksum();
 			}
+
 		} catch {
-			if (CurrentSourceObject == SourceFile.Empty) {
+			if (_currentSourceObject == SourceFile.Empty) {
 				ErrorLine = "Unable to determine line.";
+
 			} else {
-				var srcLine = CurrentSourceLine;
-				if (!srcLine.IsNull) {
-					ErrorLine = $"{srcLine}";
-				}
+				ErrorLine = $"{CurrentSourceLine}";
+
 			}
 
 			throw;
+
 		} finally {
 			RequiredInitAndCleanUp();
 
-			CurrentSourceObject = SourceFile.Empty;
+			_currentSourceObject = SourceFile.Empty;
 
-			foreach (var (fileName, fileObj) in LoadedFiles) {
+			foreach (var (fileName, fileObj) in _loadedFiles) {
+				if (fileObj?.WasUsed ?? false) {
+					fileObj.WasUsed = false;
+				} else {
+					fileObj?.Dispose();
+					_loadedFiles.Remove(fileName);
+				}
+			}
+
+			foreach (var (fileName, fileObj) in _loadedBinaries) {
 				if (fileObj.WasUsed) {
 					fileObj.WasUsed = false;
 				} else {
 					fileObj.Dispose();
-					LoadedFiles.Remove(fileName);
+					_loadedBinaries.Remove(fileName);
 				}
 			}
 
-			foreach (var (fileName, fileObj) in LoadedBinaries) {
-				if (fileObj.WasUsed) {
-					fileObj.WasUsed = false;
-				} else {
-					fileObj.Dispose();
-					LoadedBinaries.Remove(fileName);
-				}
-			}
-
-			foreach (var srcObj in LoadedSources) {
+			foreach (var srcObj in _loadedSourceObjects) {
 				srcObj?.Dispose();
 			}
 
-			LoadedSources.Clear();
-			MacrosTable.Clear();
-			UserFunctionsTable.Clear();
-			Encoders.Clear();
+			_loadedSourceObjects.Clear();
+			_macros.Clear();
+			_functions.Clear();
+			_encoders.Clear();
 
-			SimpleRequests.Clear();
-			FillRequests.Clear();
-			JumpRequests.Clear();
-			BranchRequests.Clear();
+			_simpleRequests.Clear();
+			_fillRequests.Clear();
+			_jumpRequests.Clear();
+			_branchRequests.Clear();
 
-			Segments.Clear();
+			_segments.Clear();
 
-			PCStack.Clear();
-			PVStack.Clear();
+			_pcStack.Clear();
+			_provStack.Clear();
 
 			Busy = false;
 		}
 	}
 
-
 	private void StartAssembly() {
 		do {
-			while (reading < fileEnd) {
+			while (_reading < _fileEnd) {
 				// find the next command
-				char c = *reading;
+				char c = *_reading;
 
+				// these are so common that we'll handle them outside of the switch for efficiency
 				// TODO benchmark if this is still a good idea (probably irrelevant)
 				// skip over spaces
-				// these are so common that we'll handle them outside of the switch for efficiency
-
 				if (c.IsSkippableSpace) {
-					reading++;
+					_reading++;
 					// very fast whitespace skipping
 					//char* rd = reading; // put in register
 					//while ((++rd)->IsSkippableSpace) ;
 					//
 					//reading = rd;
 					continue;
+
 				} else if (c is NewLine) {
-					reading++;
-					SourceLineNumber++;
+					_reading++;
+					_sourceLine++;
 					continue;
 				}
 
-				lastCommandStart = reading;
+				_commandStart = _reading;
 
 				// everything else is some sort of interesting character!
 				switch (c) {
 					// skip over comments
 					case CommentChar:
-						FastRead.ReadUntilLineEnd(ref reading, fileEnd);
+						FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
 						continue;
 
 					case ':':
-						if (FastRead.ColonIsSeparator(reading)) {
-							reading += 2;
+						if (FastRead.ColonIsSeparator(_reading)) {
+							_reading += 2;
 						} else {
 							UnexpectedCharacter();
 							AbortCommand();
@@ -257,28 +281,28 @@ unsafe partial class Assembler {
 					// undocumented because I honestly hate this
 					case '{':
 					case '}':
-						reading++;
+						_reading++;
 						continue;
 
 					// symbols / labels / mnemonics / directives
-					case	'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
+					case 'A' or 'B' or 'C' or 'D' or 'E' or 'F' or 'G' or 'H' or 'I' or 'J' or 'K' or 'L' or 'M' or
 							'N' or 'O' or 'P' or 'Q' or 'R' or 'S' or 'T' or 'U' or 'V' or 'W' or 'X' or 'Y' or 'Z' or
 							'a' or 'b' or 'c' or 'd' or 'e' or 'f' or 'g' or 'h' or 'i' or 'j' or 'k' or 'l' or 'm' or
 							'n' or 'o' or 'p' or 'q' or 'r' or 's' or 't' or 'u' or 'v' or 'w' or 'x' or 'y' or 'z' or '_':
 						// no need to do an identifier check, since the first character is absolutely valid
-						OperandString symOpDir = FastRead.ReadAlphaNumeric(ref reading, fileEnd);
+						OperandString symOpDir = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
 
 						// check for a colon
-						if (*reading is ':') {
-							reading++;
+						if (*_reading is ':') {
+							_reading++;
 
 							if (DemandSpaceAfterColon()) {
-								Label addLabel = new(symOpDir, Provenance, PC, Offset);
+								Label addLabel = new(symOpDir, Provenance, _pc, _offset);
 
 								AddOrReplaceSymbol(addLabel);
 								UpdateHierarchy(addLabel.Name, 0);
 
-								if (pooling) {
+								if (_pooling) {
 									Error($"Use '{ENDPOOL}' before declaring a new hierarchy.");
 									ClearPools();
 								}
@@ -287,12 +311,12 @@ unsafe partial class Assembler {
 							continue;
 						}
 
-						char* peeking = reading;
+						char* peeking = _reading;
 
-						FastRead.SkipInlineWhitespace(ref peeking, fileEnd);
+						FastRead.SkipInlineWhitespace(ref peeking, _fileEnd);
 
 						if (*peeking is '=') {
-							reading = peeking + 1;
+							_reading = peeking + 1;
 							CreateAssignedSymbol(symOpDir);
 							continue;
 						}
@@ -311,21 +335,21 @@ unsafe partial class Assembler {
 
 						// test for it being an instruction
 						// if it is, assemble it
-						if (arch is SnesArchitecture.WDC65816) {
+						if (_architecture is SnesArchitecture.WDC65816) {
 							OpWdc opco = TestFor65816(symOpDir);
 
 							if (opco is not OpWdc.NotGood) {
 								Assemble65816(opco);
 								continue;
 							}
-						} else if (arch is SnesArchitecture.SPC700) {
+						} else if (_architecture is SnesArchitecture.SPC700) {
 							OpSPC opco = TestForSPC700(symOpDir);
 
 							if (opco is not OpSPC.NotGood) {
 								AssembleSPC700(opco);
 								continue;
 							}
-						} else if (arch is SnesArchitecture.SuperFX) {
+						} else if (_architecture is SnesArchitecture.SuperFX) {
 							OpSFX opco = TestForSuperFX(symOpDir);
 
 							if (opco is not OpSFX.NotGood) {
@@ -373,7 +397,7 @@ unsafe partial class Assembler {
 					return;
 
 				case UNDOCK:
-					currentSegment = null;
+					_currentSegment = null;
 					return;
 
 				case POOL:
@@ -381,7 +405,7 @@ unsafe partial class Assembler {
 					return;
 
 				case ENDPOOL:
-					if (!pooling) {
+					if (!_pooling) {
 						Warning("Not currently pooling.");
 					}
 
@@ -407,7 +431,7 @@ unsafe partial class Assembler {
 				case SITE:
 					if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString site)) {
 						if (site.OnlyCharIs(SPLAT)) {
-							InProvenance = false;
+							_inProvenance = false;
 						} else {
 							IExpressionReturn siteval = ParseOperand(site, SymbolContext.Provenance);
 
@@ -427,7 +451,7 @@ unsafe partial class Assembler {
 						IExpressionReturn safeorg = ParseOperand(safeOrgArg, SymbolContext.RomAddress);
 
 						if (safeorg.Resolved && safewarn.Resolved) {
-							WarnCounter(safewarn.ValueInt32, PC);
+							WarnCounter(safewarn.ValueInt32, _pc);
 							TryMovePC(safeorg);
 						} else {
 							Error_BadResolve(safeorg, $"argument to {SAFEORG} must be immediately resolvable");
@@ -438,7 +462,7 @@ unsafe partial class Assembler {
 
 				case WARNPC:
 					if (DemandSpaceWithError() && TryReadRestAsExpression(WARNPC, SymbolContext.Provenance, out IExpressionReturn warnpc)) {
-						WarnCounter(warnpc.ValueInt32, PC);
+						WarnCounter(warnpc.ValueInt32, _pc);
 					}
 
 					return;
@@ -480,7 +504,7 @@ unsafe partial class Assembler {
 						int alignValue = alignSize.ValueInt32;
 
 						if (alignValue > 0) {
-							int skipAmount = PC % alignValue;
+							int skipAmount = _pc % alignValue;
 
 							if (skipAmount is not 0) {
 								Skip(alignValue - skipAmount);
@@ -552,6 +576,10 @@ unsafe partial class Assembler {
 					Directive_LANG();
 					return;
 
+				case VECTOR:
+					Directive_VECTOR();
+					return;
+
 				case MMC:
 					Directive_MMC();
 					return;
@@ -581,10 +609,9 @@ unsafe partial class Assembler {
 			}
 		}
 
-		Error("Unrecognized text", $"\"{directive}\"");
+		Error("Unrecognized text", $"\"{CharSpanHelpers.ClampForMessage(directive)}\"");
 		AbortCommand();
 	}
-
 
 	// These directives can be used in multiple block types,
 	// so they're split out for shared access.
@@ -661,37 +688,32 @@ unsafe partial class Assembler {
 		return false;
 	}
 
-
-
-
-
-
 	private void TransferSourceControl<T>(T source) where T : SourceObject {
-		if ((previousState?.Depth ?? 0) >= MaxChain) {
+		if ((_previousState?.Depth ?? 0) >= MaxChain) {
 			string MaxObj = $"The maximum number ({MaxChain}) of nested or chained assembly objects has been hit.";
 			Error(MaxObj);
 			throw new InvalidOperationException(MaxObj);
 		}
 
 		if (typeof(T) != typeof(SourceFile)) {
-			LoadedSources.Add(source);
+			_loadedSourceObjects.Add(source);
 		}
 
-		if (CurrentSourceObject != SourceFile.Empty) {
-			previousState = new(CurrentSourceObject, reading, SourceLineNumber, ifstack, previousState);
+		if (_currentSourceObject != SourceFile.Empty) {
+			_previousState = new(_currentSourceObject, _reading, _sourceLine, _ifChain, _previousState);
 		}
 
-		CurrentSourceObject = source;
-		fileEnd = source.SourceEnd;
-		reading = source.SourceStart;
-		lastCommandStart = reading;
-		SourceLineNumber = 1;
-		ifstack = null;
+		_currentSourceObject = source;
+		_fileEnd = source.SourceEnd;
+		_reading = source.SourceStart;
+		_commandStart = _reading;
+		_sourceLine = 1;
+		_ifChain = null;
 	}
 
 	private bool PopSourceControl() {
 		// check the parent for where to resume or if we should end
-		if (previousState is SourcePointers sp) {
+		if (_previousState is SourcePointers sp) {
 
 			// TODO maybe have this for a verbose mode
 #if DEBUG
@@ -700,9 +722,9 @@ unsafe partial class Assembler {
 			//}
 #endif
 
-			previousState = sp.Parent;
-			(CurrentSourceObject, reading, SourceLineNumber, ifstack) = sp;
-			fileEnd = CurrentSourceObject.SourceEnd;
+			_previousState = sp.Parent;
+			(_currentSourceObject, _reading, _sourceLine, _ifChain) = sp;
+			_fileEnd = _currentSourceObject.SourceEnd;
 
 			return true;
 		} else {
@@ -710,19 +732,19 @@ unsafe partial class Assembler {
 		}
 	}
 
-	private class IfLink(IfLink? parent) {
-		internal readonly IfLink? Parent = parent;
-		internal readonly int Depth = parent?.Depth ?? 1;
-		internal bool HitElse = false;
+	private sealed class IfLink(IfLink? parent) {
+		internal IfLink? Parent { get; } = parent;
+		internal int Depth { get; } = parent?.Depth ?? 1;
+		internal bool HitElse { get; set; } = false;
 	}
 
 	private sealed class SourcePointers(SourceObject source, char* current, int line, IfLink? ifstack, SourcePointers? parent) {
-		internal readonly SourcePointers? Parent = parent;
-		internal readonly SourceObject Source = source;
-		internal readonly char* Current = current;
-		internal readonly int Line = line;
-		internal readonly IfLink? IfStack = ifstack;
-		internal readonly int Depth = (parent?.Depth + 1) ?? 0;
+		internal SourcePointers? Parent { get; } = parent;
+		internal SourceObject Source { get; } = source;
+		internal char* Current { get; } = current;
+		internal int Line { get; } = line;
+		internal IfLink? IfStack { get; } = ifstack;
+		internal int Depth { get; } = (parent?.Depth + 1) ?? 0;
 
 		public void Deconstruct(out SourceObject _source, out char* _current, out int _line, out IfLink? _ifstack) {
 			_current = Current;
@@ -731,5 +753,4 @@ unsafe partial class Assembler {
 			_ifstack = IfStack;
 		}
 	}
-
 }

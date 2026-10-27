@@ -21,8 +21,8 @@ namespace Futaba;
 //       copies or substantial portions of the Software.
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-internal unsafe class XoRandom {
-	private ulong rng0, rng1, rng2, rng3;
+internal unsafe sealed class XoRandom {
+	private ulong _s0, _s1, _s2, _s3;
 
 	public XoRandom() {
 
@@ -32,31 +32,27 @@ internal unsafe class XoRandom {
 		Reseed(seed);
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public void Reseed(UInt128 seed) {
 		// need not all 0s, and this will guarantee that, irrespective of seed
-		rng0 = 0xBEBE_6368_6565_7365ul;
+		_s0 = 0xBEBE_6368_6565_7365ul;
 
 		// give rng1 the most bits
 		// it is the first part of the algorithm
 		// so it should be the most interesting
-		rng1 = (ulong) seed;
-
-		byte* sptr = (byte*) &seed;
+		_s1 = (ulong) seed;
 
 		// high bits in rng2
-		rng2 = *(ulong*) (sptr + (BitConverter.IsLittleEndian ? 8 : 0));
+		_s2 = (ulong) (seed >> 64);
 
 		// this is endianness agnostic
-		rng3 = BinaryPrimitives.ReverseEndianness(*(ulong*) (sptr + 4));
+		_s3 = BinaryPrimitives.ReverseEndianness((ulong) (seed >> 32));
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public ulong NextUInt64() {
-		ulong s0 = rng0;
-		ulong s1 = rng1;
-		ulong s2 = rng2;
-		ulong s3 = rng3;
+		ulong s0 = _s0;
+		ulong s1 = _s1;
+		ulong s2 = _s2;
+		ulong s3 = _s3;
 
 		ulong result = BitOperations.RotateLeft(s1 * 5, 7) * 9;
 		ulong t = s1 << 17;
@@ -69,19 +65,19 @@ internal unsafe class XoRandom {
 		s2 ^= t;
 		s3 = BitOperations.RotateRight(s3, 19);
 
-		rng0 = s0;
-		rng1 = s1;
-		rng2 = s2;
-		rng3 = s3;
+		_s0 = s0;
+		_s1 = s1;
+		_s2 = s2;
+		_s3 = s3;
 
 		return result;
 	}
 
 	public void NextBytes(Span<byte> buffer) {
-		ulong s0 = rng0;
-		ulong s1 = rng1;
-		ulong s2 = rng2;
-		ulong s3 = rng3;
+		ulong s0 = _s0;
+		ulong s1 = _s1;
+		ulong s2 = _s2;
+		ulong s3 = _s3;
 
 		while (buffer.Length >= sizeof(ulong)) {
 			BinaryPrimitives.WriteUInt64LittleEndian(buffer, BitOperations.RotateLeft(s1 * 5, 7) * 9);
@@ -121,10 +117,10 @@ internal unsafe class XoRandom {
 			s3 = BitOperations.RotateRight(s3, 19);
 		}
 
-		rng0 = s0;
-		rng1 = s1;
-		rng2 = s2;
-		rng3 = s3;
+		_s0 = s0;
+		_s1 = s1;
+		_s2 = s2;
+		_s3 = s3;
 	}
 
 	public long NextInt64(long minValue, long maxValue) {
@@ -151,7 +147,6 @@ internal unsafe class XoRandom {
 		return minValue;
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal uint NextUInt32(uint maxValue) {
 		ulong randomProduct = (ulong) maxValue * (uint) NextUInt64();
 		uint lowPart = (uint) randomProduct;
@@ -177,5 +172,4 @@ internal unsafe class XoRandom {
 		}
 		return result;
 	}
-
 }
