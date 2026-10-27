@@ -637,6 +637,17 @@ internal static partial class Igarashi {
 					const int diffCharSpanLength = hexCharSpanLength + bytesPerRow - 1;
 					const int fullAddressLineLength = addressLineLength + diffCharSpanLength;
 
+					diffWriter.Write("Total bytes difference: ");
+					diffWriter.Flush();
+					long totalOffset = diffWriter.BaseStream.Position;
+					const string TotalBytesDifferencePlaceHolder = "          ";
+					diffWriter.WriteLine(TotalBytesDifferencePlaceHolder);
+					diffWriter.WriteLine("");
+					diffWriter.WriteLine("==================================");
+					diffWriter.WriteLine("offset (snesbus) | <build>");
+					diffWriter.WriteLine("                 | <expected>");
+					int totalDiffs = 0;
+
 					char* hexCharPtr = stackalloc char[hexCharSpanLength];
 					char* addressCharPtr = stackalloc char[fullAddressLineLength];
 
@@ -685,12 +696,12 @@ internal static partial class Igarashi {
 						Convert.TryToHexString(nomSlice, hexCharSpan, out _);
 
 						// reformat the converted hex string to have spaces between each hex number
-
 						diffWritePtr = diffWriteBase;
 						hexWritePtr = hexCharPtr;
 
 						for (int k = 0; k < romSlice.Length; k++, hexWritePtr += 2, diffWritePtr += 3) {
 							if (romSlice[k] != nomSlice[k]) {
+								totalDiffs++;
 								*(uint*) diffWritePtr = *(uint*) hexWritePtr;
 							}
 						}
@@ -698,6 +709,11 @@ internal static partial class Igarashi {
 						diffWriter.Write("                 | ");
 						diffWriter.WriteLine(diffCharSpan[..(rem * 3 - 1)]);
 					}
+
+					diffWriter.Flush();
+					diffWriter.BaseStream.Position = totalOffset;
+					diffWriter.Write($"{totalDiffs}".PadLeft(TotalBytesDifferencePlaceHolder.Length));
+					diffWriter.Flush();
 				}
 			}
 		}

@@ -128,12 +128,7 @@ internal static class Helpers {
 
 	extension(string s) {
 		public bool EqualsI(string s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
-		public bool EqualsI(Span<char> s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
-	}
-
-	extension(ReadOnlySpan<char> s) {
-		public bool EqualsI(string s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
-		public bool EqualsI(Span<char> s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
+		public bool EqualsI(ReadOnlySpan<char> s2) => s.Equals(s2, StringComparison.OrdinalIgnoreCase);
 	}
 
 	public static void WriteHexAddress(int address, Span<char> destination, int offset) {
@@ -192,7 +187,6 @@ internal static class Helpers {
 	}
 
 	public static bool TryParseValue(ReadOnlySpan<char> s, out decimal value) {
-
 		if (s.Length > 0) {
 			if (s.Length > 1) {
 				char c = s[0];
@@ -230,7 +224,6 @@ internal static class Helpers {
 	//       copies or substantial portions of the Software.
 	// Licensed to the .NET Foundation under one or more agreements.
 	// The .NET Foundation licenses this file to you under the MIT license.
-
 	internal static unsafe void FillRandom(ulong seed1, ulong seed2, Span<byte> buffer) {
 		ulong s0 = 0xBEBE_6368_6565_7365ul; // need not all 0s, and this will guarantee that
 		ulong s1 = seed1; // make this the most interesting
