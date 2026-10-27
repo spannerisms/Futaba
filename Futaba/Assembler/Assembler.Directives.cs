@@ -1108,7 +1108,7 @@ unsafe partial class Assembler {
 
 		if (AdvanceOverWhitespace()) {
 			contents = null;
-			return false;
+			return true;
 		}
 
 		StringBuilder printer = new();
