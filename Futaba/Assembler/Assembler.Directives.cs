@@ -448,7 +448,7 @@ unsafe partial class Assembler {
 				pathString = ExplodeStringContents(pstart + 1, pread);
 				pread++;
 			} else {
-				UnexpectedCharacter(pread);
+				UnexpectedCharacter(*pread);
 				continue;
 			}
 
@@ -517,11 +517,11 @@ unsafe partial class Assembler {
 							continue;
 						}
 					} else {
-						UnexpectedCharacter(pcheck);
+						UnexpectedCharacter(*pcheck);
 						continue;
 					}
 				} else {
-					UnexpectedCharacter(pread);
+					UnexpectedCharacter(*pread);
 					continue;
 				}
 
@@ -919,7 +919,7 @@ unsafe partial class Assembler {
 					case 'X': triggers |= BreakpointTriggers.Execute; continue;
 				}
 
-				UnexpectedCharacter(&c);
+				UnexpectedCharacter(c);
 				AbortCommand();
 				return (_defaultBpTriggers, _defaultBpInsert);
 			}

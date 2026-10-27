@@ -66,13 +66,10 @@ partial class Assembler {
 		ErrorOut.Write(" | ");
 
 		Console.ForegroundColor = ConsoleColor.DarkGray;
-
 		ErrorOut.Write(srcLine.GetLineContents());
 
 		Console.ResetColor();
-
 		ErrorOut.WriteLine();
-
 	}
 
 	internal void Error_BadResolve(IExpressionReturn expr, string unresolvedmsg) {
@@ -216,10 +213,15 @@ partial class Assembler {
 	}
 
 	private unsafe void UnexpectedCharacter() {
-		Error($"Unexpected character: '{*_reading}'");
+		UnexpectedCharacter(*_reading);
 	}
 
-	private unsafe void UnexpectedCharacter(char* ptr) {
-		Error($"Unexpected character: '{*ptr}'");
+	private unsafe void UnexpectedCharacter(char c) {
+		if (c is NewLine) {
+			Error("Unexpected character: '\\n'");
+		} else {
+			Error($"Unexpected character: '{c}'");
+		}
 	}
+
 }

@@ -469,6 +469,7 @@ unsafe partial class Assembler {
 	}
 
 	// TODO add mask functions for AND / OR / XOR
+	// TODO maybe turn this into an object return...?
 	private bool TryReadStringWithParams(OperandString strArg, [NotNullWhen(true)] out string? strparsed, out SnesEncoder encoding) {
 		encoding = _currentEncoder;
 
@@ -510,7 +511,7 @@ unsafe partial class Assembler {
 		bool casingHappened = false;
 		bool encoderHappened = false;
 
-		StringBuilder bld = new(strparsed);
+		StringBuilder manipBuilder = new(strparsed);
 
 		Span<char> cmdlbuffer = stackalloc char[10];
 
@@ -594,7 +595,7 @@ unsafe partial class Assembler {
 					}
 
 					char dir = cmdWhole[i];
-					int strlen = bld.Length;
+					int strlen = manipBuilder.Length;
 
 					switch (dir) {
 						case 'c' or 'C':
@@ -634,7 +635,7 @@ unsafe partial class Assembler {
 							if (strlen < lenArg) {
 								// padding commands dont resize
 								if (!isPad) {
-									bld.Length = lenArg;
+									manipBuilder.Length = lenArg;
 								}
 
 								return;
@@ -646,15 +647,15 @@ unsafe partial class Assembler {
 
 								string padStr = new(padChar, diff / 2);
 
-								bld.Insert(0, padStr);
-								bld.Append(padStr);
+								manipBuilder.Insert(0, padStr);
+								manipBuilder.Append(padStr);
 
 								// if they're even, just add to both ends and we're done
 								if ((diff & 1) is 1) {
 									if (alignedLeft) {
-										bld.Append(padChar);
+										manipBuilder.Append(padChar);
 									} else {
-										bld.Insert(0, padChar);
+										manipBuilder.Insert(0, padChar);
 									}
 								}
 							}
@@ -671,10 +672,10 @@ unsafe partial class Assembler {
 								return;
 							}
 
+							// too short
 							if (strlen > lenArg) {
-								// padding commands dont resize
-								if (!isPad) {
-									bld.Length = lenArg;
+								if (!isPad) { // padding commands don't shorten
+									manipBuilder.Length = lenArg;
 								}
 
 								return;
@@ -682,12 +683,12 @@ unsafe partial class Assembler {
 
 							// otherwise, it's too long
 							if (TryGetPadder(out padChar)) {
-								string padStr = new(padChar, lenArg - strlen);
+								int count = lenArg - strlen;
 
 								if (dir is 'l' or 'L') {
-									bld.Insert(0, padStr);
+									manipBuilder.Insert(0, new string(padChar, count));
 								} else {
-									bld.Append(padStr);
+									manipBuilder.Append(padChar, count);
 								}
 							}
 
@@ -744,8 +745,8 @@ unsafe partial class Assembler {
 						Warning("Duplicate casing command in string");
 					}
 
-					for (int i = 0, len = bld.Length; i < len; i++) {
-						bld[i] = transform(bld[i]);
+					for (int i = 0, len = manipBuilder.Length; i < len; i++) {
+						manipBuilder[i] = transform(manipBuilder[i]);
 					}
 
 					casingHappened = true;
@@ -756,6 +757,7 @@ unsafe partial class Assembler {
 
 		} while (more);
 
+		strparsed = manipBuilder.ToString();
 		return true;
 	}
 }

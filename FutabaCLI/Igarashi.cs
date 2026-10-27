@@ -727,8 +727,9 @@ internal static partial class Igarashi {
 
 	private static bool GetYN(string text) {
 		Console.Write(text);
-		Console.Write(" (Y/N) ");
+		Console.Write(" (Y/N)");
 		Console.ResetColor();
+		Console.Write(" ");
 
 		while (true) {
 			var key = Console.ReadKey(true).Key;

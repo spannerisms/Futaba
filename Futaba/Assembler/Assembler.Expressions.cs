@@ -635,7 +635,7 @@ unsafe partial class Assembler {
 			}
 
 			InvalidCharacter:
-			UnexpectedCharacter(exprReading);
+			UnexpectedCharacter(*exprReading);
 
 			Invalid:
 			return false;
