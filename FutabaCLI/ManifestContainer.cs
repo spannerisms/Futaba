@@ -756,9 +756,10 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 					ManifestError($"Problem loading file: '{argGet.Value}' - {e.Message}", argGet.Line);
 				}
 			} else {
-				return false;
+				return true;
 			}
 		}
+
 		binFile = null;
 		return false;
 	}

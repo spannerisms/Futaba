@@ -298,23 +298,19 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// Attempting to do so will throw an <see cref="InvalidOperationException"/>.
 	/// </remarks>
 	/// <exception cref="InvalidOperationException">If the assembler is busy with assembly.</exception>
+	[StackTraceHidden]
 	private void ThrowIfAssembling() {
-		if (AmBusy()) {
+		ObjectDisposedException.ThrowIf(_disposed, this);
+
+		if (Busy) {
 			ThrowBusy();
 
 			[DoesNotReturn]
+			[StackTraceHidden]
 			static void ThrowBusy() {
 				throw new InvalidOperationException("This action cannot be performed while assembly is occurring.");
 			}
 		}
-	}
-
-	/// <summary>
-	/// Just a wrapper so that it can handle disposal exceptions too.
-	/// </summary>
-	private bool AmBusy() {
-		ObjectDisposedException.ThrowIf(_disposed, this);
-		return Busy;
 	}
 
 	/// <summary>

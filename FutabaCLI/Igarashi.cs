@@ -497,6 +497,7 @@ internal static partial class Igarashi {
 		return retcode;
 
 		int AssembleOne(ManifestContainer manifest) {
+			Assembler? assembler = null;
 			try {
 				manifest.ParseManifest();
 				manifest.Configure();
@@ -506,7 +507,7 @@ internal static partial class Igarashi {
 					return Exit_Error;
 				}
 
-				Assembler assembler = manifest.GetAssembler();
+				assembler = manifest.GetAssembler();
 
 				Notice(StartedAssembly);
 
@@ -571,6 +572,9 @@ internal static partial class Igarashi {
 
 			} catch (Exception e) {
 				Console.WriteLine(e.GetType());
+				if (assembler?.ErrorLine is string el) {
+					Console.Error.WriteLine($"Suspected line: {el}");
+				}
 				FatalError(e);
 				return e.HResult;
 			}

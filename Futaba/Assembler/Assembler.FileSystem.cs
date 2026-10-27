@@ -1,7 +1,6 @@
 ﻿namespace Futaba;
 
 partial class Assembler {
-
 	/// <summary>
 	/// Occurs when a change is discovered in any source file.
 	/// </summary>

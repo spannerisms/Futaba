@@ -7,6 +7,7 @@ partial class Assembler {
 	const string ErrorText = " ERROR: ";
 	const string WarningText = " WARNING: ";
 
+	[StackTraceHidden]
 	internal void IncrementWarnings() {
 		if (WarningsAreErrors) {
 			IncrementErrors();
@@ -15,12 +16,14 @@ partial class Assembler {
 		}
 	}
 
+	[StackTraceHidden]
 	internal void IncrementErrors() {
 		if (++ErrorCount > MaximumErrors) {
 			TooManyErrors();
 		}
 
 		[DoesNotReturn]
+		[StackTraceHidden]
 		static void TooManyErrors() {
 			throw new InvalidOperationException("Too many errors occured. Assembly has been aborted.");
 		}

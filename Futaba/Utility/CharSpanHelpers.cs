@@ -21,7 +21,7 @@ internal static unsafe class CharSpanHelpers {
 		internal bool BeginsWithIgnoreCaseAndSpace(string test) {
 			int len = test.Length;
 
-			if (charspan.Length + 1 >= len) {
+			if (charspan.Length >= (len + 1)) {
 				if (charspan[len].IsSkippableSpace) {
 					return charspan.Slice(0, len).MatchesIgnoreCase(test);
 				}

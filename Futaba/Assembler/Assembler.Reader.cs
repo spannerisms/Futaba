@@ -598,17 +598,23 @@ unsafe partial class Assembler {
 
 					switch (dir) {
 						case 'c' or 'C':
+							i++;
 							dir = cmdWhole[i + 1];
 
 							bool alignedLeft;
 							switch (dir) {
-								case 'l' or 'L'
-									or '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9': // to account for size being next
-									alignedLeft = true;
+								case 'l' or 'L':
+									alignedLeft = false;
+									i++;
 									break;
 
 								case 'r' or 'R':
-									alignedLeft = false;
+									alignedLeft = true;
+									i++;
+									break;
+								// to account for size being next
+								case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
+									alignedLeft = true;
 									break;
 
 								default:
@@ -655,6 +661,7 @@ unsafe partial class Assembler {
 							return;
 
 						case 'l' or 'L' or 'r' or 'R':
+							i++;
 							if (!TryGetLength(out lenArg)) {
 								return;
 							}
@@ -664,7 +671,7 @@ unsafe partial class Assembler {
 								return;
 							}
 
-							if (strlen < lenArg) {
+							if (strlen > lenArg) {
 								// padding commands dont resize
 								if (!isPad) {
 									bld.Length = lenArg;
@@ -677,7 +684,7 @@ unsafe partial class Assembler {
 							if (TryGetPadder(out padChar)) {
 								string padStr = new(padChar, lenArg - strlen);
 
-								if (dir is 'r' or 'R') {
+								if (dir is 'l' or 'L') {
 									bld.Insert(0, padStr);
 								} else {
 									bld.Append(padStr);
@@ -725,7 +732,7 @@ unsafe partial class Assembler {
 						if (cmdWhole.TryReadInlineDecimalInteger(ref i, out len)) {
 							return true;
 						} else {
-							Error("Invalid length argument in resize command");
+							Error("Missing length argument in resize command");
 							return false;
 						}
 					}

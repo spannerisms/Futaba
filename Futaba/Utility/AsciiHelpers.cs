@@ -176,6 +176,7 @@ internal static unsafe class AsciiHelpers {
 		SubLabelSafe.SetNumbers(true);
 
 		IdentifierCharacters['_'] = true;
+		LetterOrUnderscore['_'] = true;
 
 		SubLabelSafe['_'] = true;
 		SubLabelSafe['.'] = true;

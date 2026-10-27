@@ -190,22 +190,22 @@ F
 <p>Padding only lengthens strings that are too short. To force an exact length instead of a minimum, use the <fblk>len</fblk> function with the same arguments.</p>
 
 <ul><fblk>pad</fblk> modes:
-	<li><ftok>l</ftok> &ndash; pad and left align</li>
-	<li><ftok>r</ftok> &ndash; pad and right align</li>
-	<li><ftok>cl</ftok> &ndash; pad and center-left align (alias: <ftok>c</ftok>)</li>
-	<li><ftok>cr</ftok> &ndash; pad and center-right align</li>
+	<li><ftok>l</ftok> &ndash; pad on left</li>
+	<li><ftok>r</ftok> &ndash; pad on right</li>
+	<li><ftok>cl</ftok> &ndash; pad on both sides and center-right align</li>
+	<li><ftok>cr</ftok> &ndash; pad on both sides and center-left align (alias: <ftok>c</ftok>)</li>
 </ul>
 
 <div class="futexample">
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:l20 <fcom>; "Hello world!        "</fcom>
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:l20'!' <fcom>; "Hello world!!!!!!!!!"</fcom>
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:r20'!' <fcom>; "!!!!!!!!Hello world!"</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:r20 <fcom>; "Hello world!        "</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:r20'!' <fcom>; "Hello world!!!!!!!!!"</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:l20'!' <fcom>; "!!!!!!!!Hello world!"</fcom>
 <asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:c20 <fcom>; "    Hello world     "</fcom>
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:cr20 <fcom>; "     Hello world    "</fcom>
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:cl20 <fcom>; "    Hello world     "</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:cl20 <fcom>; "     Hello world    "</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:cr20 <fcom>; "    Hello world     "</fcom>
 <asmop>db</asmop> <fstr>"Hello world!"</fstr>///pad:r5 <fcom>; "Hello world!"</fcom>
 
-<asmop>db</asmop> <fstr>"Hello world!"</fstr>///len:l20 <fcom>; "Hello world!        "</fcom>
+<asmop>db</asmop> <fstr>"Hello world!"</fstr>///len:r20 <fcom>; "Hello world!        "</fcom>
 <asmop>db</asmop> <fstr>"Hello world!"</fstr>///len:l5 <fcom>; "Hello"</fcom>
 <asmop>db</asmop> <fstr>"Hello world!"</fstr>///len:r5 <fcom>; "Hello"</fcom>
 </div>

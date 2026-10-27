@@ -405,15 +405,15 @@ internal static unsafe class FastRead {
 
 	// TODO microbenchmark
 	internal static void ReadUntilLineEnd(scoped ref char* start, char* end) {
-		start += CharSpanHelpers.CreateSpanUnchecked(start, end).IndexOf(NewLine);
+		//start += CharSpanHelpers.CreateSpanUnchecked(start, end).IndexOf(NewLine); #error breaks
 
-		//char* read = start;
-		//
-		//while (read < end && *read is not NewLine) {
-		//	read++;
-		//}
-		//
-		//start = read;
+		char* read = start;
+		
+		while (read < end && *read is not NewLine) {
+			read++;
+		}
+		
+		start = read;
 	}
 
 	internal static decimal ReadDecimal(scoped ref char* reading, char* end) {
@@ -475,9 +475,10 @@ internal static unsafe class FastRead {
 			if ((uint) decdig <= 9) {
 				value *= 10;
 				value += decdig;
-				continue;
 			}
+		}
 
+		if (reading == readit) {
 			return false;
 		}
 

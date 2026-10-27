@@ -73,7 +73,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 					var fstream = new FileStream(newHandle, FileAccess.Read);
 					var ftext = new StreamReader(fstream);
 
-					int length = (int) FileInfo.Length;
+					int length = (int) fstream.Length;
 
 					int bufferLen = length + (BufferPadding * 2);
 

@@ -230,8 +230,9 @@ unsafe partial class Assembler {
 
 			if (!IsValidRomSize(value)) {
 				Throw(MinRomSize, MaxRomSize);
-				static void Throw(int min, int max) =>
-					throw new ArgumentOutOfRangeException(nameof(value), $"ROM size must be between {min} and {max}");
+				[StackTraceHidden]
+				static void Throw(int min, int max)
+					=> throw new ArgumentOutOfRangeException(nameof(value), $"ROM size must be between {min} and {max}");
 			}
 
 			field = value;
