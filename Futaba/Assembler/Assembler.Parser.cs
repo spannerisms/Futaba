@@ -380,14 +380,6 @@ unsafe partial class Assembler {
 			directive.FastLower(dirword);
 
 			switch (dirword) {
-				case PILE:
-					Directive_PILE();
-					return;
-
-				case PLOP:
-					Directive_PLOP();
-					return;
-
 				case PILING:
 					Directive_PILING();
 					return;
@@ -682,6 +674,14 @@ unsafe partial class Assembler {
 
 			case ENCODER:
 				Directive_ENCODER();
+				return true;
+
+			case PILE:
+				Directive_PILE();
+				return true;
+
+			case PLOP:
+				Directive_PLOP();
 				return true;
 		}
 
