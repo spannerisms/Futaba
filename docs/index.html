@@ -392,7 +392,7 @@ F
 
 <p>The <fkey id="directive-skipto">skipto</fkey> directive advances forward until the given provenance is reached. If this results in a negative change, an error will be emitted.</p>
 
-<p>The <fkey id="directive-warnpc">warnpc</fkey> and <fkey id="directive-warnsite">warnsite</fkey> directive can be used to emit errors if the current program counter or provenance, respectively, is beyond a given address. Warning and relocating the program counter can be performed together with the <fkey id="directive-safeorg">safeorg</fkey> directive.</p>
+<p>The <fkey id="directive-guardpc">guardpc</fkey> and <fkey id="directive-guardsite">guardsite</fkey> directive can be used to emit errors if the current program counter or provenance, respectively, is beyond a given address. Warning and relocating the program counter can be performed together with the <fkey id="directive-safeorg">safeorg</fkey> directive.</p>
 
 <p>The <fkey id="directive-rebank">rebank</fkey> directive can be used to change only the bank of the current program counter. This directive includes special syntax to control paging: prefixing the expression with the <nowrap><ftok>&gt;</ftok></nowrap> token will force <nowrap>bit 15</nowrap> of the address to be set, while the <nowrap><ftok>&lt;</ftok></nowrap> token will force it to be reset.</p>
 

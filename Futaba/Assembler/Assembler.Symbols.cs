@@ -390,6 +390,9 @@ unsafe partial class Assembler {
 		_poolHeaders.Clear();
 	}
 
+	// TODO idea?: `piling <IDENTIFIER> :: <size>, <element size>
+	// TODO??    : fill piling :: <value>
+	// should pilings automatically advance to their end after declaration?
 	private void Directive_PILING() {
 		if (!DemandSpaceWithError()) return;
 

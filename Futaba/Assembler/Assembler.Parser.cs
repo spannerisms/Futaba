@@ -453,6 +453,7 @@ unsafe partial class Assembler {
 					return;
 
 				case WARNPC:
+				case GUARDPC:
 					if (DemandSpaceWithError() && TryReadRestAsExpression(WARNPC, SymbolContext.Provenance, out IExpressionReturn warnpc)) {
 						WarnCounter(warnpc.ValueInt32, _pc);
 					}
@@ -460,6 +461,7 @@ unsafe partial class Assembler {
 					return;
 
 				case WARNSITE:
+				case GUARDSITE:
 					if (DemandSpaceWithError() && TryReadRestAsExpression(WARNPC, SymbolContext.Provenance, out IExpressionReturn warnsite)) {
 						WarnCounter(warnsite.ValueInt32, Provenance);
 					}

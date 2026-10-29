@@ -473,47 +473,68 @@ unsafe partial class Assembler {
 					if (*pcheck is ']') {
 						var splitter = new StringSplitter(pread + 1, pcheck);
 
-						// we want more commas for the second operand
-						if (splitter.GetNextDoubleChar(':', out var rangeL)) {
-							if (!splitter.GetNextComma(out var rangeR)) {
-								bool rangeGood = true;
+						OperandString rangeR;
 
-								if (rangeL.IsEmpty) {
-									binstart = 0;
-								} else {
-									IExpressionReturn valL = ParseOperand(rangeL);
+						StringSplitResult resL = splitter.GetNextDoubleChar(':', out OperandString rangeL);
 
-									if (valL.Resolved) {
-										binstart = valL.ValueInt32;
-									} else {
-										rangeGood = false;
-										Error_BadResolve(valL);
-									}
-								}
+						if (resL.HasFlag(StringSplitResult.Invalid)) {
+							Error(MsgInfo.InvalidFileRange);
+							continue;
+						}
 
-								if (rangeR.IsEmpty) {
-									binend = binlen;
-								} else {
-									IExpressionReturn valR = ParseOperand(rangeR);
+						if (!resL.HasFlag(StringSplitResult.Found)) {
+							Error(MsgInfo.MissingAllocator);
+							continue;
+						}
 
-									if (valR.Resolved) {
-										binstart = valR.ValueInt32;
-									} else {
-										rangeGood = false;
-										Error_BadResolve(valR);
-									}
-								}
+						if (resL.HasFlag(StringSplitResult.MoreContent)) {
+							StringSplitResult resR = splitter.GetNextDoubleChar(':', out rangeR);
 
-								if (!rangeGood) {
-									continue;
-								}
-
-							} else {
-								Error("Too many allocators.");
+							if (resR.HasFlag(StringSplitResult.Invalid)) {
+								Error(MsgInfo.InvalidFileRange);
 								continue;
 							}
+
+							if (resR.HasFlag(StringSplitResult.MoreContent)) {
+								Error("Too many allocators");
+								continue;
+							}
+
 						} else {
-							Error(MsgInfo.MissingAllocator);
+							rangeR = default;
+						}
+
+						bool rangeGood = true;
+
+						if (rangeL.IsEmpty) {
+							binstart = 0;
+
+						} else {
+							IExpressionReturn valL = ParseOperand(rangeL);
+
+							if (valL.Resolved) {
+								binstart = valL.ValueInt32;
+							} else {
+								rangeGood = false;
+								Error_BadResolve(valL);
+							}
+						}
+
+						if (rangeR.IsEmpty) {
+							binend = binlen;
+
+						} else {
+							IExpressionReturn valR = ParseOperand(rangeR);
+
+							if (valR.Resolved) {
+								binstart = valR.ValueInt32;
+							} else {
+								rangeGood = false;
+								Error_BadResolve(valR);
+							}
+						}
+
+						if (!rangeGood) {
 							continue;
 						}
 					} else {

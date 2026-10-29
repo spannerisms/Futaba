@@ -13,6 +13,7 @@ internal static class MsgInfo {
 	internal const string MissingSublabel = "Missing sublabel name";
 	internal const string MissingSizeToken = "Missing size token.";
 	internal const string MissingAllocator = "Missing allocator token ::";
+	internal const string InvalidFileRange = "Invalid file range";
 
 	internal const string InvalidHex = "Invalid hex literal";
 	internal const string InvalidDec = "Invalid decimal literal";

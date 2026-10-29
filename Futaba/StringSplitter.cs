@@ -1,5 +1,14 @@
 ﻿namespace Futaba;
 
+[Flags]
+internal enum StringSplitResult {
+	Found = 1 << 1,
+	HasContent = 1 << 2,
+	MoreContent = 1 << 3,
+
+	Invalid = 1 << 8,
+}
+
 internal unsafe struct StringSplitter {
 	private readonly char* _start;
 	private readonly char* _end;
@@ -88,10 +97,10 @@ internal unsafe struct StringSplitter {
 		return false;
 	}
 
-	public bool GetNextDoubleChar(char delim, out OperandString next) {
+	public StringSplitResult GetNextDoubleChar(char delim, out OperandString next) {
 		char* theend = _end;
 
-		if (FastRead.SkipInlineWhitespaceWithEndCheck(ref _current, theend)) {
+		if (!FastRead.SkipInlineWhitespaceWithEndCheck(ref _current, theend)) {
 			char* read = _current;
 			char* chunkStart = read;
 
@@ -112,7 +121,20 @@ internal unsafe struct StringSplitter {
 						next = OperandString.CreateTrimmed(chunkStart, read);
 						read += 2;
 						_current = read;
-						return read < theend;
+
+						StringSplitResult res = StringSplitResult.Found;
+
+						if (!next.IsEmpty) {
+							res |= StringSplitResult.HasContent;
+						}
+
+
+						if (read < theend) {
+							return res | StringSplitResult.MoreContent;
+						}
+
+						return res;
+						
 					} else {
 						break;
 					}
@@ -121,12 +143,15 @@ internal unsafe struct StringSplitter {
 
 			_current = read;
 			next = OperandString.CreateTrimmed(chunkStart, read);
-			return false;
+			return StringSplitResult.HasContent;
 		}
 
-		Fail:
 		next = default;
-		return false;
+		return default;
+
+	Fail:
+		next = default;
+		return StringSplitResult.Invalid;
 	}
 
 	// This type also behaves as OperandString's enumerator,
