@@ -594,7 +594,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			_variables.Clear();
 			_symbols.Clear();
 
-			var ManifestWordsSpan = ManifestKeywords.GetAlternateLookup<ReadOnlySpan<char>>();
+			var ManifestWordsSpan = ManifestOption.ManifestKeywords.GetAlternateLookup<ReadOnlySpan<char>>();
 
 			using var reader = new StreamReader(_fileName, ManifestOptions);
 
@@ -620,7 +620,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 			int lineNum = 0; // 0 to start at 1 because it increments at the beginning of the loop for simplicity
 
-			HashSet<string>.AlternateLookup<ReadOnlySpan<char>>? cmdset = null;
+			Dictionary<string, ManifestOption>.AlternateLookup<ReadOnlySpan<char>>? cmdset = null;
 
 			foreach (var lineElement in fileBuffer.EnumerateLines()) {
 				var line = lineElement.TrimEnd();
@@ -717,16 +717,21 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 						// Commands
 					} else {
-						if (cmdset is not HashSet<string>.AlternateLookup<ReadOnlySpan<char>> cmdset2) {
+						if (cmdset is not Dictionary<string, ManifestOption>.AlternateLookup<ReadOnlySpan<char>> cmdset2) {
 							ManifestError("Not in any category.", lineNum);
 						} else {
 							if (cmdset2.TryGetValue(cmdName, out var cmdReal)) {
-								if (_manifestArguments.ContainsKey(cmdReal)) {
-									ManifestWarning($"Ignoring duplicate key: {cmdName}", lineNum);
-								} else if (cmdVal.IsWhiteSpace()) {
+								if (cmdVal.IsWhiteSpace()) {
 									ManifestWarning($"Ignoring empty key", lineNum);
+
 								} else {
-									_manifestArguments[cmdReal] = new(lineNum, new string(cmdVal));
+									ref var addItem = ref CollectionsMarshal.GetValueRefOrAddDefault(_manifestArguments, cmdReal.Name, out bool existed);
+
+									if (!existed) {
+										addItem = new(lineNum, new string(cmdVal));
+									} else {
+										ManifestWarning($"Ignoring duplicate key: {cmdReal.Name}", lineNum);
+									}
 								}
 							} else {
 								ManifestError("Unrecognized command name.", lineNum);
