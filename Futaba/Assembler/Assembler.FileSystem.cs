@@ -93,9 +93,9 @@ partial class Assembler {
 			filePath = path;
 			return true;
 
-		} else if (_currentSourceObject.FileInfo?.Directory is DirectoryInfo dir) {
+		} else if (_currentSourceObject.DirectoryName is string dir) {
 			// fully qualify it
-			filePath = Path.Join(dir.FullName, path);
+			filePath = Path.Join(dir, path);
 			return true;
 
 		} else {

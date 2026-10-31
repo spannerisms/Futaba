@@ -3,18 +3,15 @@
 namespace Futaba;
 
 /// <summary>
-/// Encapsulates an assembly source file.
+/// Represents an assembly source file.
 /// </summary>
 internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFileFactory<SourceFile> {
 	public SafeFileHandle? Handle { get; private set; }
 
-	// TODO get rid of this Property for just strings
-	public override FileInfo FileInfo { get; }
-
 	public string FileName { get; }
 	internal string ShortName { get; init; }
 	public override string ObjectName => ShortName;
-	public string? DirectoryName { get; }
+	public override string? DirectoryName { get; }
 
 	public DateTime LastLoaded { get; private set; } = default;
 
@@ -31,10 +28,9 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 	/// </summary>
 	private SourceFile(string path, SafeFileHandle? handle) {
 		Handle = handle;
-		FileInfo = new(path);
-		ShortName = FileInfo.Name;
-		FileName = FileInfo.FullName;
-		DirectoryName = FileInfo.DirectoryName;
+		ShortName = Path.GetFileName(path);
+		FileName = Path.GetFullPath(path);
+		DirectoryName = Path.GetDirectoryName(path);
 	}
 
 	public CharSpan AsSpan() {
@@ -133,10 +129,13 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 	internal static readonly SourceObject Empty = new EmptySource();
 }
 
+/// <summary>
+/// Represents a missing source object.
+/// </summary>
 file sealed class EmptySource : SourceObject {
-	public override FileInfo? FileInfo => null;
 	internal override bool IsMacro => false;
 	public override string ObjectName => string.Empty;
+	public override string? DirectoryName => null;
 
 	internal EmptySource() {
 		_disposed = true;

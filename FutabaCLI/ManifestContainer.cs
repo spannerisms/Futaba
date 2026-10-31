@@ -5,8 +5,8 @@ namespace FutabaCLI;
 internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private static readonly Random s_random = new();
 
-	private Dictionary<string, BinaryWatcher> _watchedFiles = [];
-	private Dictionary<string, WatchedBinary> _loadedBinaries = [];
+	private readonly Dictionary<string, BinaryWatcher> _watchedFiles = [];
+	private readonly Dictionary<string, WatchedBinary> _loadedBinaries = [];
 	private readonly string _fileName = manifest.FullName;
 
 	private byte[]? _baseRomData = null;
@@ -577,7 +577,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 		var oldWatchers = _watchedFiles;
 
-		foreach (var (name, watcher) in oldWatchers) {
+		foreach (var watcher in oldWatchers.Values) {
 			if (watcher.IsEmpty) {
 				watcher.Enabled = false;
 			} else {

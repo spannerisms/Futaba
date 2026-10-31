@@ -93,12 +93,11 @@ internal unsafe sealed class MacroCall {
 	}
 
 	private sealed class MacroInvocation : SourceObject {
-		internal override bool IsMacro => true;
-		private readonly string _identifier;
-
-		public override FileInfo? FileInfo => _callSite.Source.FileInfo;
 		private readonly SourceLine _callSite;
 		private readonly MacroCall _macroType;
+		internal override bool IsMacro => true;
+		public override string ObjectName { get; }
+		public override string? DirectoryName => _callSite.Source.DirectoryName;
 
 		internal MacroInvocation(MacroCall macroType, string body, string name, SourceLine callSite) {
 			int bufferLen = body.Length;
@@ -112,13 +111,11 @@ internal unsafe sealed class MacroCall {
 			SourceEnd = SourceStart + body.Length;
 
 			ApplyPadding();
-			_identifier = name;
+			ObjectName = name;
 
 			_callSite = callSite;
 			_macroType = macroType;
 		}
-
-		public override string ObjectName => _identifier;
 
 		public override string ToString() {
 			return $"{_callSite.Source}: [Macro \"{_macroType._name}\" (@{_macroType._declarationSite})] ";

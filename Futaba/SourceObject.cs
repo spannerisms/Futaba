@@ -2,13 +2,11 @@
 
 internal unsafe abstract class SourceObject : IDisposable {
 	protected const int BufferPadding = 32;
-
-	public abstract FileInfo? FileInfo { get; }
 	public abstract string ObjectName { get; }
 	protected char* AllocBlock { get; set; }
 	public char* SourceStart { get; protected set; }
 	public char* SourceEnd { get; protected set; }
-
+	public abstract string? DirectoryName { get; }
 	internal abstract bool IsMacro { get; }
 	protected bool _disposed = false;
 
