@@ -7,6 +7,8 @@ namespace Futaba;
 /// </summary>
 internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFileFactory<SourceFile> {
 	public SafeFileHandle? Handle { get; private set; }
+
+	// TODO get rid of this Property for just strings
 	public override FileInfo FileInfo { get; }
 
 	public string FileName { get; }
@@ -27,23 +29,30 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 	/// <summary>
 	/// Creates a new source file container.
 	/// </summary>
-	private SourceFile(string path) {
-		Handle = IWatchedFile.OpenHandle(path);
-
+	private SourceFile(string path, SafeFileHandle? handle) {
+		Handle = handle;
 		FileInfo = new(path);
 		ShortName = FileInfo.Name;
 		FileName = FileInfo.FullName;
 		DirectoryName = FileInfo.DirectoryName;
-
-		Refresh();
 	}
 
 	public CharSpan AsSpan() {
 		return new CharSpan(SourceStart, Length);
 	}
 
-	public static SourceFile Create(string path) {
-		return new SourceFile(path);
+	public static SourceFile TryCreate(string path) {
+		SafeFileHandle? handle = IWatchedFile.TryOpenHandle(path, out string? error);
+
+		SourceFile ret = new(path, handle) {
+			Error = error
+		};
+
+		if (error is null && handle is not null) {
+			ret.Refresh();
+		}
+
+		return ret;
 	}
 
 	public void Refresh() {

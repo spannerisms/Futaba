@@ -14,15 +14,24 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 	public bool WasUsed { get; set; } = false;
 	private bool _disposed = false;
 
-	private SourceBinary(string path) {
+	private SourceBinary(string path, SafeFileHandle? handle) {
+		Handle = handle;
 		FileName = Path.GetFullPath(path);
 		DirectoryName = Path.GetDirectoryName(FileName);
-		Handle = IWatchedFile.OpenHandle(FileName);
-		Refresh();
 	}
 
-	public static SourceBinary Create(string path) {
-		return new SourceBinary(path);
+	public static SourceBinary TryCreate(string path) {
+		SafeFileHandle? handle = IWatchedFile.TryOpenHandle(path, out string? error);
+
+		SourceBinary ret = new(path, handle) {
+			Error = error
+		};
+
+		if (error is null && handle is not null) {
+			ret.Refresh();
+		}
+
+		return ret;
 	}
 
 	public void Refresh() {

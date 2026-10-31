@@ -46,7 +46,7 @@ partial class Assembler {
 				fileRef.Refresh();
 
 			} else {
-				fileRef = T.Create(fullPath);
+				fileRef = T.TryCreate(fullPath);
 			}
 
 			if (fileRef.Error is not null) {
