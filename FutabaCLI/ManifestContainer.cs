@@ -1,12 +1,14 @@
-﻿namespace FutabaCLI;
+﻿using System.Runtime.InteropServices;
+
+namespace FutabaCLI;
 
 internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private static readonly Random s_random = new();
 
+	private Dictionary<string, BinaryWatcher> _watchedFiles = [];
+	private Dictionary<string, WatchedBinary> _loadedBinaries = [];
 	private readonly string _fileName = manifest.FullName;
 
-	private LoadedItem<byte[]>? _baseRomFile = null;
-	private LoadedItem<byte[]>? _diffRomFile = null;
 	private byte[]? _baseRomData = null;
 
 	private int? _romSize = 0;
@@ -16,6 +18,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 	private bool _assemblerNeedsUpdating = true;
 	private bool _assemblerIsSeeded = false;
+	private bool _firedChange;
 
 	private readonly Dictionary<string, ArgInfo> _manifestArguments = [];
 	private readonly Dictionary<string, Variable> _variables = [];
@@ -33,6 +36,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private LoadedItem<StreamWriter>? StdOut {
 		get;
 		set {
+			if (ReferenceEquals(field, value)) return;
 			field?.Dispose();
 			field = value;
 		}
@@ -41,6 +45,25 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private LoadedItem<StreamWriter>? ErrOut {
 		get;
 		set {
+			if (ReferenceEquals(field, value)) return;
+			field?.Dispose();
+			field = value;
+		}
+	} = null;
+
+	private WatchedBinary? BaseRomFile {
+		get;
+		set {
+			if (ReferenceEquals(field, value)) return;
+			field?.Dispose();
+			field = value;
+		}
+	} = null;
+
+	private WatchedBinary? DiffRomFile {
+		get;
+		set {
+			if (ReferenceEquals(field, value)) return;
 			field?.Dispose();
 			field = value;
 		}
@@ -54,6 +77,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private LoadedItem<Stream>? OutputStream {
 		get;
 		set {
+			if (ReferenceEquals(field, value)) return;
 			field?.Dispose();
 			field = value;
 		}
@@ -62,13 +86,17 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private Assembler? Assembler {
 		get;
 		set {
+			if (ReferenceEquals(field, value)) return;
 			field?.Dispose();
 			field = value;
 		}
 	} = null;
 
 	private void SomethingChanged(object source, FileSystemEventArgs e) {
-		_filesChanged?.Invoke(this, e);
+		if (Incremental && !_firedChange) {
+			_firedChange = true;
+			_filesChanged?.Invoke(this, e);
+		}
 	}
 
 	public Assembler GetAssembler() {
@@ -84,6 +112,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	}
 
 	internal void Configure() {
+		_firedChange = false;
 		try {
 			if (ManifestGood && _assemblerNeedsUpdating) {
 				PrepAssembler();
@@ -202,14 +231,19 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			_romSize = null;
 		}
 
-		// this looks like a memory leak, but this field uses a byte[] so it doesn't need disposal
-		if (TryOpenBinary("base", ref _baseRomFile)) {
+		if (TryGetBinaryFile("base", out var baseRomFile)) {
+			BaseRomFile = baseRomFile;
+		} else {
+			BaseRomFile = null;
+		}
+
+		if (BaseRomFile?.Data is byte[] baseRomData) {
 			int allocSize;
 
 			setSize = true;
 
 			if (_romSize is null) {
-				allocSize = _baseRomFile.Item.Length;
+				allocSize = baseRomData.Length;
 				_fillStart = allocSize;
 
 				if (allocSize > Assembler.MaxRomSize) {
@@ -225,14 +259,14 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 				}
 
 			} else {
-				_fillStart = (int) long.Min(_baseRomFile.Item.Length, _romSize.Value);
+				_fillStart = (int) long.Min(baseRomData.Length, _romSize.Value);
 
 				allocSize = _romSize.Value;
 			}
 
 			AllocateBaseRom(allocSize);
 			Assembler.InitialRomSize = allocSize;
-			Array.Copy(_baseRomFile.Item, _baseRomData!, _fillStart);
+			Array.Copy(baseRomData, _baseRomData!, _fillStart);
 
 		} else {
 			_fillStart = 0;
@@ -541,6 +575,16 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			return;
 		}
 
+		var oldWatchers = _watchedFiles;
+
+		foreach (var (name, watcher) in oldWatchers) {
+			if (watcher.IsEmpty) {
+				watcher.Enabled = false;
+			} else {
+				watcher.Clear();
+			}
+		}
+
 		_lastUpdated = update;
 		_assemblerNeedsUpdating = true;
 		char[]? buffer = null;
@@ -743,36 +787,9 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		return defaultValue;
 	}
 
-	bool TryOpenBinary(string key, [NotNullWhen(true)] ref LoadedItem<byte[]>? binFile) {
-		if (TryGetArg(key, out var argGet)) {
-			FileInfo diffInfo = new(argGet.Value);
-
-			if (binFile?.Reload(diffInfo) ?? true) {
-				try {
-					var data = Helpers.GetFileAsArray(diffInfo);
-					binFile = new(argGet.Value, data);
-					return true;
-				} catch (Exception e) {
-					ManifestError($"Problem loading file: '{argGet.Value}' - {e.Message}", argGet.Line);
-				}
-			} else {
-				return true;
-			}
-		}
-
-		binFile = null;
-		return false;
-	}
-
 	internal bool TryGetDiffFile([NotNullWhen(true)] out byte[]? binFile) {
-		// this looks like a memory leak, but this field uses a byte[] so it doesn't need disposal
-		if (TryOpenBinary("diff", ref _diffRomFile)) {
-			binFile = _diffRomFile.Item;
-			return true;
-		}
-
-		binFile = null;
-		return false;
+		binFile = DiffRomFile?.Data;
+		return binFile is not null;
 	}
 
 	void ProblemLoadingFile(Exception e, int line) {
@@ -949,6 +966,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		Assembler = null;
 		OutputStream = null;
 		_filesChanged = null;
+		DiffRomFile = null;
+		BaseRomFile = null;
 	}
 
 	static readonly Dictionary<string, Action<string, Assembler>> SymbolsOutputLookup = new(StringComparer.OrdinalIgnoreCase) {
@@ -963,5 +982,82 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		Empty = 0,
 		Valid,
 		Invalid,
+	}
+
+	internal string? TryGetFileName(string path) {
+		if (Path.IsPathFullyQualified(path)) {
+			return path;
+
+		} else if (manifest?.Directory is DirectoryInfo dir) {
+			return Path.Join(dir.FullName, path);
+
+		} else {
+			throw new InvalidOperationException("Unable to find current directory.");
+		}
+	}
+
+	[return: NotNullIfNotNull(nameof(directoryName))]
+	private BinaryWatcher? GetWatcher(string? directoryName) {
+		if (directoryName is null) {
+			return null;
+		}
+
+		ref var watcher = ref CollectionsMarshal.GetValueRefOrAddDefault(_watchedFiles, directoryName, out _);
+
+		if (watcher is null) {
+			watcher = new(directoryName);
+			watcher.SourceChange += SomethingChanged;
+		} else {
+			watcher.Enabled = true;
+		}
+
+		return watcher;
+	}
+
+	private bool TryGetBinaryFile(string key, [NotNullWhen(true)] out WatchedBinary? file) {
+		if (!TryGetArg(key, out var argGet)) {
+			file = null;
+			return false;
+		}
+
+		string path = argGet.Value;
+
+		try {
+			var fullPath = TryGetFileName(path);
+
+			if (fullPath is not null) {
+				ref WatchedBinary? fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_loadedBinaries, fullPath!, out _);
+
+				if (fileRef is not null) {
+					fileRef.Refresh();
+
+				} else {
+					fileRef = WatchedBinary.TryCreate(fullPath);
+				}
+
+				if (fileRef.Error is not null) {
+					ManifestError($"Problem loading file: {fileRef.Error}", argGet.Line);
+
+					// we still want to watch this path for changes
+					GetWatcher(Path.GetDirectoryName(fullPath))?.WatchFile(path);
+
+					file = null;
+					return false;
+				}
+
+				GetWatcher(fileRef.DirectoryName)?.WatchFile(fileRef);
+
+				file = fileRef;
+				return true;
+
+			} else {
+				file = null;
+				return false;
+			}
+		} catch (Exception e) {
+			ManifestError($"Problem loading file: '{path}' - {e.Message}", argGet.Line);
+			file = null;
+			return false;
+		}
 	}
 }
