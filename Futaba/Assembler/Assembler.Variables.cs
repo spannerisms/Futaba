@@ -36,6 +36,9 @@ unsafe partial class Assembler {
 			case '/':
 			case '-':
 			case '*':
+			case '|':
+			case '&':
+			case '^':
 			case '?':
 				if (_reading[1] is '=') {
 					_reading += 2;
@@ -47,6 +50,7 @@ unsafe partial class Assembler {
 			default:
 				UnexpectedCharacter();
 				AbortCommand();
+				theVar ??= new(varName);
 				return;
 		}
 
@@ -54,11 +58,13 @@ unsafe partial class Assembler {
 
 		if (!ReadRestOfCommand(out OperandString theRest)) {
 			Error("Missing operand for assignment");
+			theVar ??= new(varName);
 			return;
 		}
 
 		if (theVar is not null && theVar.VarType is VariableType.String && assignmentType is '+') {
 			theVar.Append(theRest);
+
 		} else if (theRest is ['"', .. OperandString operand, '"']) {
 			string opcon = ExplodeStringContents(operand);
 
@@ -73,6 +79,7 @@ unsafe partial class Assembler {
 
 				case '+' when theVar is null:
 					Error(NoCompound);
+					theVar ??= new(varName, string.Empty);
 					break;
 
 				case '+':
@@ -85,6 +92,7 @@ unsafe partial class Assembler {
 
 				default:
 					Error("Invalid assignment type");
+					theVar ??= new(varName, string.Empty);
 					break;
 			}
 		} else {
@@ -104,8 +112,9 @@ unsafe partial class Assembler {
 						theVar ??= new(varName, oper.Value);
 						break;
 
-					case '+' or '-' or '*' or '/' when theVar is null:
+					case '+' or '-' or '*' or '/' or '|' or '&' or '^' when theVar is null:
 						Error(NoCompound);
+						theVar ??= new(varName, 0M);
 						break;
 
 					case '+':
@@ -124,12 +133,24 @@ unsafe partial class Assembler {
 						theVar.Value /= oper.Value;
 						break;
 
+					case '|':
+						theVar.Value = theVar.Value.AsLong() | oper.Value.AsLong();
+						break;
+
+					case '&':
+						theVar.Value = theVar.Value.AsLong() & oper.Value.AsLong();
+						break;
+
+					case '^':
+						theVar.Value = theVar.Value.AsLong() ^ oper.Value.AsLong();
+						break;
+
 					default:
 						Error("Invalid assignment type.");
+						theVar ??= new(varName, 0M);
 						break;
 				}
 			} else {
-				// create if it doesn't exist to help reduce errors
 				theVar ??= new(varName, 0M);
 				Error_BadResolve(oper, "Unable to resolve value before assignment.");
 			}

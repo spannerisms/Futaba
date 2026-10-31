@@ -31,7 +31,7 @@ internal static class FunctionCall {
 		{ "select", (ass, args) => TestForBadArity(ass, "select", 3, args) ? new Select(args[0], args[1], args[2]) : null },
 
 		{ "vram", (ass, args) => TestForBadArity(ass, "vram", 1, args) ? new VramAddress(args[0]) : null },
-		{ "obsel", (ass, args) => TestForBadArity(ass, "obsel", 3, args) ? new ObSel(args[0], args[1], args[3]) : null },
+		{ "obsel", (ass, args) => TestForBadArity(ass, "obsel", 3, args) ? new ObSel(args[0], args[1], args[2]) : null },
 		{ "bgnba", (ass, args) => TestForBadArity(ass, "bgnba", 2, args) ? new BgNba(args[0], args[1]) : null },
 		{ "bgsc", (ass, args) => TestForBadArity(ass, "bgsc", 3, args) ? new BgSc(args[0], args[1], args[2]) : null },
 		{ "rtn", (ass, args) => TestForBadArity(ass, "rtn", 1, args) ? new Rtn(args[0]) : null },
