@@ -186,15 +186,15 @@ internal sealed class WatchedBinary : IDisposable {
 		return ret;
 	}
 
-	public void Refresh() {
+	public bool Refresh() {
 		HandleRevalidation result = RevalidateHandle();
 		if (result is HandleRevalidation.Bad) {
 			Data = null;
-			return;
+			return false;
 
 		} else {
 			if (Handle is null) {
-				return;
+				return false;
 			}
 
 			bool reload = LastLoaded != File.GetLastWriteTimeUtc(Handle);
@@ -214,18 +214,19 @@ internal sealed class WatchedBinary : IDisposable {
 
 					fstream.ReadExactly(Data);
 					Error = null;
-					return;
+					return true;
 
 				} catch (Exception e) {
 					Error = e.Message;
 				}
 			} else {
 				Error = null;
-				return;
+				return false;
 			}
 		}
 
 		Data = null;
+		return false;
 	}
 
 	~WatchedBinary() {

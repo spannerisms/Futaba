@@ -13,6 +13,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 	private int? _romSize = 0;
 	private int _fillStart = 0;
+	private bool _explicitSize = false;
+	private bool _sizeChanged = false;
 
 	private DateTime _lastUpdated = DateTime.MinValue;
 
@@ -108,134 +110,28 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			Assembler.SeedRNG(s_random.NextInt64(), s_random.NextInt64());
 		}
 
+		ReloadBase();
 		return Assembler;
 	}
 
-	internal void Configure() {
-		_firedChange = false;
-		try {
-			if (ManifestGood && _assemblerNeedsUpdating) {
-				PrepAssembler();
-			}
-		} catch {
-			ManifestGood = false;
-		}
-	}
-
-	private void PrepAssembler() {
-		if (!TryGetArg("entry", out var fileEntry)) {
-			ManifestErrorNoLine("No entry file specified.");
+	private void ReloadBase() {
+		if (Assembler is null) {
 			return;
 		}
 
-		if (!TryGetArg("mapmode", out var mapMode)) {
-			ManifestErrorNoLine("No mapper mode specified.");
-			return;
-		}
-
-		if (!TryGetString("output", out var outputGet)) {
-			outputGet = Path.ChangeExtension(_fileName, Igarashi.RomExtension);
-		}
-
-		string entryPoint = fileEntry.Value;
-
-		if (RomHeader.TryGetMapperMode(mapMode.Value, out var modeEnum)) {
-			if (Assembler is null
-				|| Assembler.Mapper != modeEnum
-				|| Path.GetFullPath(entryPoint) != Assembler.EntryPoint.FullName) {
-
-				Igarashi.Notice("Creating assembler...");
-				Assembler = Assembler.CreateAssemblerWithMapper(modeEnum, entryPoint);
-			}
-		} else {
-			ManifestError($"Invalid mapper mode: {mapMode.Value}", mapMode.Line);
-			return;
-		}
-
-		Igarashi.Notice("Configuring assembler...");
-
-		Assembler.ClearInitialSymbols();
-		Assembler.ClearInitialVariables();
-
-		OutputPath = Path.GetFullPath(outputGet);
-
-		if (OutputStream is null || OutputStream.Reload(OutputPath)) {
-			OutputStream?.Dispose();
-
-			OutputStream = new(outputGet, Helpers.WaitForAndCreateStream(outputGet));
-		}
-
-		if (TryGetArg("coprocessor", out var coprocessor)
-			&& CoprocessorLookup.TryGetValue(coprocessor.Value, out var copval)) {
-			Assembler.Coprocessor = copval;
-
-		} else if (Assembler.Mapper is not MapperMode.Sa1) {
-			Assembler.Coprocessor = Coprocessor.None;
-		}
-
-		bool autofill = GetBoolOrDefault("autofill", false, out var _);
-		Assembler.AutoPopulateHeader = autofill;
-
-		Assembler.Title = GetStringOrDefault("title");
-		Assembler.MakerCode = GetStringOrDefault("makercode");
-		Assembler.GameCode = GetStringOrDefault("gamecode");
-
-		if (TryGetArg("region", out var regionGet)) {
-			if (Region.TryGetRegion(regionGet.Value, out var regionObj)) {
-				Assembler.Destination = regionObj;
-			} else {
-				ManifestWarning($"Invalid region name: '{regionGet.Value}'", regionGet.Line);
-			}
-		} else {
-			Assembler.Destination = Region.Japan;
-		}
-
-		Assembler.RomVersion = GetByteOrDefault("version", 0);
-		Assembler.SpecialVersion = GetByteOrDefault("specialversion", 0);
-		Assembler.CartridgeSubtype = GetByteOrDefault("cartridgetype", 0);
-
-		bool autochecksum = GetBoolOrDefault("checksum", false, out ArgParse parsed);
-
-		if (parsed is ArgParse.Valid && (autofill && !autochecksum)) {
-			ManifestWarningNoLine("Ignoring 'autochecksum=false' because header 'autofill=true'.");
-			autochecksum = true;
-		}
-		Assembler.CalculateChecksum = autochecksum;
-
-		Assembler.FastRom = GetBoolOrDefault("fastrom", false, out _);
-		Assembler.ExtendedHeader = GetBoolOrDefault("extended", true, out _);
-
-		if (TryGetArg("ramsize", out var ramsizeget)) {
-			if (RomHeader.TryGetRamSize(ramsizeget.Value, out int ramsizeval)) {
-				Assembler.RamSize = ramsizeval;
-			} else {
-				ManifestError($"Invalid argument to ramsize: \"{ramsizeget.Value}\"", ramsizeget.Line);
-				Assembler.RamSize = 0;
-			}
-		} else {
-			Assembler.RamSize = 0;
-		}
-
-		bool setSize = false;
-		bool forceNullFill = false;
-
-		if (TryGetArg("romsize", out var romsizestr)) {
-			if (RomHeader.TryGetRomSize(romsizestr.Value, out int romsizeget)) {
-				_romSize = romsizeget;
-				setSize = true;
-			} else {
-				ManifestError($"Invalid argument to romsize: \"{romsizestr.Value}\"", romsizestr.Line);
-				_romSize = null;
-			}
-		} else {
-			_romSize = null;
-		}
-
-		if (TryGetBinaryFile("base", out var baseRomFile)) {
+		if (TryGetBinaryFile("base", out var baseRomFile, out bool needsReload)) {
 			BaseRomFile = baseRomFile;
 		} else {
+			needsReload = BaseRomFile is not null;
 			BaseRomFile = null;
 		}
+
+		if (!(_sizeChanged || needsReload)) {
+			return;
+		}
+
+		bool forceNullFill = false;
+		bool setSize = _explicitSize;
 
 		if (BaseRomFile?.Data is byte[] baseRomData) {
 			int allocSize;
@@ -371,6 +267,129 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 
 		Assembler.BaseRom = _baseRomData;
+	}
+
+	internal void Configure() {
+		_firedChange = false;
+		try {
+			if (ManifestGood && _assemblerNeedsUpdating) {
+				PrepAssembler();
+			}
+		} catch {
+			ManifestGood = false;
+		}
+	}
+
+	private void PrepAssembler() {
+		if (!TryGetArg("entry", out var fileEntry)) {
+			ManifestErrorNoLine("No entry file specified.");
+			return;
+		}
+
+		if (!TryGetArg("mapmode", out var mapMode)) {
+			ManifestErrorNoLine("No mapper mode specified.");
+			return;
+		}
+
+		if (!TryGetString("output", out var outputGet)) {
+			outputGet = Path.ChangeExtension(_fileName, Igarashi.RomExtension);
+		}
+
+		string entryPoint = fileEntry.Value;
+
+		if (RomHeader.TryGetMapperMode(mapMode.Value, out var modeEnum)) {
+			if (Assembler is null
+				|| Assembler.Mapper != modeEnum
+				|| Path.GetFullPath(entryPoint) != Assembler.EntryPoint.FullName) {
+
+				Igarashi.Notice("Creating assembler...");
+				Assembler = Assembler.CreateAssemblerWithMapper(modeEnum, entryPoint);
+			}
+		} else {
+			ManifestError($"Invalid mapper mode: {mapMode.Value}", mapMode.Line);
+			return;
+		}
+
+		Igarashi.Notice("Configuring assembler...");
+
+		Assembler.ClearInitialSymbols();
+		Assembler.ClearInitialVariables();
+
+		OutputPath = Path.GetFullPath(outputGet);
+
+		if (OutputStream is null || OutputStream.Reload(OutputPath)) {
+			OutputStream?.Dispose();
+
+			OutputStream = new(outputGet, Helpers.WaitForAndCreateStream(outputGet));
+		}
+
+		if (TryGetArg("coprocessor", out var coprocessor)
+			&& CoprocessorLookup.TryGetValue(coprocessor.Value, out var copval)) {
+			Assembler.Coprocessor = copval;
+
+		} else if (Assembler.Mapper is not MapperMode.Sa1) {
+			Assembler.Coprocessor = Coprocessor.None;
+		}
+
+		bool autofill = GetBoolOrDefault("autofill", false, out var _);
+		Assembler.AutoPopulateHeader = autofill;
+
+		Assembler.Title = GetStringOrDefault("title");
+		Assembler.MakerCode = GetStringOrDefault("makercode");
+		Assembler.GameCode = GetStringOrDefault("gamecode");
+
+		if (TryGetArg("region", out var regionGet)) {
+			if (Region.TryGetRegion(regionGet.Value, out var regionObj)) {
+				Assembler.Destination = regionObj;
+			} else {
+				ManifestWarning($"Invalid region name: '{regionGet.Value}'", regionGet.Line);
+			}
+		} else {
+			Assembler.Destination = Region.Japan;
+		}
+
+		Assembler.RomVersion = GetByteOrDefault("version", 0);
+		Assembler.SpecialVersion = GetByteOrDefault("specialversion", 0);
+		Assembler.CartridgeSubtype = GetByteOrDefault("cartridgetype", 0);
+
+		bool autochecksum = GetBoolOrDefault("checksum", false, out ArgParse parsed);
+
+		if (parsed is ArgParse.Valid && (autofill && !autochecksum)) {
+			ManifestWarningNoLine("Ignoring 'autochecksum=false' because header 'autofill=true'.");
+			autochecksum = true;
+		}
+		Assembler.CalculateChecksum = autochecksum;
+
+		Assembler.FastRom = GetBoolOrDefault("fastrom", false, out _);
+		Assembler.ExtendedHeader = GetBoolOrDefault("extended", true, out _);
+
+		if (TryGetArg("ramsize", out var ramsizeget)) {
+			if (RomHeader.TryGetRamSize(ramsizeget.Value, out int ramsizeval)) {
+				Assembler.RamSize = ramsizeval;
+			} else {
+				ManifestError($"Invalid argument to ramsize: \"{ramsizeget.Value}\"", ramsizeget.Line);
+				Assembler.RamSize = 0;
+			}
+		} else {
+			Assembler.RamSize = 0;
+		}
+
+		if (TryGetArg("romsize", out var romsizestr)) {
+			if (RomHeader.TryGetRomSize(romsizestr.Value, out int romsizeget)) {
+				_sizeChanged = _romSize == romsizeget;
+				_romSize = romsizeget;
+				_explicitSize = true;
+			} else {
+				ManifestError($"Invalid argument to romsize: \"{romsizestr.Value}\"", romsizestr.Line);
+				_romSize = null;
+				_explicitSize = false;
+			}
+		} else {
+			_sizeChanged = _romSize is not null;
+			_romSize = null;
+			_explicitSize = false;
+		}
+
 		_assemblerIsSeeded = TryGetString("randomseed", out var randomseed);
 
 		if (_assemblerIsSeeded) {
@@ -1019,9 +1038,10 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		return watcher;
 	}
 
-	private bool TryGetBinaryFile(string key, [NotNullWhen(true)] out WatchedBinary? file) {
+	private bool TryGetBinaryFile(string key, [NotNullWhen(true)] out WatchedBinary? file, out bool needsReload) {
 		if (!TryGetArg(key, out var argGet)) {
 			file = null;
+			needsReload = false;
 			return false;
 		}
 
@@ -1034,10 +1054,11 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 				ref WatchedBinary? fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_loadedBinaries, fullPath!, out _);
 
 				if (fileRef is not null) {
-					fileRef.Refresh();
+					needsReload = fileRef.Refresh();
 
 				} else {
 					fileRef = WatchedBinary.TryCreate(fullPath);
+					needsReload = true;
 				}
 
 				if (fileRef.Error is not null) {
@@ -1057,11 +1078,13 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 			} else {
 				file = null;
+				needsReload = false;
 				return false;
 			}
 		} catch (Exception e) {
 			ManifestError($"Problem loading file: '{path}' - {e.Message}", argGet.Line);
 			file = null;
+			needsReload = false;
 			return false;
 		}
 	}
