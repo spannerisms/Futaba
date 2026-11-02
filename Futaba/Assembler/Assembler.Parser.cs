@@ -17,6 +17,12 @@ unsafe partial class Assembler {
 	private char* _commandStart = default;
 	private IfLink? _ifChain = null;
 	private int _sourceLine = 0;
+	private ContextMode _context = ContextMode.Code;
+
+	private enum ContextMode {
+		Code,
+		Allocation
+	}
 
 	/// <summary>
 	/// Things that should be done both before and after assembly
@@ -110,6 +116,7 @@ unsafe partial class Assembler {
 			RequiredInitAndCleanUp();
 
 			// reset source state
+			_context = ContextMode.Code;
 			_previousState = null;
 			TransferSourceControl(entryObj);
 
@@ -554,7 +561,10 @@ unsafe partial class Assembler {
 					return;
 
 				case ALLOCATE:
+					ContextMode prev = _context;
+					_context = ContextMode.Allocation;
 					Directive_ALLOCATE();
+					_context = prev;
 					return;
 
 				case FILL:

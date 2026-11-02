@@ -1218,7 +1218,6 @@ unsafe partial class Assembler {
 	}
 
 	private void Directive_ALLOCATE() {
-		int blockAddress = -1;
 		int blockEnd = -1;
 		bool sizedBlock = false;
 
@@ -1280,7 +1279,7 @@ unsafe partial class Assembler {
 
 							if (AdvanceOverWhitespace() || !FastRead.IsAllocator(_reading)) {
 								if (goodName) {
-									AssignedSymbol addsym = new(fullName!, blockAddress);
+									AssignedSymbol addsym = new(fullName!, _allocationAddress);
 									AddOrReplaceSymbol(addsym);
 								}
 							} else {
@@ -1305,7 +1304,7 @@ unsafe partial class Assembler {
 						if (dpeek is ':') {
 							_reading++;
 							if (DemandSpaceAfterColon()) {
-								AssignedSymbol addLabel = new(new string(labelName), blockAddress);
+								AssignedSymbol addLabel = new(new string(labelName), _allocationAddress);
 
 								AddOrReplaceSymbol(addLabel);
 								UpdateHierarchy(addLabel.Name, 0);
@@ -1362,7 +1361,7 @@ unsafe partial class Assembler {
 									continue;
 								}
 
-								blockAddress = _nextAllocBlockStart;
+								_allocationAddress = _nextAllocBlockStart;
 
 							} else {
 								IExpressionReturn addrLoc = ParseOperand(addrContents);
@@ -1373,14 +1372,14 @@ unsafe partial class Assembler {
 									continue;
 								}
 
-								blockAddress = addrLoc.ValueInt32;
+								_allocationAddress = addrLoc.ValueInt32;
 
-								if (!SnesHelpers.IsValidBusAddress(blockAddress)) {
+								if (!SnesHelpers.IsValidBusAddress(_allocationAddress)) {
 									Error("Invalid bus address.");
 									PanicAllocation();
 									continue;
 								} else {
-									_nextAllocBlockStart = blockAddress;
+									_nextAllocBlockStart = _allocationAddress;
 								}
 							}
 
@@ -1395,7 +1394,7 @@ unsafe partial class Assembler {
 								blockEnd = int.MaxValue;
 							} else {
 								int blockSize = sizeVal.ValueInt32;
-								blockEnd = blockAddress + blockSize;
+								blockEnd = _allocationAddress + blockSize;
 
 								if (blockSize < 1) {
 									Error("Block allocation size must be greater than 0");
@@ -1421,16 +1420,16 @@ unsafe partial class Assembler {
 						continue;
 
 						void AdvanceAllocation(int allocStep) {
-							blockAddress += allocStep;
+							_allocationAddress += allocStep;
 
 							if (sizedBlock) {
-								if (blockAddress > blockEnd) {
+								if (_allocationAddress > blockEnd) {
 									Warning("Allocation chunk has exceeded its allotted size.");
 									// unsize to avoid error spam
 									blockEnd = int.MaxValue;
 								}
 							} else {
-								_nextAllocBlockStart = blockAddress;
+								_nextAllocBlockStart = _allocationAddress;
 							}
 						}
 
@@ -1446,7 +1445,7 @@ unsafe partial class Assembler {
 								return;
 							}
 
-							AllocatedSymbol alloc = new(allocatedName, blockAddress, allocatedSizeOut);
+							AllocatedSymbol alloc = new(allocatedName, _allocationAddress, allocatedSizeOut);
 
 							AddOrReplaceSymbol(alloc);
 
@@ -1454,7 +1453,7 @@ unsafe partial class Assembler {
 						}
 
 						void PanicAllocation() {
-							blockAddress = 0;
+							_allocationAddress = 0;
 							_nextAllocBlockStart = -1;
 						}
 

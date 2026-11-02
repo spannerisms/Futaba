@@ -276,8 +276,8 @@ unsafe partial class Assembler {
 			switch (tspan) {
 				case "pc": /*            */ return _pc;
 				case "site": /*          */ return Provenance;
-				case "here": /*          */ return Provenance;
 				case "offset": /*        */ return _offset;
+				case "alloc": /*         */ return _allocationAddress;
 				case "rand": /*          */ return _random.NextUInt64();
 				case "pi": /*            */ return 3.14159265358979323846264M;
 				case "e": /*             */ return 2.71828182845904523536028M;
@@ -285,6 +285,13 @@ unsafe partial class Assembler {
 				case "name": /*          */ return 0x03FF;
 				case "line": /*          */ return _sourceLine;
 				case "version": /*       */ return FutabaApp.VersionDecimal;
+
+				case "here":
+					return _context switch {
+						ContextMode.Code /*          */ => Provenance,
+						ContextMode.Allocation /*    */ => _allocationAddress,
+						_ /*                         */ => Provenance,
+					};
 			}
 		}
 

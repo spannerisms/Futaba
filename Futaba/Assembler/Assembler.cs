@@ -19,6 +19,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	private List<SourceObject> _loadedSourceObjects = new(128);
 
 	private int _nextAllocBlockStart = -1;
+	private int _allocationAddress = -1;
 
 	private BreakpointsControl _bpControl = BreakpointsControl.Off;
 	private BreakpointInserts _defaultBpInsert = BreakpointInserts.Nothing;

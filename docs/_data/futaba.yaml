@@ -95,8 +95,10 @@ internal_variables:
     desc: Current program counter
   - name: site
     desc: Current provenance
+  - name: alloc
+    desc: Current allocation address
   - name: here
-    desc: Alias for <fvab>!:site</fvab>
+    desc: Context-sensitive alias for <fvab>!:site</fvab> or <fvab>!:alloc</fvab>
   - name: offset
     desc: Current binary offset
   - name: line
