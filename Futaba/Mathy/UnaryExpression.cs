@@ -2,12 +2,12 @@
 
 internal abstract class UnaryExpression(ExpressionItem item) : ExpressionItem {
 	public ExpressionItem Item => item;
-
-	protected abstract decimal Equate(decimal a);
+	public static int Arity => 1;
 
 	public override ExpressionState State => _state;
-
 	protected ExpressionState _state = ExpressionState.Unresolved;
+
+	protected abstract decimal Equate(decimal a);
 
 	public override (decimal, ExpressionState) TryEvaluate() {
 		var (value, state) = Item.TryEvaluate();

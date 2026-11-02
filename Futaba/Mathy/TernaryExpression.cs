@@ -1,14 +1,16 @@
 ﻿namespace Futaba;
 
 internal abstract class TernaryExpression(ExpressionItem itema, ExpressionItem itemb, ExpressionItem itemc) : ExpressionItem {
-
 	public ExpressionItem ItemA => itema;
 	public ExpressionItem ItemB => itemb;
 	public ExpressionItem ItemC => itemc;
-	protected abstract decimal Equate(decimal a, decimal b, decimal c);
+	public static int Arity => 3;
 
 	protected ExpressionState _state = ExpressionState.Unresolved;
 	public override ExpressionState State => _state;
+
+	protected abstract decimal Equate(decimal a, decimal b, decimal c);
+
 	public override (decimal, ExpressionState) TryEvaluate() {
 		var (avalue, state) = ItemA.TryEvaluate();
 

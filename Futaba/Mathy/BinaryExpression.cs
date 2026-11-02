@@ -4,10 +4,12 @@
 internal abstract class BinaryExpression(ExpressionItem left, ExpressionItem right) : ExpressionItem {
 	public ExpressionItem Left => left;
 	public ExpressionItem Right => right;
-	protected abstract decimal Equate(decimal a, decimal b);
+	public static int Arity => 2;
 
 	protected ExpressionState _state = ExpressionState.Unresolved;
 	public override ExpressionState State => _state;
+
+	protected abstract decimal Equate(decimal a, decimal b);
 
 	public override (decimal, ExpressionState) TryEvaluate() {
 		var (lvalue, state) = Left.TryEvaluate();
