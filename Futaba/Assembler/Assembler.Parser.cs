@@ -672,6 +672,14 @@ unsafe partial class Assembler {
 				Directive_FUNCTION();
 				return true;
 
+			case REPEAT:
+				Directive_REPEAT();
+				return true;
+
+			case ENDREPEAT:
+				Directive_ENDREPEAT();
+				return true;
+
 			case IF:
 				Directive_IF();
 				return true;
@@ -724,9 +732,16 @@ unsafe partial class Assembler {
 	}
 
 	private bool PopSourceControl() {
+		if (_currentSourceObject is RepeatBlock rb) {
+			if (rb.TickLoops()) {
+				_sourceLine = 0;
+				_reading = rb.SourceStart;
+				return true;
+			}
+		}
+
 		// check the parent for where to resume or if we should end
 		if (_previousState is SourcePointers sp) {
-
 			// TODO maybe have this for a verbose mode
 #if DEBUG
 			//if (CurrentSourceObject is SourceFile) {

@@ -1705,7 +1705,7 @@ unsafe partial class Assembler {
 	private void Directive_IF() {
 		if (!DemandSpaceWithError()) return;
 
-		if (TryReadRestAsExpression("if", SymbolContext.Default, out var ifval)) {
+		if (TryReadRestAsExpression(IF, SymbolContext.Default, out var ifval)) {
 			_ifChain = new(_ifChain);
 
 			if (ifval.Value.IsFalse()) {
@@ -1772,6 +1772,61 @@ unsafe partial class Assembler {
 			_ifChain = _ifChain.Parent;
 			FinishCommand();
 		}
+	}
+
+	// TODO switch to a stack structure like IFs?
+	private void Directive_REPEAT() {
+		if (!DemandSpaceWithError()) return;
+
+		if (TryReadRestAsExpression(REPEAT, SymbolContext.Default, out var repCount)) {
+			char* repstart = _reading;
+
+			if (!SkipToEndRepeat(out char* repend)) {
+				return;
+			}
+
+			int count = repCount.ValueInt32;
+
+			if (count < 0) {
+				Error("Repeat count cannot be negative");
+			}
+
+			if (count != repCount.Value) {
+				Warning("Repeat count is not an integer. Use 'int(<expr>)' to suppress this warning.");
+			}
+
+			RepeatBlock addrep = new(_currentSourceObject, repstart, repend, count);
+
+			TransferSourceControl(addrep);
+		}
+	}
+	private void Directive_ENDREPEAT() {
+		if (_ifChain is null) {
+			Error($"Unexpected {ENDREPEAT}");
+			AbortCommand();
+		}
+	}
+
+	private bool SkipToEndRepeat(out char* end) {
+		int blockDepth = 1;
+
+		while (_reading < _fileEnd) {
+			end = _reading;
+
+			if (CaptureLine(out CharSpan blockLine)) {
+				if (blockLine.BeginsWithIgnoreCaseAndSpace(REPEAT)) {
+					blockDepth++;
+				} else if (blockLine.MatchesIgnoreCase(ENDREPEAT)) {
+					if (--blockDepth is 0) {
+						return true;
+					}
+				}
+			}
+		}
+
+		Error("Unclosed repeat block");
+		end = _fileEnd;
+		return false;
 	}
 
 	private protected virtual void Directive_MMC() {

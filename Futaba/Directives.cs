@@ -84,6 +84,9 @@ internal static class Directives {
 		ENDMACRO                      = "endmacro",
 		FUNCTION                      = "function",
 
+		REPEAT                        = "repeat",
+		ENDREPEAT                     = "endrepeat",
+
 		ALLOCATE                      = "allocate",
 		ENDALLOCATE                   = "endallocate",
 
