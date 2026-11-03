@@ -1787,8 +1787,13 @@ unsafe partial class Assembler {
 
 			int count = repCount.ValueInt32;
 
+			if (count is 0) {
+				// allow 0 count for dynamically designed loops
+				return;
+			}
+
 			if (count < 0) {
-				Error("Repeat count cannot be negative");
+				Error("Repeat count cannot be negative.");
 			}
 
 			if (count != repCount.Value) {
