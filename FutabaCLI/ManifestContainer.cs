@@ -542,6 +542,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		return outStream is not null;
 	}
 
+	/// <returns>The parsed value or default.</returns>
 	private bool GetBoolOrDefault(string argName, bool defaultValue, out ArgParse parseStatus) {
 		if (TryGetArg(argName, out var argvalrecord)) {
 			string argvalstr = argvalrecord.Value;
@@ -621,7 +622,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 			var ManifestWordsSpan = ManifestOption.ManifestKeywords.GetAlternateLookup<ReadOnlySpan<char>>();
 
-			using var reader = new StreamReader(_fileName, ManifestOptions);
+			// TODO switch to a handle
+			using var reader = new StreamReader(_fileName, ManifestFileStreamOptions);
 
 			Igarashi.Notice("Parsing manifest file...");
 
@@ -634,8 +636,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			int didRead = reader.ReadBlock(buffer);
 
 			if (!reader.EndOfStream) {
-				Igarashi.Error("Problem parsing manifest file.");
-				ManifestGood = false;
+				ManifestErrorNoLine("Problem parsing manifest file.");
 				return;
 			}
 
@@ -657,8 +658,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 						continue;
 					}
 
-					Igarashi.Error("Manifest files must begin with '[FUTABA:assemble]'");
-					ManifestGood = false;
+					ManifestErrorNoLine("Manifest files must begin with '[FUTABA:assemble]'");
 					return;
 				}
 
@@ -807,10 +807,10 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 	int GetInt32OrDefault(string key, int defaultValue) {
 		if (TryGetArg(key, out var argGet)) {
-			if (Helpers.TryParseByte(argGet.Value, out byte value)) {
+			if (Helpers.TryParseInt32(argGet.Value, out int value)) {
 				return value;
 			} else {
-				ManifestWarning($"Unable to parse '{argGet.Value}' to an 8-bit value", argGet.Line);
+				ManifestWarning($"Unable to parse '{argGet.Value}' to an integer value", argGet.Line);
 			}
 		}
 
@@ -875,53 +875,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		{ "other", Coprocessor.Other },
 	};
 
-	// TODO populate these with a new type of object so that the template command can programmatically fill the options
-	internal static readonly Dictionary<string, HashSet<string>> ManifestKeywords = new() {
-		{ "assembly", [
-			"entry",
-			"type",
-			"output",
-			"addsymbols",
-			"nullfill",
-			"randomseed",
-			"base",
-			"incremental",
-		]},
-		{ "header", [
-			"autofill",
-			"checksum",
-			"mapmode",
-			"fastrom",
-			"title",
-			"romsize",
-			"ramsize",
-			"version",
-			"region",
-			"coprocessor",
-			"extended",
-			"gamecode",
-			"makercode",
-			"specialversion",
-			"cartridgetype",
-		]},
-		{ "debug", [
-			"stdout",
-			"errorout",
-			"overflow",
-			"tokens",
-			"symbols",
-			"warnaserror",
-			"maxerrors"
-		]},
-		{ "disassembly", [
-			"crc",
-			"md5",
-			"sha1",
-			"diff",
-		]},
-	};
-
-	private static readonly FileStreamOptions ManifestOptions = new() {
+	private static readonly FileStreamOptions ManifestFileStreamOptions = new() {
 		Mode = FileMode.Open,
 		Access = FileAccess.Read,
 		Share = FileShare.Read

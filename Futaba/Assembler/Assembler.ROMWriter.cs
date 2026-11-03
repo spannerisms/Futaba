@@ -344,7 +344,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-	// TODO try to use vector128.shuffle?
 	private void InsertEncodedString(int offset, int wordsize, string text, SnesEncoder encoder) {
 		int length = text.Length;
 
