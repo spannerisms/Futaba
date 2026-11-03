@@ -44,6 +44,7 @@ internal static unsafe class CharSpanHelpers {
 			}
 
 			byItself = false;
+
 			if (charspan.Length >= (len + 1)) {
 				if (charspan[len].IsSkippableSpace) {
 					return charspan.Slice(0, len).MatchesIgnoreCase(test);

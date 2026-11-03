@@ -65,8 +65,12 @@ unsafe partial class Assembler {
 				break;
 			}
 
+			// no need to validate these, because the command has been aborted
+			if (c is CharDelim) {
+				_ = FastRead.SkipToMatchingApos(ref read, theend);
+			}
+
 			if (c is '"') {
-				// no need to validate the quotes, because the command has been aborted
 				_ = FastRead.SkipToMatchingQuote(ref read, theend);
 			}
 
@@ -141,7 +145,12 @@ unsafe partial class Assembler {
 			}
 
 			if (c is '"') {
-				FastRead.SkipToMatchingQuote(ref read, theend);
+				_ = FastRead.SkipToMatchingQuote(ref read, theend);
+				continue;
+			}
+
+			if (c is CharDelim) {
+				_ = FastRead.SkipToMatchingApos(ref read, theend);
 				continue;
 			}
 
@@ -302,6 +311,11 @@ unsafe partial class Assembler {
 				goto FinishUp;
 			}
 
+			if (c is CharDelim) {
+				_ = FastRead.SkipToMatchingApos(ref read, theend);
+				continue;
+			}
+
 			if (c is '"') {
 				FastRead.SkipToMatchingQuote(ref read, theend);
 			}
@@ -330,6 +344,11 @@ unsafe partial class Assembler {
 			char c = *read;
 			if (c is NewLine or CommentChar) {
 				break;
+			}
+
+			if (c is CharDelim) {
+				_ = FastRead.SkipToMatchingApos(ref read, theend);
+				continue;
 			}
 
 			if (c is '"') {
@@ -453,6 +472,11 @@ unsafe partial class Assembler {
 
 			if (c is '"') {
 				if (FastRead.SkipToMatchingQuote(ref read, theend)) continue;
+				break;
+			}
+
+			if (c is CharDelim) {
+				if (FastRead.SkipToMatchingApos(ref read, theend)) continue;
 				break;
 			}
 

@@ -36,6 +36,9 @@ internal static unsafe class FastRead {
 			if (c is '"') {
 				if (SkipToMatchingQuote(ref reading, end)) continue;
 				break;
+			} else if (c is CharDelim) {
+				if (SkipToMatchingApos(ref reading, end)) continue;
+				break;
 			} else if (c is '(') {
 				parenCount++;
 			} else if (c is ')') {
@@ -67,13 +70,37 @@ internal static unsafe class FastRead {
 			if (c is '"') {
 				start = read;
 				return true;
-			} else if (c is '\\') {
+			} else if (c is EscapeChar) {
 				read++;
 				c = *read;
 			}
 
 			// this should be checked even if we hit a \
-			if (*read is '\n' or BadChar) {
+			if (*read is NewLine or BadChar) {
+				break;
+			}
+		}
+
+		start = read;
+		return false;
+	}
+
+	internal static bool SkipToMatchingApos(scoped ref char* start, char* end) {
+		char c;
+		char* read = start + 1;
+		for (; read < end; read++) {
+			c = *read;
+
+			if (c is CharDelim) {
+				start = read;
+				return true;
+			} else if (c is EscapeChar) {
+				read++;
+				c = *read;
+			}
+
+			// this should be checked even if we hit a \
+			if (*read is NewLine or BadChar) {
 				break;
 			}
 		}
@@ -93,13 +120,13 @@ internal static unsafe class FastRead {
 				span = CharSpanHelpers.CreateSpan(start + 1, read);
 				start = read + 1;
 				return true;
-			} else if (c is '\\') {
+			} else if (c is EscapeChar) {
 				read++;
 				c = *read;
 			}
 
 			// this should be checked even if we hit a \
-			if (*read is '\n' or BadChar) {
+			if (*read is NewLine or BadChar) {
 				break;
 			}
 		}

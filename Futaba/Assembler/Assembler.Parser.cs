@@ -773,9 +773,10 @@ unsafe partial class Assembler {
 		internal bool HitElse { get; set; } = false;
 	}
 
-	private sealed class RepeatLink(char* start, int loops, ScopeLink? parent) : ScopeLink(parent) {
+	private sealed class RepeatLink(char* start, int loops, int lineStart, ScopeLink? parent) : ScopeLink(parent) {
 		private int _loops = loops;
 		public char* Start => start;
+		public int LineStart => lineStart;
 		public bool TickLoops() {
 			return (--_loops) > 0;
 		}

@@ -77,7 +77,7 @@ internal static unsafe class AsciiHelpers {
 		internal bool IsLineEnd {
 			[DebuggerStepThrough]
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => c is '\n' or BadChar;
+			get => c is NewLine or BadChar;
 		}
 
 		/// <summary>
@@ -86,7 +86,7 @@ internal static unsafe class AsciiHelpers {
 		internal bool IsNiceBoundary {
 			[DebuggerStepThrough]
 			//[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => c is ' ' or '\t' or '\r' or ';' or BadChar or '\n';
+			get => c is ' ' or '\t' or '\r' or CommentChar or BadChar or NewLine;
 		}
 
 		internal bool IsLetterOrUnderscore {

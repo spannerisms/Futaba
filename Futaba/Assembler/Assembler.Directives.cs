@@ -121,7 +121,7 @@ unsafe partial class Assembler {
 
 		_reading = read;
 
-		if (*read is ';') {
+		if (*read is CommentChar) {
 			FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
 		} else {
 			AbortCommand();
@@ -1811,7 +1811,7 @@ unsafe partial class Assembler {
 				return;
 			}
 
-			_scopeChain = new RepeatLink(_reading, count, _scopeChain);
+			_scopeChain = new RepeatLink(_reading, count, _sourceLine, _scopeChain);
 
 		} else {
 			AbortRepeatBlock();
@@ -1828,6 +1828,7 @@ unsafe partial class Assembler {
 
 			if (chain.TickLoops()) {
 				_reading = chain.Start;
+				_sourceLine = chain.LineStart;
 			} else {
 				_scopeChain = chain.Parent;
 			}

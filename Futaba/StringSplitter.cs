@@ -39,6 +39,10 @@ internal unsafe struct StringSplitter {
 					if (!FastRead.SkipToMatchingQuote(ref read, theend)) {
 						goto Fail;
 					}
+				} else if (c is CharDelim) {
+					if (!FastRead.SkipToMatchingApos(ref read, theend)) {
+						goto Fail;
+					}
 				} else if (c is '(') {
 					if (!FastRead.SkipToMatchingParenthesis(ref read, theend)) {
 						goto Fail;
@@ -75,6 +79,10 @@ internal unsafe struct StringSplitter {
 					if (!FastRead.SkipToMatchingQuote(ref read, theend)) {
 						goto Fail;
 					}
+				} else if (c is CharDelim) {
+					if (!FastRead.SkipToMatchingApos(ref read, theend)) {
+						goto Fail;
+					}
 				} else if (c is '(') {
 					if (!FastRead.SkipToMatchingParenthesis(ref read, theend)) {
 						goto Fail;
@@ -109,6 +117,10 @@ internal unsafe struct StringSplitter {
 
 				if (c is '"') {
 					if (!FastRead.SkipToMatchingQuote(ref read, theend)) {
+						goto Fail;
+					}
+				} else if (c is CharDelim) {
+					if (!FastRead.SkipToMatchingApos(ref read, theend)) {
 						goto Fail;
 					}
 				} else if (c is '(') {

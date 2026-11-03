@@ -307,7 +307,7 @@ unsafe partial class Assembler {
 	private char GetEscapedCharacter(char c) {
 		switch (c) {
 			case 'n':
-				return '\n';
+				return NewLine;
 
 			case 't':
 				return '\t';
