@@ -10,7 +10,7 @@ internal static unsafe class CharSpanHelpers {
 			_ = Ascii.ToLower(charspan, dest, out _);
 		}
 
-		internal bool BeginsWithIgnoreSpace(string test) {
+		internal bool BeginsWithIgnoreCase(string test) {
 			if (charspan.Length >= test.Length) {
 				return charspan[..test.Length].MatchesIgnoreCase(test);
 			}
@@ -21,6 +21,29 @@ internal static unsafe class CharSpanHelpers {
 		internal bool BeginsWithIgnoreCaseAndSpace(string test) {
 			int len = test.Length;
 
+			if (charspan.Length >= (len + 1)) {
+				if (charspan[len].IsSkippableSpace) {
+					return charspan.Slice(0, len).MatchesIgnoreCase(test);
+				}
+			}
+
+			return false;
+		}
+
+		internal bool BeginsWithIgnoreCaseAndSpaceOrEnd(string test, out bool byItself) {
+			int len = test.Length;
+
+			if (len == test.Length) {
+				if (MemoryExtensions.Equals(charspan, test, StringComparison.OrdinalIgnoreCase)) {
+					byItself = true;
+					return true;
+				}
+
+				byItself = false;
+				return false;
+			}
+
+			byItself = false;
 			if (charspan.Length >= (len + 1)) {
 				if (charspan[len].IsSkippableSpace) {
 					return charspan.Slice(0, len).MatchesIgnoreCase(test);

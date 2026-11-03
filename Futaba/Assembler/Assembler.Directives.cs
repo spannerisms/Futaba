@@ -1706,43 +1706,54 @@ unsafe partial class Assembler {
 		if (!DemandSpaceWithError()) return;
 
 		if (TryReadRestAsExpression(IF, SymbolContext.Default, out var ifval)) {
-			_ifChain = new(_ifChain);
+			_scopeChain = new IfLink(_scopeChain);
 
 			if (ifval.Value.IsFalse()) {
 				SkipToElseOrEndIf();
 			}
 		} else {
-			SkipToEndIf();
+			AbortIfBlock();
 		}
 	}
 
 	private void SkipToElseOrEndIf() {
 		while (_reading < _fileEnd) {
-			if (CaptureLine(out CharSpan blockLine)) {
+			// we need to be careful with blocks
+			// and have to allow ENDIF to process itself
+			// so save the start of the command, in case it's an ENDIF
+			char* reading = _reading;
+			if (CaptureLineShort(out CharSpan blockLine)) {
 				if (blockLine.BeginsWithIgnoreCaseAndSpace(IF)) {
-					SkipToEndIf(); // this will also skip any ELSE inherently
+					CaptureLineContinue();
+					AbortIfBlock(); // this will also skip any ELSE inherently
 
-					// special case for when endif is last thing in file
-					if (_reading >= _fileEnd) {
-						return;
+				} else if (blockLine.BeginsWithIgnoreCaseAndSpaceOrEnd(ELSE, out bool loneElse)) {
+					if (!loneElse) {
+						Error(MsgInfo.CommandGarbage);
 					}
-				} else if (blockLine.MatchesIgnoreCase(ELSE) || blockLine.MatchesIgnoreCase(ENDIF)) {
+					CaptureLineContinue();
+					return;
+
+				} else if (blockLine.BeginsWithIgnoreCaseAndSpaceOrEnd(ENDIF, out _)) {
+					_reading = reading;
 					return;
 				}
 			}
 		}
-
-		Error(MsgInfo.UnclosedIf);
 	}
 
-	private void SkipToEndIf() {
+	private void AbortBlock(string blockHead, string blockEnd, string blockError) {
 		int blockDepth = 1;
 
 		while (_reading < _fileEnd) {
 			if (CaptureLine(out CharSpan blockLine)) {
-				if (blockLine.BeginsWithIgnoreCaseAndSpace(IF)) {
+				if (blockLine.BeginsWithIgnoreCaseAndSpace(blockHead)) {
 					blockDepth++;
-				} else if (blockLine.MatchesIgnoreCase(ENDIF)) {
+				} else if (blockLine.BeginsWithIgnoreCaseAndSpaceOrEnd(blockEnd, out bool loneEnd)) {
+					if (!loneEnd) {
+						Error(MsgInfo.CommandGarbage);
+					}
+
 					if (--blockDepth is 0) {
 						return;
 					}
@@ -1750,88 +1761,81 @@ unsafe partial class Assembler {
 			}
 		}
 
-		Error(MsgInfo.UnclosedIf);
+		Error(blockError);
+	}
+
+	private void AbortIfBlock() {
+		AbortBlock(IF, ENDIF, MsgInfo.UnclosedIf);
 	}
 
 	private void Directive_ELSE() {
-		if (_ifChain?.HitElse ?? true) {
-			Error($"Unexpected {ELSE}");
-			AbortCommand();
-		} else {
-			_ifChain.HitElse = true;
-			FinishCommand();
-			SkipToElseOrEndIf();
+		if (_scopeChain is IfLink ifChain) {
+			if (!ifChain.HitElse) {
+				ifChain.HitElse = true;
+				FinishCommand();
+				SkipToElseOrEndIf();
+				return;
+			}
 		}
+
+		Error($"Unexpected {ELSE}");
+		AbortCommand();
 	}
 
 	private void Directive_ENDIF() {
-		if (_ifChain is null) {
+		if (_scopeChain is not IfLink chain) {
 			Error($"Unexpected {ENDIF}");
 			AbortCommand();
 		} else {
-			_ifChain = _ifChain.Parent;
+			_scopeChain = chain.Parent;
 			FinishCommand();
 		}
 	}
 
-	// TODO switch to a stack structure like IFs?
 	private void Directive_REPEAT() {
 		if (!DemandSpaceWithError()) return;
 
 		if (TryReadRestAsExpression(REPEAT, SymbolContext.Default, out var repCount)) {
-			char* repstart = _reading;
-
-			if (!SkipToEndRepeat(out char* repend)) {
-				return;
-			}
-
 			int count = repCount.ValueInt32;
-
-			if (count is 0) {
-				// allow 0 count for dynamically designed loops
-				return;
-			}
-
-			if (count < 0) {
-				Error("Repeat count cannot be negative.");
-			}
 
 			if (count != repCount.Value) {
 				Warning("Repeat count is not an integer. Use 'int(<expr>)' to suppress this warning.");
 			}
 
-			RepeatBlock addrep = new(_currentSourceObject, repstart, repend, count);
+			if (count is < 1) {
+				if (count < 0) {
+					Error("Repeat count must be a non-negative value");
+				}
 
-			TransferSourceControl(addrep);
+				AbortRepeatBlock();
+				return;
+			}
+
+			_scopeChain = new RepeatLink(_reading, count, _scopeChain);
+
+		} else {
+			AbortRepeatBlock();
 		}
 	}
+
 	private void Directive_ENDREPEAT() {
-		if (_ifChain is null) {
+		if (_scopeChain is not RepeatLink chain) {
 			Error($"Unexpected {ENDREPEAT}");
 			AbortCommand();
+
+		} else {
+			FinishCommand();
+
+			if (chain.TickLoops()) {
+				_reading = chain.Start;
+			} else {
+				_scopeChain = chain.Parent;
+			}
 		}
 	}
 
-	private bool SkipToEndRepeat(out char* end) {
-		int blockDepth = 1;
-
-		while (_reading < _fileEnd) {
-			end = _reading;
-
-			if (CaptureLine(out CharSpan blockLine)) {
-				if (blockLine.BeginsWithIgnoreCaseAndSpace(REPEAT)) {
-					blockDepth++;
-				} else if (blockLine.MatchesIgnoreCase(ENDREPEAT)) {
-					if (--blockDepth is 0) {
-						return true;
-					}
-				}
-			}
-		}
-
-		Error("Unclosed repeat block");
-		end = _fileEnd;
-		return false;
+	private void AbortRepeatBlock() {
+		AbortBlock(REPEAT, ENDREPEAT, MsgInfo.UnclosedRepeat);
 	}
 
 	private protected virtual void Directive_MMC() {

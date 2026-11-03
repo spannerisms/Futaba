@@ -397,7 +397,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 		_currentEncoder = default!;
 
 		_previousState = default;
-		_ifChain = default;
+		_scopeChain = default;
 
 		_simpleRequests.Clear();
 		_simpleRequests = default!;

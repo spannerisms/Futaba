@@ -15,7 +15,7 @@ unsafe partial class Assembler {
 	private char* _reading = default;
 	private char* _fileEnd = default;
 	private char* _commandStart = default;
-	private IfLink? _ifChain = null;
+	private ScopeLink? _scopeChain = null;
 	private int _sourceLine = 0;
 	private ContextMode _context = ContextMode.Code;
 
@@ -32,7 +32,7 @@ unsafe partial class Assembler {
 		_currentEncoder = SnesEncoder.ASCII;
 
 		_previousState = null;
-		_ifChain = null;
+		_scopeChain = null;
 		_currentSegment = null;
 
 		Array.Fill(_nameHierarchy, string.Empty);
@@ -720,7 +720,7 @@ unsafe partial class Assembler {
 		}
 
 		if (_currentSourceObject != SourceFile.Empty) {
-			_previousState = new(_currentSourceObject, _reading, _sourceLine, _ifChain, _previousState);
+			_previousState = new(_currentSourceObject, _reading, _sourceLine, _scopeChain, _previousState);
 		}
 
 		_currentSourceObject = source;
@@ -728,16 +728,21 @@ unsafe partial class Assembler {
 		_reading = source.SourceStart;
 		_commandStart = _reading;
 		_sourceLine = 1;
-		_ifChain = null;
+		_scopeChain = null;
 	}
 
 	private bool PopSourceControl() {
-		if (_currentSourceObject is RepeatBlock rb) {
-			if (rb.TickLoops()) {
-				_sourceLine = 0;
-				_reading = rb.SourceStart;
-				return true;
-			}
+		// errors for unclosed blocks
+		while (_scopeChain is not null) {
+			string errorMessage = _scopeChain switch {
+				RepeatLink /*     */ => MsgInfo.UnclosedRepeat,
+				IfLink /*         */ => MsgInfo.UnclosedIf,
+				_ /*              */ => "Unclosed syntax block"
+			};
+
+			Error(errorMessage);
+
+			_scopeChain = _scopeChain.Parent;
 		}
 
 		// check the parent for where to resume or if we should end
@@ -750,7 +755,7 @@ unsafe partial class Assembler {
 #endif
 
 			_previousState = sp.Parent;
-			(_currentSourceObject, _reading, _sourceLine, _ifChain) = sp;
+			(_currentSourceObject, _reading, _sourceLine, _scopeChain) = sp;
 			_fileEnd = _currentSourceObject.SourceEnd;
 
 			return true;
@@ -759,21 +764,32 @@ unsafe partial class Assembler {
 		}
 	}
 
-	private sealed class IfLink(IfLink? parent) {
-		internal IfLink? Parent { get; } = parent;
-		internal int Depth { get; } = parent?.Depth ?? 1;
+	private abstract class ScopeLink(ScopeLink? parent) {
+		internal ScopeLink? Parent { get; } = parent;
+		internal int Depth { get; } = parent?.Depth + 1 ?? 1;
+	}
+
+	private sealed class IfLink(ScopeLink? parent) : ScopeLink(parent) {
 		internal bool HitElse { get; set; } = false;
 	}
 
-	private sealed class SourcePointers(SourceObject source, char* current, int line, IfLink? ifstack, SourcePointers? parent) {
+	private sealed class RepeatLink(char* start, int loops, ScopeLink? parent) : ScopeLink(parent) {
+		private int _loops = loops;
+		public char* Start => start;
+		public bool TickLoops() {
+			return (--_loops) > 0;
+		}
+	}
+
+	private sealed class SourcePointers(SourceObject source, char* current, int line, ScopeLink? scopeStack, SourcePointers? parent) {
 		internal SourcePointers? Parent { get; } = parent;
 		internal SourceObject Source { get; } = source;
 		internal char* Current { get; } = current;
 		internal int Line { get; } = line;
-		internal IfLink? IfStack { get; } = ifstack;
+		internal ScopeLink? IfStack { get; } = scopeStack;
 		internal int Depth { get; } = (parent?.Depth + 1) ?? 0;
 
-		public void Deconstruct(out SourceObject _source, out char* _current, out int _line, out IfLink? _ifstack) {
+		public void Deconstruct(out SourceObject _source, out char* _current, out int _line, out ScopeLink? _ifstack) {
 			_current = Current;
 			_line = Line;
 			_source = Source;

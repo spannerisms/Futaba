@@ -119,6 +119,12 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			return;
 		}
 
+		if (TryGetBinaryFile("diff", out var diffRomFile, out _)) {
+			DiffRomFile = diffRomFile;
+		} else {
+			DiffRomFile = null;
+		}
+
 		if (TryGetBinaryFile("base", out var baseRomFile, out bool needsReload)) {
 			BaseRomFile = baseRomFile;
 		} else {

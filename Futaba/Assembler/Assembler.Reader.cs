@@ -3,7 +3,7 @@
 unsafe partial class Assembler {
 	private void FinishCommand() {
 		if (!AdvanceOverWhitespace()) {
-			Error("Extraneous content after expected end of command");
+			Error(MsgInfo.CommandGarbage);
 			AbortCommand();
 		}
 	}
@@ -254,6 +254,24 @@ unsafe partial class Assembler {
 		return ret;
 	}
 
+	private bool CaptureLineShort(out CharSpan operand) {
+		bool ret = ReadRestOfCommand(out operand);
+
+		if (!ret) {
+			CaptureLineContinue();
+		}
+
+		return ret;
+	}
+
+	private void CaptureLineContinue() {
+		if (*_reading is NewLine) {
+			_sourceLine++;
+			_reading++;
+		}
+	}
+
+
 	/// <summary>
 	/// returns false if nothing is found. trims ends of string
 	/// </summary>
@@ -382,7 +400,7 @@ unsafe partial class Assembler {
 		return ret;
 
 		static bool IsActualKeyWord(CharSpan checkline, string testString) {
-			if (checkline.BeginsWithIgnoreSpace(testString)) {
+			if (checkline.BeginsWithIgnoreCase(testString)) {
 				if (checkline.Length == testString.Length) {
 					return true;
 				}
