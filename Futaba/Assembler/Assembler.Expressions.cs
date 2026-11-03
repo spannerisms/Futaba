@@ -778,6 +778,11 @@ unsafe partial class Assembler {
 
 		ExpressionItem tree = Expression();
 
+		if (index < max) {
+			Error("Syntax error");
+			return MathHelpers.BadExpressionNode;
+		}
+
 		if (!error) {
 			return tree;
 		}
