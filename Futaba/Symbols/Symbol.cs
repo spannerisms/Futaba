@@ -42,7 +42,7 @@ public abstract class Symbol {
 
 	internal abstract bool TryGetProperty(SymbolContext prop, out int val);
 
-	/// <inheritdoc cref="object.ToString()"/>
+	/// <inheritdoc/>
 	public override string ToString() {
 		if (Resolved) {
 			return $"{Name} = {DefaultValue}";

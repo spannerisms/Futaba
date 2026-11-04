@@ -131,9 +131,6 @@ internal static class FunctionCall {
 			Span<byte> rdb = stackalloc byte[MaxBytes];
 			rdb.Clear();
 
-			// using try because there are so many potential errors,
-			// and this function shouldn't be called that frequently,
-			// so the overhead of catch is fine
 			if (assembler.TryGetBinary(st.Contents, out var rdFile)) {
 				if ((uint) size <= MaxBytes && rdFile.TryGetSpan(offset, size, out var copySpan)) {
 					copySpan.CopyTo(rdb);
@@ -161,6 +158,7 @@ internal static class FunctionCall {
 			return null;
 		}
 	}
+
 	private sealed class TernaryColor(ExpressionItem itema, ExpressionItem itemb, ExpressionItem itemc) : TernaryExpression(itema, itemb, itemc) {
 		public override ExpressionItem Clone() => new TernaryColor(ItemA.Clone(), ItemB.Clone(), ItemC.Clone());
 
@@ -191,7 +189,7 @@ internal static class FunctionCall {
 		public static string FunctionName => Name;
 
 		public static Rand? Create(Assembler assembler, List<ExpressionItem> args) {
-			if (IFunctionFactory<Sin>.TestForBadArity(args, assembler)) {
+			if (IFunctionFactory<Rand>.TestForBadArity(args, assembler)) {
 				return new Rand(args[0], args[1], assembler._random);
 			} else {
 				return null;
@@ -210,7 +208,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Sin(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Sin> {
+	private sealed class Sin(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Sin> {
 		public const string Name = "sin";
 		public static string FunctionName => Name;
 		public static Sin? Create(Assembler assembler, List<ExpressionItem> args) {
@@ -228,7 +226,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Cos(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Cos> {
+	private sealed class Cos(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Cos> {
 		public const string Name = "cos";
 		public static string FunctionName => Name;
 
@@ -247,7 +245,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Tan(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Tan> {
+	private sealed class Tan(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Tan> {
 		public const string Name = "tan";
 		public static string FunctionName => Name;
 
@@ -267,7 +265,7 @@ internal static class FunctionCall {
 	}
 
 
-	public sealed class Asin(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Asin> {
+	private sealed class Asin(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Asin> {
 		public const string Name = "asin";
 		public static string FunctionName => Name;
 
@@ -286,7 +284,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Acos(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Acos> {
+	private sealed class Acos(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Acos> {
 		public const string Name = "acos";
 		public static string FunctionName => Name;
 
@@ -305,7 +303,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Atan(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Atan> {
+	private sealed class Atan(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Atan> {
 		public const string Name = "atan";
 		public static string FunctionName => Name;
 		public static Atan? Create(Assembler assembler, List<ExpressionItem> args) {
@@ -373,7 +371,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Ceil(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Ceil> {
+	private sealed class Ceil(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Ceil> {
 		public const string Name = "ceil";
 		public static string FunctionName => Name;
 
@@ -392,7 +390,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Floor(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Floor> {
+	private sealed class Floor(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Floor> {
 		public const string Name = "floor";
 		public static string FunctionName => Name;
 
@@ -411,7 +409,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class IntCast(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<IntCast> {
+	private sealed class IntCast(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<IntCast> {
 		public const string Name = "int";
 		public static string FunctionName => Name;
 
@@ -430,7 +428,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class VramAddress(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<VramAddress> {
+	private sealed class VramAddress(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<VramAddress> {
 		public const string Name = "vram";
 		public static string FunctionName => Name;
 
@@ -451,7 +449,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Rtn(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Rtn> {
+	private sealed class Rtn(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Rtn> {
 		public const string Name = "rtn";
 		public static string FunctionName => Name;
 
@@ -470,7 +468,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class ArgOf(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<ArgOf> {
+	private sealed class ArgOf(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<ArgOf> {
 		public const string Name = "argof";
 		public static string FunctionName => Name;
 
@@ -489,7 +487,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Abs(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Abs> {
+	private sealed class Abs(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Abs> {
 		public const string Name = "abs";
 		public static string FunctionName => Name;
 
@@ -508,7 +506,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class Bcd(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Bcd> {
+	private sealed class Bcd(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Bcd> {
 		public const string Name = "bcd";
 		public static string FunctionName => Name;
 
@@ -541,7 +539,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class BitN(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<BitN> {
+	private sealed class BitN(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<BitN> {
 		public const string Name = "bitn";
 		public static string FunctionName => Name;
 
@@ -943,7 +941,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class HashString(ExpressionItem item) : StringExpression, IFunctionFactory<HashString> {
+	private sealed class HashString(ExpressionItem item) : StringExpression, IFunctionFactory<HashString> {
 		public const string Name = "hash";
 		public static string FunctionName => Name;
 		public static int Arity => 1;
@@ -972,7 +970,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class GetStringLength(ExpressionItem item) : StringExpression, IFunctionFactory<GetStringLength> {
+	private sealed class GetStringLength(ExpressionItem item) : StringExpression, IFunctionFactory<GetStringLength> {
 		public const string Name = "len";
 		public static string FunctionName => Name;
 		public static int Arity => 1;
@@ -1003,7 +1001,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	public sealed class CompareStrings(ExpressionItem left, ExpressionItem right) : StringExpression, IFunctionFactory<CompareStrings> {
+	private sealed class CompareStrings(ExpressionItem left, ExpressionItem right) : StringExpression, IFunctionFactory<CompareStrings> {
 		public const string Name = "streq";
 		public static string FunctionName => Name;
 		public static int Arity => 2;

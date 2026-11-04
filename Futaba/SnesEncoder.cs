@@ -28,7 +28,7 @@ internal abstract class SnesEncoder {
 
 		internal AsciiSnesEncoder() { }
 		internal override uint Encode(char c) {
-			return c is > '\u001F' and < '\u007F' ? c : 0x20u;
+			return c is > '\u001F' and < '\u007F' ? c : ' ';
 		}
 	}
 

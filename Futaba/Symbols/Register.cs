@@ -4,7 +4,6 @@
 /// Represents a symbol for a hardware register.
 /// </summary>
 public sealed class Register : Symbol {
-
 	private readonly int _value;
 
 	/// <inheritdoc/>

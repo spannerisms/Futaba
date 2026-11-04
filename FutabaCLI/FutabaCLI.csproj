@@ -12,7 +12,8 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Configurations>Debug;Release;UnitTests</Configurations>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <Title>futaba</Title>
+    <Title>Futaba CLI</Title>
+    <AssemblyTitle>Futaba CLI</AssemblyTitle>
     <Authors>kan</Authors>
     <Copyright>(c) 2026</Copyright>
     <PackageProjectUrl>https://spannerisms.github.io/futaba</PackageProjectUrl>
@@ -21,6 +22,7 @@
     <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <RepositoryUrl>https://github.com/spannerisms/futaba</RepositoryUrl>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

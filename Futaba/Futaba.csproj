@@ -19,6 +19,7 @@
     <RepositoryUrl>https://github.com/spannerisms/futaba</RepositoryUrl>
     <PackageTags>snes;assembler;assembly;65816;spc700;superfx</PackageTags>
     <Title>Futaba</Title>
+    <AssemblyTitle>Futaba</AssemblyTitle>
     <Description>Futaba is a symbolic assembler targetting the Super Famicom and Super Nintendo Entertainment System.</Description>
     <VersionPrefix>0.4.0.0</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>

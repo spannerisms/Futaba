@@ -1095,7 +1095,9 @@ internal static partial class Igarashi {
 	internal static Register[] SPC => field ??= Register.Spc700Registers;
 	internal static Register[] SuperFX => field ??= Register.SuperFxRegisters;
 
+	//
 	// Arguments
+	//
 	static readonly Argument<FileInfo> Arg_ManifestFile = new("manifest"){
 		Description = "manifest file with assembly configuration",
 		Arity = ArgumentArity.ExactlyOne,
@@ -1132,7 +1134,9 @@ internal static partial class Igarashi {
 		Arity = ArgumentArity.ExactlyOne,
 	};
 
+	//
 	// Options
+	//
 	static readonly Option<bool> Option_PreserveConsole = new("--keep-old-logs", "-k") {
 		Description = "Disables clearing the console on each assembly",
 		Arity = ArgumentArity.Zero,
@@ -1187,7 +1191,6 @@ file sealed class ShowVersionThing : System.CommandLine.Invocation.SynchronousCo
 
 	internal ShowVersionThing(Action action) => _syncAction = action;
 
-	/// <inheritdoc />
 	public override int Invoke(ParseResult parseResult) {
 		_syncAction();
 		return 1;

@@ -125,13 +125,13 @@ internal static class SnesHelpers {
 			System.Numerics.BitOperations.RoundUpToPowerOf2((uint) value));
 	}
 
-	internal static (bool valid, int distance) TestGetBranchDistance(int location, int target) {
+	internal static (bool Valid, int Distance) TestGetBranchDistance(int location, int target) {
 		int v = target - location;
 		int distance = (sbyte) v;
 		return (v == distance, distance);
 	}
 
-	internal static (bool valid, int distance) TestGetBranchDistanceLong(int location, int target) {
+	internal static (bool Valid, int Distance) TestGetBranchDistanceLong(int location, int target) {
 		int v = target - location;
 		int distance = (short) v;
 		return (v == distance, distance);
