@@ -10,7 +10,7 @@
     <IsAotCompatible>true</IsAotCompatible>
     <IsTrimmable>true</IsTrimmable>
     <AssemblyName>futaba.core</AssemblyName>
-    <Configurations>Debug;Release;UnitTests</Configurations>
+    <Configurations>Debug;Release</Configurations>
     <Authors>kan</Authors>
     <ApplicationIcon>..\futaba.ico</ApplicationIcon>
     <Copyright>(c) 2026</Copyright>
@@ -44,12 +44,6 @@
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnitTests|AnyCPU'">
-    <DebugType>portable</DebugType>
-    <Optimize>False</Optimize>
-    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <None Include="..\LICENSE">
       <Pack>True</Pack>
@@ -71,6 +65,10 @@
 
   <ItemGroup>
     <PackageReference Include="System.IO.Hashing" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+    <InternalsVisibleTo Include="Tests" />
   </ItemGroup>
 
 </Project>

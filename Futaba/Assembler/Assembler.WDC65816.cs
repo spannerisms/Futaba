@@ -1087,7 +1087,8 @@ unsafe partial class Assembler {
 			}
 		}
 	}
-	private static OpWdc TestFor65816(OperandString chars) {
+
+	internal static OpWdc TestFor65816(OperandString chars) {
 		// if it's not 3 letters, it's not a 65xx instruction
 		if (chars.Length is not 3) {
 			// unless...

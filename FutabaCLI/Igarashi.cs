@@ -57,13 +57,6 @@ internal static partial class Igarashi {
 	/// </summary>
 	[STAThread]
 	static int Main(string[] args) {
-#if UNITTESTS
-		Assembler.UnitTester.TestMain();
-		FutabaCliTests.RunAll();
-
-		return 0;
-#else
-
 		// heh
 		RootCommand rootaba = new("Futaba Assembler\r\nFor full documentation, see <https://spannerisms.github.io/futaba#cli>");
 
@@ -128,7 +121,6 @@ internal static partial class Igarashi {
 		rootaba.Add(cmdversion);
 
 		return rootaba.Parse(args).Invoke();
-#endif
 	}
 
 	static int CreateTemplateFile(ParseResult res) {

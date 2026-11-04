@@ -674,7 +674,7 @@ unsafe partial class Assembler {
 		}
 	}
 
-	private static OpSFX TestForSuperFX(OperandString chars) {
+	internal static OpSFX TestForSuperFX(OperandString chars) {
 		// copy so we don't need to check chars.Length every time
 		int len = chars.Length;
 

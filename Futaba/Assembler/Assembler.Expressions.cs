@@ -23,7 +23,7 @@ unsafe partial class Assembler {
 	// jpdasm: 676000 allocs for number
 	// usdasm: 300000
 	// push: 6000
-	private IExpressionReturn ParseOperand(char* opreading, char* opend, SymbolContext context) {
+	internal IExpressionReturn ParseOperand(char* opreading, char* opend, SymbolContext context) {
 		FastRead.TrimWhiteSpace(ref opreading, ref opend);
 
 		if (opreading == opend) {

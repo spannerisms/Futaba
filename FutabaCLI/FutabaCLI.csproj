@@ -10,7 +10,7 @@
     <ApplicationIcon>..\futaba.ico</ApplicationIcon>
     <IsAotCompatible>true</IsAotCompatible>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <Configurations>Debug;Release;UnitTests</Configurations>
+    <Configurations>Debug;Release</Configurations>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <Title>Futaba CLI</Title>
     <AssemblyTitle>Futaba CLI</AssemblyTitle>
@@ -35,12 +35,6 @@
     <Optimize>True</Optimize>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnitTests|AnyCPU'">
-    <DebugType>portable</DebugType>
-    <Optimize>False</Optimize>
-    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.10" />
     <PackageReference Include="System.IO.Hashing" Version="10.0.11" />
@@ -58,10 +52,8 @@
     <EmbeddedResource Include="..\logo.png" LogicalName="futaba.png" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(Configuration)'=='UnitTests'">
-    <None Update="Tests\*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+    <InternalsVisibleTo Include="Tests" />
   </ItemGroup>
 
 </Project>

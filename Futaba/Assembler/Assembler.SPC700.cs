@@ -1028,7 +1028,7 @@ unsafe partial class Assembler {
 		}
 	}
 
-	private static OpSPC TestForSPC700(OperandString chars) {
+	internal static OpSPC TestForSPC700(OperandString chars) {
 		int len = chars.Length; // copy so we don't need to check chars.Length every time
 
 		// if it's not even 3-5 characters, give up now
