@@ -130,7 +130,7 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 <p>Additional encoders can be declared by using the <fkey>encoder</fkey> directive followed by an identifier and a file path. User-defined encoders can be selected the same way as the built-in encoders. The identifier must be a unique name among encoders and cannot be the reserved names <fblk>ascii</fblk> or <fblk>unicode</fblk>.</p>
 
 <div class="futsyntax">
-<fkey>encoder</fkey> {{IDENTIFIER}} {{FILENAME}}
+<fkey>encoder</fkey> {{IDENTIFIER}} = {{FILENAME}}
 </div>
 
 <p>The format of an encoding file is one definition per line, with the first character of that line containing the character to encode followed by an <nowrap>equals sign (<ftok>=</ftok>)</nowrap> then a prefix-less hexadecimal value. Any character not defined by the encoder will be mapped to 0.</p>
