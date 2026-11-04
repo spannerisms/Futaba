@@ -578,7 +578,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	private sealed class LogB(ExpressionItem left, ExpressionItem right) : BinaryExpression.SafeBinary(left, right), IFunctionFactory<LogB> {
+	private sealed class LogB(ExpressionItem left, ExpressionItem right) : ValidatedBinaryExpression(left, right), IFunctionFactory<LogB> {
 		public const string Name = "logb";
 		public static string FunctionName => Name;
 
@@ -606,7 +606,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	private sealed class Log2(ExpressionItem item) : UnaryExpression.SafeUnary(item), IFunctionFactory<Log2> {
+	private sealed class Log2(ExpressionItem item) : ValidatedUnaryExpression(item), IFunctionFactory<Log2> {
 		public const string Name = "log2";
 		public static string FunctionName => Name;
 		public static Log2? Create(Assembler assembler, List<ExpressionItem> args) {
@@ -632,7 +632,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	private sealed class Log10(ExpressionItem item) : UnaryExpression.SafeUnary(item), IFunctionFactory<Log10> {
+	private sealed class Log10(ExpressionItem item) : ValidatedUnaryExpression(item), IFunctionFactory<Log10> {
 		public const string Name = "log";
 		public static string FunctionName => Name;
 		public static Log10? Create(Assembler assembler, List<ExpressionItem> args) {
@@ -658,7 +658,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	private sealed class Root(ExpressionItem left, ExpressionItem right) : BinaryExpression.SafeBinary(left, right), IFunctionFactory<Root> {
+	private sealed class Root(ExpressionItem left, ExpressionItem right) : ValidatedBinaryExpression(left, right), IFunctionFactory<Root> {
 		public const string Name = "root";
 		public static string FunctionName => Name;
 		public static Root? Create(Assembler assembler, List<ExpressionItem> args) {
@@ -685,7 +685,7 @@ internal static class FunctionCall {
 		}
 	}
 
-	private sealed class Root2(ExpressionItem item) : UnaryExpression.SafeUnary(item), IFunctionFactory<Root2> {
+	private sealed class Root2(ExpressionItem item) : ValidatedUnaryExpression(item), IFunctionFactory<Root2> {
 		public const string Name = "sqrt";
 		public static string FunctionName => Name;
 
@@ -817,7 +817,7 @@ internal static class FunctionCall {
 	}
 
 	private sealed class Clamp(ExpressionItem itema, ExpressionItem itemb, ExpressionItem itemc)
-			: TernaryExpression.SafeTernary(itema, itemb, itemc), IFunctionFactory<Clamp> {
+			: ValidatedTernaryExpression(itema, itemb, itemc), IFunctionFactory<Clamp> {
 		public const string Name = "clamp";
 		public static string FunctionName => Name;
 

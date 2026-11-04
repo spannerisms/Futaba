@@ -512,7 +512,7 @@ unsafe partial class Assembler {
 						goto Advance2;
 					}
 
-					last = SymbolicToken.NullCoalescePostfix;
+					last = SymbolicToken.PostfixNullCoalesce;
 					goto Advance1;
 
 				// DOT

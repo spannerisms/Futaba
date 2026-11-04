@@ -2,7 +2,6 @@
 
 internal sealed class NumberToken(decimal val) : ExpressionItem, IReturnableToken, IToken, IExpressionReturn {
 	public TokenType Type => TokenType.Number;
-
 	public TokenRule Rule => TokenRule.Primary;
 
 	public bool ForcesUnary => false;
@@ -11,11 +10,9 @@ internal sealed class NumberToken(decimal val) : ExpressionItem, IReturnableToke
 	public decimal Value => val;
 
 	public override ExpressionState State => ExpressionState.Resolved;
-
 	public ExpressionState ReturnState => ExpressionState.Resolved;
 
 	public bool Resolved => true;
-
 	public bool NeedsRequest => false;
 
 	public ExpressionItem CreateExpressionItem() => this;

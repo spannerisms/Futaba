@@ -2,8 +2,10 @@
 
 internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : ExpressionItem, IReturnableToken, IToken, IExpressionReturn {
 	public Symbol Item => item;
-
 	public string Name => Item.Name;
+
+	public TokenType Type => TokenType.Symbol;
+	public TokenRule Rule => TokenRule.Primary;
 
 	public SymbolContext Context => context;
 	public bool ForcesUnary => false;
@@ -36,10 +38,6 @@ internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : Exp
 			return MathHelpers.NaN;
 		}
 	}
-
-	public TokenType Type => TokenType.Symbol;
-
-	public TokenRule Rule => TokenRule.Primary;
 
 	public override (decimal, ExpressionState) TryEvaluate() {
 		return (Value, _resolved);
