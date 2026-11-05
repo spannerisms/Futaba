@@ -1,5 +1,13 @@
 ﻿namespace Futaba;
 
+internal enum SourceObjectType {
+	Empty = 0,
+	SourceFile,
+
+	TrackedType,
+	Macro,
+}
+
 internal unsafe abstract class SourceObject : IDisposable {
 	protected const int BufferPadding = 32;
 	public abstract string ObjectName { get; }
@@ -7,7 +15,7 @@ internal unsafe abstract class SourceObject : IDisposable {
 	public char* SourceStart { get; protected set; }
 	public char* SourceEnd { get; protected set; }
 	public abstract string? DirectoryName { get; }
-	internal abstract bool IsMacro { get; }
+	internal abstract SourceObjectType SourceType { get; }
 	protected bool _disposed = false;
 
 	~SourceObject() {

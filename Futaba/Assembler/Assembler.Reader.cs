@@ -640,7 +640,8 @@ unsafe partial class Assembler {
 									alignedLeft = true;
 									i++;
 									break;
-								// to account for size being next
+
+								// to account for size being next with just 'c'
 								case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
 									alignedLeft = true;
 									break;
@@ -686,6 +687,7 @@ unsafe partial class Assembler {
 									}
 								}
 							}
+
 							return;
 
 						case 'l' or 'L' or 'r' or 'R':
@@ -735,8 +737,10 @@ unsafe partial class Assembler {
 								padChar = BadChar;
 								Warning("Bad padding char");
 								return false;
+
 							} else if (qcheck is EscapeChar) {
 								padChar = GetEscapedCharacter(cmdWhole[i++]);
+
 							} else {
 								padChar = cmdWhole[i++];
 							}
@@ -759,12 +763,12 @@ unsafe partial class Assembler {
 					bool TryGetLength(out int len) {
 						if (cmdWhole.TryReadInlineDecimalInteger(ref i, out len)) {
 							return true;
+
 						} else {
 							Error("Missing length argument in resize command");
 							return false;
 						}
 					}
-
 				}
 
 				void Recase(Func<char, char> transform) {

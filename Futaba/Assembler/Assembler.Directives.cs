@@ -166,7 +166,6 @@ unsafe partial class Assembler {
 				}
 			} else if (TryReadStringWithParams(next, out var opstr, out var openc)) {
 				WriteString(opstr, openc);
-
 			} else {
 				IExpressionReturn datval = ParseOperand(next);
 				WriteData(datval, size);
@@ -1696,8 +1695,8 @@ unsafe partial class Assembler {
 			}
 
 			FinishCommand();
-
 			// end encoder creation
+
 		} else {
 			AbortCommand();
 		}
@@ -1867,7 +1866,7 @@ unsafe partial class Assembler {
 				}
 			}
 
-			Error($"Invalid bank guard name: {CharSpanHelpers.ClampForMessage(contents)}");
+			Error("Invalid bank guard name");
 		}
 	}
 
@@ -1921,11 +1920,11 @@ unsafe partial class Assembler {
 				}
 			}
 
-			Error($"Invalid vector name: {CharSpanHelpers.ClampForMessage(contents)}");
+			Error("Invalid vector name");
 
 			void TrySetVector(ref int? vector, string name) {
 				if (Mapper is MapperMode.None or MapperMode.Invalid) {
-					Error("This assembly mapper cannot apply interrupt vectors.");
+					Error("This mapper mode cannot set interrupt vectors.");
 					return;
 				}
 

@@ -24,23 +24,6 @@ unsafe partial class Assembler {
 		Allocation
 	}
 
-	/// <summary>
-	/// Things that should be done both before and after assembly
-	/// to clean up allocations and maintain a consistent public state.
-	/// </summary>
-	private protected virtual void RequiredInitAndCleanUp() {
-		_currentEncoder = SnesEncoder.ASCII;
-
-		_previousState = null;
-		_scopeChain = null;
-		_currentSegment = null;
-
-		Array.Fill(_nameHierarchy, string.Empty);
-		Array.Clear(_pcHierarchy);
-
-		ClearPools();
-	}
-
 	private void TryAssembly() {
 		try {
 			Busy = true;
@@ -66,7 +49,7 @@ unsafe partial class Assembler {
 			WarningCount = 0;
 			ErrorLine = null;
 
-			if (!TryGetSource(EntryPoint.FullName, out var entryObj)) {
+			if (!TryGetSource(EntryPoint, out var entryObj)) {
 				return;
 			}
 
@@ -117,8 +100,9 @@ unsafe partial class Assembler {
 
 			// reset source state
 			_context = ContextMode.Code;
-			_previousState = null;
 			TransferSourceControl(entryObj);
+			// This must occur after TransferSourceControl
+			_previousState = null;
 
 			StartAssembly();
 			ResolveAllRequests();
@@ -705,20 +689,35 @@ unsafe partial class Assembler {
 		return false;
 	}
 
-	private void TransferSourceControl<T>(T source) where T : SourceObject {
+	/// <summary>
+	/// Things that should be done both before and after assembly
+	/// to clean up allocations and maintain a consistent public state.
+	/// </summary>
+	private protected virtual void RequiredInitAndCleanUp() {
+		_currentEncoder = SnesEncoder.ASCII;
+
+		_previousState = null;
+		_scopeChain = null;
+		_currentSegment = null;
+
+		Array.Fill(_nameHierarchy, string.Empty);
+		Array.Clear(_pcHierarchy);
+
+		ClearPools();
+	}
+
+	private void TransferSourceControl(SourceObject source) {
+		if (source.SourceType > SourceObjectType.TrackedType) {
+			_loadedSourceObjects.Add(source);
+		}
+
 		if ((_previousState?.Depth ?? 0) >= MaxChain) {
 			string MaxObj = $"The maximum number ({MaxChain}) of nested or chained assembly objects has been hit.";
 			Error(MaxObj);
 			throw new InvalidOperationException(MaxObj);
 		}
 
-		if (typeof(T) != typeof(SourceFile)) {
-			_loadedSourceObjects.Add(source);
-		}
-
-		if (_currentSourceObject != SourceFile.Empty) {
-			_previousState = new(_currentSourceObject, _reading, _sourceLine, _scopeChain, _previousState);
-		}
+		_previousState = new(_currentSourceObject, _reading, _sourceLine, _scopeChain, _previousState);
 
 		_currentSourceObject = source;
 		_fileEnd = source.SourceEnd;
@@ -744,18 +743,11 @@ unsafe partial class Assembler {
 
 		// check the parent for where to resume or if we should end
 		if (_previousState is SourcePointers sp) {
-			// TODO maybe have this for a verbose mode
-#if DEBUG
-			//if (CurrentSourceObject is SourceFile) {
-			//	Console.WriteLine($"Finished {CurrentSourceObject}");
-			//}
-#endif
-
 			_previousState = sp.Parent;
 			(_currentSourceObject, _reading, _sourceLine, _scopeChain) = sp;
 			_fileEnd = _currentSourceObject.SourceEnd;
-
 			return true;
+
 		} else {
 			return false;
 		}

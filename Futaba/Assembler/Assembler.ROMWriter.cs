@@ -65,6 +65,14 @@ unsafe partial class Assembler {
 	private bool _shutUpAboutAddresses = false;
 	private bool _shutUpAboutSegments = false;
 
+
+	// FF_0* adds coverage for anything completely out of bounds
+	private const int BankGuardMask_Off = unchecked((int) 0xFF_00_0000);
+	private const int BankGuardMask_Half = unchecked((int) 0xFF_FF_8000);
+	private const int BankGuardMask_Full = unchecked((int) 0xFF_FF_0000);
+	private int _bankGuardMask = BankGuardMask_Half;
+
+
 	private List<Dock> _segments = [];
 	private Dock? _currentSegment = null;
 
@@ -368,6 +376,7 @@ unsafe partial class Assembler {
 			case 2:
 				if (BitConverter.IsLittleEndian && encoder == SnesEncoder.Unicode) {
 					text.AsSpan().CopyTo(new Span<char>(bufferB, length));
+
 				} else {
 					foreach (char c in text) {
 						SnesHelpers.WriteW(bufferB, (int) enc(c));
@@ -402,7 +411,7 @@ unsafe partial class Assembler {
 
 	// The routines in this region are roughly organized such that
 	// the TrackAndStep routines appear after the ones that use them
-	// just to maybe influence cleaner compilation wrt cache
+	// just to maybe influence cleaner compilation wrt cache lines
 	#region writes
 
 	private void WriteOpImplied(IExpressionReturn opcode) {
@@ -455,9 +464,11 @@ unsafe partial class Assembler {
 				if (c is BROP) {
 					WriteOpBrop(opcode);
 					return;
+
 				} else if (c is JNOP) {
 					WriteOpB(opcode, 0x00);
 					return;
+
 				} else if (c is BTYS) {
 					WriteOpB(opcode, 0xFE);
 					return;
@@ -707,6 +718,7 @@ unsafe partial class Assembler {
 
 				SnesHelpers.WriteW(wr + 1, vval);
 			}
+
 			TrackAndStep3();
 		}
 	}
@@ -782,13 +794,6 @@ unsafe partial class Assembler {
 	}
 
 	#endregion
-
-	// FF_8* covers anything completely out of bounds
-	private const int BankGuardMask_Off = unchecked((int) 0xFF_80_0000);
-	private const int BankGuardMask_Half = unchecked((int) 0xFF_FF_8000);
-	private const int BankGuardMask_Full = unchecked((int) 0xFF_FF_0000);
-
-	private int _bankGuardMask = BankGuardMask_Half;
 
 	internal bool TryAdvanceProgramCounter(int step) {
 		if (!TestOffsetBounds(_offset + step)) {

@@ -49,7 +49,11 @@ partial class Assembler {
 	}
 
 	private void ErrorOutWrite(string messageType, string message, string? details, SourceLine srcLine, ConsoleColor color) {
-		Console.ForegroundColor = color;
+		bool recolor = _errorsToConsole;
+
+		if (recolor) {
+			Console.ForegroundColor = color;
+		}
 
 		if (!srcLine.IsNull) {
 			ErrorOut.Write(srcLine);
@@ -64,12 +68,17 @@ partial class Assembler {
 		}
 
 		ErrorOut.Write(" | ");
+		
+		if (recolor) {
+			Console.ForegroundColor = ConsoleColor.DarkGray;
+			ErrorOut.Write(srcLine.GetLineContents());
 
-		Console.ForegroundColor = ConsoleColor.DarkGray;
-		ErrorOut.Write(srcLine.GetLineContents());
+			Console.ResetColor();
+			ErrorOut.WriteLine();
 
-		Console.ResetColor();
-		ErrorOut.WriteLine();
+		} else {
+			ErrorOut.WriteLine(srcLine.GetLineContents());
+		}
 	}
 
 	internal void Error_BadResolve(IExpressionReturn expr, string unresolvedmsg) {

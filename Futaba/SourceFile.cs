@@ -21,7 +21,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 	public WatcherChangeTypes Change { get; set; }
 
 	public bool WasUsed { get; set; } = false;
-	internal override bool IsMacro => false;
+	internal override SourceObjectType SourceType => SourceObjectType.SourceFile;
 
 	/// <summary>
 	/// Creates a new source file container.
@@ -133,7 +133,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 /// Represents a missing source object.
 /// </summary>
 file sealed class EmptySource : SourceObject {
-	internal override bool IsMacro => false;
+	internal override SourceObjectType SourceType => SourceObjectType.Empty;
 	public override string ObjectName => string.Empty;
 	public override string? DirectoryName => null;
 

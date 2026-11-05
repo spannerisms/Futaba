@@ -69,7 +69,6 @@ public sealed class Variable : IFormattable {
 	}
 
 	private decimal _value = 0;
-
 	internal decimal Value {
 		get {
 			if (VarType is VariableType.Value) {

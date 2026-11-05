@@ -306,7 +306,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		if (RomHeader.TryGetMapperMode(mapMode.Value, out var modeEnum)) {
 			if (Assembler is null
 				|| Assembler.Mapper != modeEnum
-				|| Path.GetFullPath(entryPoint) != Assembler.EntryPoint.FullName) {
+				|| Path.GetFullPath(entryPoint) != Assembler.EntryPoint) {
 
 				Igarashi.Notice("Creating assembler...");
 				Assembler = Assembler.CreateAssemblerWithMapper(modeEnum, entryPoint);
