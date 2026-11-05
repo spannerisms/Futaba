@@ -110,7 +110,7 @@ unsafe partial class Assembler {
 
 				char* symbolNameStart = opreading;
 
-				int llen = FastRead.ReadAlphanumericHelper(opreading, opend);
+				int llen = FastRead.GetAlphaNumericRunLength(opreading, opend);
 				opreading += llen;
 
 				// check why the loop broke
@@ -119,7 +119,7 @@ unsafe partial class Assembler {
 					opreading++;
 					last = new FunctionToken(new string(funcName));
 				} else {
-					int sublen = FastRead.ReadSublabelBetter(opreading, opend);
+					int sublen = FastRead.GetSublabelRunLength(opreading, opend);
 					opreading += sublen;
 					CharSpan symbolName = CharSpanHelpers.CreateSpan(symbolNameStart, opreading);
 
@@ -450,7 +450,7 @@ unsafe partial class Assembler {
 
 					char* symbolNameStart = exprReading;
 
-					int llen = FastRead.ReadAlphanumericHelper(exprReading, exprEnd);
+					int llen = FastRead.GetAlphaNumericRunLength(exprReading, exprEnd);
 					exprReading += llen;
 
 					// check why the loop broke
@@ -460,7 +460,7 @@ unsafe partial class Assembler {
 						goto Advance1;
 
 					} else {
-						int sublen = FastRead.ReadSublabelBetter(exprReading, exprEnd);
+						int sublen = FastRead.GetSublabelRunLength(exprReading, exprEnd);
 						exprReading += sublen;
 
 						CharSpan symbolName = CharSpanHelpers.CreateSpan(symbolNameStart, exprReading);

@@ -182,7 +182,7 @@ unsafe partial class Assembler {
 	private bool TestAddingVariable(string name) {
 		ThrowIfAssembling();
 
-		return !string.IsNullOrWhiteSpace(name) && !name.ContainsAnyExcept(AsciiHelpers.IdentifierSearch);
+		return name != null && FastRead.IsVariableName(name);
 	}
 
 	/// <summary>

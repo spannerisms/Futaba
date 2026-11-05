@@ -36,16 +36,20 @@ internal static unsafe class FastRead {
 			if (c is '"') {
 				if (SkipToMatchingQuote(ref reading, end)) continue;
 				break;
+
 			} else if (c is CharDelim) {
 				if (SkipToMatchingApos(ref reading, end)) continue;
 				break;
+
 			} else if (c is '(') {
 				parenCount++;
+
 			} else if (c is ')') {
 				if (--parenCount is 0) {
 					start = reading;
 					return true;
 				}
+
 			} else if (TestIfCommandEndingToken(reading)) {
 				break;
 			}
@@ -120,6 +124,7 @@ internal static unsafe class FastRead {
 				span = CharSpanHelpers.CreateSpan(start + 1, read);
 				start = read + 1;
 				return true;
+
 			} else if (c is EscapeChar) {
 				read++;
 				c = *read;
@@ -141,16 +146,16 @@ internal static unsafe class FastRead {
 	}
 
 	internal static bool TestIfColonAndSeparator(char* ptr) {
-		return ptr[0] is ':' && ColonIsSeparator(ptr);
+		return ptr[0] is CommandSeparator && ColonIsSeparator(ptr);
 	}
 
 	internal static bool TestIfCommandEndingToken(char* ptr) {
 		char c = *ptr;
 
-		return (c is ':' && ColonIsSeparator(ptr)) || c is ';' or NewLine or BadChar;
+		return (c is CommandSeparator && ColonIsSeparator(ptr)) || c is CommentChar or NewLine or BadChar;
 	}
 
-	internal static int ReadAlphanumericHelper(char* start, char* end) {
+	internal static int GetAlphaNumericRunLength(char* start, char* end) {
 		char* read = start;
 
 		while (read < end) {
@@ -170,7 +175,7 @@ internal static unsafe class FastRead {
 		return (int) (read - start);
 	}
 
-	internal static int ReadSublabelBetter(char* start, char* end) {
+	internal static int GetSublabelRunLength(char* start, char* end) {
 		char* read = start;
 
 		while (read < end) {
@@ -198,7 +203,6 @@ internal static unsafe class FastRead {
 		}
 
 		start = read;
-		//start = TrimHelper(start, end, TrimType.Head).Start;
 	}
 
 	internal static bool SkipInlineWhitespaceWithEndCheck(scoped ref char* start, char* end) {
@@ -207,8 +211,6 @@ internal static unsafe class FastRead {
 	}
 
 	internal static void TrimWhiteSpace(scoped ref char* start, scoped ref char* end) {
-		//(start, end) = TrimHelper(start, end, TrimType.Both);
-
 		char* thestart = start;
 		char* theend = end;
 
@@ -223,40 +225,29 @@ internal static unsafe class FastRead {
 		end = theend + 1;
 	}
 
-	internal static bool IsVariableName(char* reading, char* end) {
-		return !CharSpanHelpers.CreateSpanUnchecked(reading, end).ContainsAnyExcept(AsciiHelpers.IdentifierSearch);
+	internal static bool IsVariableName(CharSpan name) {
+		if (name.Length is 0) {
+			return false;
+		}
 
-		//while (reading < end) {
-		//	if (reading->IsIdentifierCharacter) {
-		//		reading++;
-		//	} else {
-		//		return false;
-		//	}
-		//}
-		//
-		//return true;
-	}
+		foreach (char c in name) {
+			if (!c.IsIdentifierCharacter) {
+				return false;
+			}
+		}
 
-	internal static bool IsIdentifier(char* reading, char* end) {
-		return IsIdentifier(CharSpanHelpers.CreateSpanUnchecked(reading, end));
-
-		//if (reading->IsLetterOrUnderscore) {
-		//	return !.ContainsAnyExcept(AsciiHelpers.IdentifierSearch);
-		//	//while (++reading < end) {
-		//	//	if (!reading->IsIdentifierCharacter) {
-		//	//		return false;
-		//	//	}
-		//	//}
-		//	//
-		//	//return true;
-		//}
-		//
-		//return false;
+		return true;
 	}
 
 	internal static bool IsIdentifier(CharSpan name) {
 		if (name.Length > 0 && name[0].IsLetterOrUnderscore) {
-			return !name.ContainsAnyExcept(AsciiHelpers.IdentifierSearch);
+			foreach (char c in name) {
+				if (!c.IsIdentifierCharacter) {
+					return false;
+				}
+			}
+
+			return true;
 		}
 
 		return false;
@@ -270,22 +261,13 @@ internal static unsafe class FastRead {
 			return false;
 		}
 
-		int length = ReadAlphanumericHelper(wordstart, end);
+		int length = GetAlphaNumericRunLength(wordstart, end);
 
 		name = new(wordstart, length);
 
 		reading += length;
 
 		return true;
-
-		//		char* read = wordstart;
-		//		while (++read < end && read->IsIdentifierCharacter) ;
-		//
-		//		reading = read;
-		//
-		//		name = CharSpanHelpers.CreateSpan(wordstart, read);
-		//
-		//		return true;
 	}
 
 	internal static bool TryReadIdentifier(scoped ref char* reading, char* end, out OperandString name) {
@@ -296,46 +278,25 @@ internal static unsafe class FastRead {
 			return false;
 		}
 
-		int length = ReadAlphanumericHelper(wordstart, end);
+		int length = GetAlphaNumericRunLength(wordstart, end);
 
 		name = new(wordstart, length);
 
 		reading += length;
 
 		return true;
-
-		//char* read = wordstart;
-		//while (++read < end && read->IsIdentifierCharacter) ;
-		//
-		//reading = read;
-		//
-		//name = new(wordstart, read);
-		//
-		//return true;
 	}
 
 	internal static CharSpan ReadSublabelChunk(scoped ref char* reading, char* end) {
 		char* wordstart = reading;
 
-		int length = ReadSublabelBetter(wordstart, end);
+		int length = GetSublabelRunLength(wordstart, end);
 
 		CharSpan ret = new(wordstart, length);
 
 		reading += length;
 
 		return ret;
-
-		//		char* wordstart = reading;
-		//
-		//		char* read = wordstart;
-		//
-		//		while (read < end && read->IsSublabelSafe) {
-		//			read++;
-		//		}
-		//
-		//		reading = read;
-		//
-		//		return CharSpanHelpers.CreateSpan(wordstart, read);
 	}
 
 	internal static bool TryReadSublabel(scoped ref char* reading, char* end, out CharSpan chunk, out int dots) {
@@ -345,67 +306,31 @@ internal static unsafe class FastRead {
 
 		start += dots;
 
-		int length = ReadSublabelBetter(start, end);
+		int length = GetSublabelRunLength(start, end);
 
 		chunk = new(start, length);
 
 		reading = start + length;
 
 		return length is not 0;
-
-		//char* chunkstart = reading;
-		//
-		//dots = CountCharacter(chunkstart, end, SublabelDelimiter);
-		//
-		//char* read = chunkstart;
-		//
-		//while (read < end && read->IsSublabelSafe) {
-		//	read++;
-		//}
-		//
-		//chunk = CharSpanHelpers.CreateSpan(chunkstart, read) ;
-		//
-		//reading = read;
-		//return read != chunkstart;
 	}
 
 	internal static OperandString ReadAlphaNumeric(scoped ref char* reading, char* end) {
 		char* wordstart = reading;
-		int length = ReadAlphanumericHelper(wordstart, end);
+		int length = GetAlphaNumericRunLength(wordstart, end);
 
 		reading += length;
 		return new(wordstart, length);
-
-		//char* wordstart = reading;
-		//char* read = wordstart;
-		//
-		//while (read < end && read->IsIdentifierCharacter) {
-		//	read++;
-		//}
-		//
-		//reading = read;
-		//return new(wordstart, read);
 	}
 
 	internal static CharSpan ReadAlphaNumericSpan(scoped ref char* reading, char* end) {
 		char* wordstart = reading;
-		int length = ReadAlphanumericHelper(wordstart, end);
+		int length = GetAlphaNumericRunLength(wordstart, end);
 
 		reading += length;
 		return new(wordstart, length);
-
-		//char* wordstart = reading;
-		//char* read = wordstart;
-		//
-		//while (read < end && read->IsIdentifierCharacter) {
-		//	read++;
-		//}
-		//
-		//reading = read;
-		//return CharSpanHelpers.CreateSpanUnchecked(wordstart, read);
 	}
 
-	// don't think these need indexof, since we're expecting very small numbers
 	internal static int CountCharacter(char* start, char* end, char test) {
 		char* read = start;
 
@@ -432,15 +357,22 @@ internal static unsafe class FastRead {
 
 	// TODO microbenchmark
 	internal static void ReadUntilLineEnd(scoped ref char* start, char* end) {
-		//start += CharSpanHelpers.CreateSpanUnchecked(start, end).IndexOf(NewLine); #error breaks
-
 		char* read = start;
-		
+
 		while (read < end && *read is not NewLine) {
 			read++;
 		}
-		
+
 		start = read;
+
+		//int count = CharSpanHelpers.CreateSpanUnchecked(start, end).IndexOf(NewLine);
+		//
+		//if (count < 0) {
+		//	start = end;
+		//
+		//} else {
+		//	start += count;
+		//}
 	}
 
 	internal static decimal ReadDecimal(scoped ref char* reading, char* end) {
@@ -463,11 +395,11 @@ internal static unsafe class FastRead {
 			break;
 		}
 
-		DecimalDone:
+	DecimalDone:
 		reading = readit;
 		return decval;
 
-		DecimalFractions:
+	DecimalFractions:
 		if (++readit == end) {
 			goto DecimalDone;
 		}
@@ -541,15 +473,13 @@ internal static unsafe class FastRead {
 	}
 
 	internal static bool TryReadHex(scoped ref char* reading, char* end, out int hexval) {
-		// skip over dollar sign
-		reading++;
+		reading++; // skip over $ token
 
 		return TryReadHexRaw(ref reading, end, out hexval);
 	}
 
 	internal static bool TryReadBinary(scoped ref char* reading, char* end, out int binval) {
-		// skip over the percent sign
-		reading++;
+		reading++; // skip over % token
 
 		char* readit = reading;
 
@@ -559,13 +489,13 @@ internal static unsafe class FastRead {
 			int bindig = *readit;
 			bindig ^= '0'; // exclusive or with 0 to get either 0 or 1
 
-			if ((uint) bindig <= 1) { // if it's 0 or 1
+			if ((uint) bindig <= 1) {
 				binval <<= 1;
 				binval |= bindig;
 				continue;
 			}
 
-			if (bindig == ('0' ^ '_')) {
+			if (bindig == ('0' ^ '_')) { // allows separator
 				continue;
 			}
 
@@ -583,7 +513,5 @@ internal static unsafe class FastRead {
 
 	internal static bool IsAllocator(char* read) {
 		return AsciiHelpers.FastTest(read, ':', ':');
-
-		//return (read[0] is ':') && (read[1] is ':');
 	}
 }

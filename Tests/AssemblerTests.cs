@@ -9,6 +9,7 @@ namespace Tests;
 // need to stress test ; and : for end of command behavior
 // need to stress test multiple variables in a single function
 // test db "string" including functions
+// test incsrc "samefile" : incbin "samefile"
 public static class AssemblerTests {
 	private static bool FailsOnly = true;
 	private static bool GroupPassing = false;

@@ -71,13 +71,20 @@ unsafe partial class Assembler {
 	private Stack<int> _pcStack = new(64);
 	private Stack<int?> _provStack = new(64);
 
+	private void AdjustPC(int newpc) {
+		_pc = newpc;
+
+		_shutUpAboutAddresses = false;
+		_shutUpAboutSegments = false;
+	}
+
 	private void PushPC() {
 		_pcStack.Push(_pc);
 	}
 
 	private void PullPC() {
 		if (_pcStack.TryPop(out int newpc)) {
-			_pc = newpc;
+			AdjustPC(newpc);
 			_offset = AddressToOffset(_pc);
 			_pcPtr = _romPtr + _offset;
 		} else {
@@ -828,13 +835,9 @@ unsafe partial class Assembler {
 
 		if (TestOffsetBounds(offset)) {
 			if (AddressIsRom(addr)) {
-				// TODO make a single MovePc(int) and use that for all explicit moves
-				_pc = addr;
+				AdjustPC(addr);
 				_offset = offset;
 				_pcPtr = _romPtr + offset;
-
-				_shutUpAboutAddresses = false;
-				_shutUpAboutSegments = false;
 
 				TestProtectedSegments(offset);
 			} else {

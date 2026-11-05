@@ -166,6 +166,7 @@ unsafe partial class Assembler {
 				}
 			} else if (TryReadStringWithParams(next, out var opstr, out var openc)) {
 				WriteString(opstr, openc);
+
 			} else {
 				IExpressionReturn datval = ParseOperand(next);
 				WriteData(datval, size);

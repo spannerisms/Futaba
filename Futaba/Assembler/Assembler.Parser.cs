@@ -195,15 +195,12 @@ unsafe partial class Assembler {
 				char c = *_reading;
 
 				// these are so common that we'll handle them outside of the switch for efficiency
-				// TODO benchmark if this is still a good idea (probably irrelevant)
 				// skip over spaces
 				if (c.IsSkippableSpace) {
-					_reading++;
 					// very fast whitespace skipping
-					//char* rd = reading; // put in register
-					//while ((++rd)->IsSkippableSpace) ;
-					//
-					//reading = rd;
+					char* rd = _reading; // put in register
+					while ((++rd)->IsSkippableSpace) ;
+					_reading = rd;
 					continue;
 
 				} else if (c is NewLine) {

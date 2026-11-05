@@ -252,7 +252,7 @@ internal unsafe readonly struct OperandString {
 	}
 
 	public bool TestIfVariable() {
-		return _start[0] is '!' && FastRead.IsVariableName(_start + 1, _end);
+		return _start[0] is '!' && FastRead.IsVariableName(AsSpan(1));
 	}
 
 	public void Deconstruct(out char* start, out char* end) {

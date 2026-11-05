@@ -36,6 +36,8 @@ public abstract class Symbol {
 	/// </summary>
 	internal virtual bool Resolved => true;
 
+	internal virtual SnesArchitecture Scope { get; init; }
+
 	private protected Symbol(string name) {
 		Name = name;
 	}

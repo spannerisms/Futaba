@@ -17,75 +17,75 @@ unsafe partial class Assembler {
 		// normally i'd prefer to keep these in alphabetical order
 		// but it just feels more readable this way
 		switch (instruction) {
-			case OpSFX.FROM: /*                                                                    */ AssembleGetRegister(opstr, 0xB0); break;
-			case OpSFX.TO: /*                                                                      */ AssembleGetRegister(opstr, 0x10); break;
-			case OpSFX.WITH: /*                                                                    */ AssembleGetRegister(opstr, 0x20); break;
+			case OpSFX.FROM: /*                                                */ AssembleGetRegister(opstr, 0xB0); break;
+			case OpSFX.TO: /*                                                  */ AssembleGetRegister(opstr, 0x10); break;
+			case OpSFX.WITH: /*                                                */ AssembleGetRegister(opstr, 0x20); break;
 
-			case OpSFX.ALT1: /*                                                                    */ AssembleImplied(opstr, size, 0x3D); break;
-			case OpSFX.ALT2: /*                                                                    */ AssembleImplied(opstr, size, 0x3E); break;
-			case OpSFX.ALT3: /*                                                                    */ AssembleImplied(opstr, size, 0x3F); break;
+			case OpSFX.ALT1: /*                                                */ AssembleImplied(opstr, size, 0x3D); break;
+			case OpSFX.ALT2: /*                                                */ AssembleImplied(opstr, size, 0x3E); break;
+			case OpSFX.ALT3: /*                                                */ AssembleImplied(opstr, size, 0x3F); break;
 
-			case OpSFX.NOP: /*                                                                     */ AssembleImplied(opstr, size, 0x01); break;
+			case OpSFX.NOP: /*                                                 */ AssembleImplied(opstr, size, 0x01); break;
 
-			case OpSFX.ADC: /*                                                                     */ AssembleIorR(opstr, 0x50, shortRn: false, allowZero: true); break;
-			case OpSFX.ADD: /*                                                                     */ AssembleIorR(opstr, 0x50, shortRn: true, allowZero: true); break;
-			case OpSFX.SUB: /*                                                                     */ AssembleIorR(opstr, 0x60, shortRn: true, allowZero: true); break;
-			case OpSFX.AND: /*                                                                     */ AssembleIorR(opstr, 0x70, shortRn: true, allowZero: false); break;
-			case OpSFX.BIC: /*                                                                     */ AssembleIorR(opstr, 0x70, shortRn: false, allowZero: false); break;
-			case OpSFX.OR: /*                                                                      */ AssembleIorR(opstr, 0xC0, shortRn: true, allowZero: false); break;
-			case OpSFX.XOR: /*                                                                     */ AssembleIorR(opstr, 0xC0, shortRn: false, allowZero: false); break;
+			case OpSFX.ADC: /*                                                 */ AssembleIorR(opstr, 0x50, shortRn: false, allowZero: true); break;
+			case OpSFX.ADD: /*                                                 */ AssembleIorR(opstr, 0x50, shortRn: true, allowZero: true); break;
+			case OpSFX.SUB: /*                                                 */ AssembleIorR(opstr, 0x60, shortRn: true, allowZero: true); break;
+			case OpSFX.AND: /*                                                 */ AssembleIorR(opstr, 0x70, shortRn: true, allowZero: false); break;
+			case OpSFX.BIC: /*                                                 */ AssembleIorR(opstr, 0x70, shortRn: false, allowZero: false); break;
+			case OpSFX.OR: /*                                                  */ AssembleIorR(opstr, 0xC0, shortRn: true, allowZero: false); break;
+			case OpSFX.XOR: /*                                                 */ AssembleIorR(opstr, 0xC0, shortRn: false, allowZero: false); break;
 
-			case OpSFX.NOT: /*                                                                     */ AssembleImplied(opstr, size, 0x4F); break;
-			case OpSFX.ASR: /*                                                                     */ AssembleImplied(opstr, size, 0x96); break;
-			case OpSFX.LSR: /*                                                                     */ AssembleImplied(opstr, size, 0x03); break;
-			case OpSFX.ROL: /*                                                                     */ AssembleImplied(opstr, size, 0x04); break;
-			case OpSFX.ROR: /*                                                                     */ AssembleImplied(opstr, size, 0x97); break;
+			case OpSFX.NOT: /*                                                 */ AssembleImplied(opstr, size, 0x4F); break;
+			case OpSFX.ASR: /*                                                 */ AssembleImplied(opstr, size, 0x96); break;
+			case OpSFX.LSR: /*                                                 */ AssembleImplied(opstr, size, 0x03); break;
+			case OpSFX.ROL: /*                                                 */ AssembleImplied(opstr, size, 0x04); break;
+			case OpSFX.ROR: /*                                                 */ AssembleImplied(opstr, size, 0x97); break;
 
-			case OpSFX.DIV2: /*                                                                    */ AssembleLongOp(0x3D, 0x96); break;
-			case OpSFX.FMULT: /*                                                                   */ AssembleImplied(opstr, size, 0x9F); break;
-			case OpSFX.LMULT: /*                                                                   */ AssembleLongOp(0x3D, 0x9F); break;
-			case OpSFX.UMULT: /*                                                                   */ AssembleIorR(opstr, 0x80, shortRn: false, allowZero: true); break;
-			case OpSFX.MULT: /*                                                                    */ AssembleIorR(opstr, 0x80, shortRn: true, allowZero: true); break;
+			case OpSFX.DIV2: /*                                                */ AssembleLongOp(0x3D, 0x96); break;
+			case OpSFX.FMULT: /*                                               */ AssembleImplied(opstr, size, 0x9F); break;
+			case OpSFX.LMULT: /*                                               */ AssembleLongOp(0x3D, 0x9F); break;
+			case OpSFX.UMULT: /*                                               */ AssembleIorR(opstr, 0x80, shortRn: false, allowZero: true); break;
+			case OpSFX.MULT: /*                                                */ AssembleIorR(opstr, 0x80, shortRn: true, allowZero: true); break;
 
-			case OpSFX.HIB: /*                                                                     */ AssembleImplied(opstr, size, 0xC0); break;
-			case OpSFX.LOB: /*                                                                     */ AssembleImplied(opstr, size, 0x9E); break;
-			case OpSFX.MERGE: /*                                                                   */ AssembleImplied(opstr, size, 0x70); break;
-			case OpSFX.SBK: /*                                                                     */ AssembleImplied(opstr, size, 0x90); break;
-			case OpSFX.SEX: /*                                                                     */ AssembleImplied(opstr, size, 0x95); break;
-			case OpSFX.SWAP: /*                                                                    */ AssembleImplied(opstr, size, 0x4D); break;
+			case OpSFX.HIB: /*                                                 */ AssembleImplied(opstr, size, 0xC0); break;
+			case OpSFX.LOB: /*                                                 */ AssembleImplied(opstr, size, 0x9E); break;
+			case OpSFX.MERGE: /*                                               */ AssembleImplied(opstr, size, 0x70); break;
+			case OpSFX.SBK: /*                                                 */ AssembleImplied(opstr, size, 0x90); break;
+			case OpSFX.SEX: /*                                                 */ AssembleImplied(opstr, size, 0x95); break;
+			case OpSFX.SWAP: /*                                                */ AssembleImplied(opstr, size, 0x4D); break;
 
-			case OpSFX.BCC: /*                                                                     */ AssembleBranch(opstr, 0x0C); break;
-			case OpSFX.BCS: /*                                                                     */ AssembleBranch(opstr, 0x0D); break;
-			case OpSFX.BEQ: /*                                                                     */ AssembleBranch(opstr, 0x09); break;
-			case OpSFX.BGE: /*                                                                     */ AssembleBranch(opstr, 0x06); break;
-			case OpSFX.BLT: /*                                                                     */ AssembleBranch(opstr, 0x07); break;
-			case OpSFX.BMI: /*                                                                     */ AssembleBranch(opstr, 0x0B); break;
-			case OpSFX.BNE: /*                                                                     */ AssembleBranch(opstr, 0x08); break;
-			case OpSFX.BPL: /*                                                                     */ AssembleBranch(opstr, 0x0A); break;
-			case OpSFX.BRA: /*                                                                     */ AssembleBranch(opstr, 0x05); break;
-			case OpSFX.BVC: /*                                                                     */ AssembleBranch(opstr, 0x0E); break;
-			case OpSFX.BVS: /*                                                                     */ AssembleBranch(opstr, 0x0F); break;
+			case OpSFX.BCC: /*                                                 */ AssembleBranch(opstr, 0x0C); break;
+			case OpSFX.BCS: /*                                                 */ AssembleBranch(opstr, 0x0D); break;
+			case OpSFX.BEQ: /*                                                 */ AssembleBranch(opstr, 0x09); break;
+			case OpSFX.BGE: /*                                                 */ AssembleBranch(opstr, 0x06); break;
+			case OpSFX.BLT: /*                                                 */ AssembleBranch(opstr, 0x07); break;
+			case OpSFX.BMI: /*                                                 */ AssembleBranch(opstr, 0x0B); break;
+			case OpSFX.BNE: /*                                                 */ AssembleBranch(opstr, 0x08); break;
+			case OpSFX.BPL: /*                                                 */ AssembleBranch(opstr, 0x0A); break;
+			case OpSFX.BRA: /*                                                 */ AssembleBranch(opstr, 0x05); break;
+			case OpSFX.BVC: /*                                                 */ AssembleBranch(opstr, 0x0E); break;
+			case OpSFX.BVS: /*                                                 */ AssembleBranch(opstr, 0x0F); break;
 
-			case OpSFX.CACHE: /*                                                                   */ AssembleImplied(opstr, size, 0x02); break;
-			case OpSFX.CMODE: /*                                                                   */ AssembleLongOp(0x3D, 0x4E); break;
-			case OpSFX.COLOR: /*                                                                   */ AssembleImplied(opstr, size, 0x4E); break;
-			case OpSFX.PLOT: /*                                                                    */ AssembleImplied(opstr, size, 0x4C); break;
-			case OpSFX.RPIX: /*                                                                    */ AssembleLongOp(0x3D, 0x4C); break;
+			case OpSFX.CACHE: /*                                               */ AssembleImplied(opstr, size, 0x02); break;
+			case OpSFX.CMODE: /*                                               */ AssembleLongOp(0x3D, 0x4E); break;
+			case OpSFX.COLOR: /*                                               */ AssembleImplied(opstr, size, 0x4E); break;
+			case OpSFX.PLOT: /*                                                */ AssembleImplied(opstr, size, 0x4C); break;
+			case OpSFX.RPIX: /*                                                */ AssembleLongOp(0x3D, 0x4C); break;
 
-			case OpSFX.GETB: /*                                                                    */ AssembleImplied(opstr, size, 0xEF); break;
-			case OpSFX.GETBH: /*                                                                   */ AssembleLongOp(0x3D, 0xEF); break;
-			case OpSFX.GETBL: /*                                                                   */ AssembleLongOp(0x3E, 0xEF); break;
-			case OpSFX.GETBS: /*                                                                   */ AssembleLongOp(0x3F, 0xEF); break;
-			case OpSFX.GETC: /*                                                                    */ AssembleImplied(opstr, size, 0xDF); break;
+			case OpSFX.GETB: /*                                                */ AssembleImplied(opstr, size, 0xEF); break;
+			case OpSFX.GETBH: /*                                               */ AssembleLongOp(0x3D, 0xEF); break;
+			case OpSFX.GETBL: /*                                               */ AssembleLongOp(0x3E, 0xEF); break;
+			case OpSFX.GETBS: /*                                               */ AssembleLongOp(0x3F, 0xEF); break;
+			case OpSFX.GETC: /*                                                */ AssembleImplied(opstr, size, 0xDF); break;
 
-			case OpSFX.LOOP: /*                                                                    */ AssembleImplied(opstr, size, 0x3C); break;
-			case OpSFX.STOP: /*                                                                    */ AssembleImplied(opstr, size, 0x00); break;
+			case OpSFX.LOOP: /*                                                */ AssembleImplied(opstr, size, 0x3C); break;
+			case OpSFX.STOP: /*                                                */ AssembleImplied(opstr, size, 0x00); break;
 
-			case OpSFX.MOVEB: /*                                                                   */ AssembleMoveStLd(opstr, true); break;
-			case OpSFX.MOVEW: /*                                                                   */ AssembleMoveStLd(opstr, false); break;
+			case OpSFX.MOVEB: /*                                               */ AssembleMoveStLd(opstr, true); break;
+			case OpSFX.MOVEW: /*                                               */ AssembleMoveStLd(opstr, false); break;
 
-			case OpSFX.RAMB: /*                                                                    */ AssembleLongOp(0x3E, 0xDF); break;
-			case OpSFX.ROMB: /*                                                                    */ AssembleLongOp(0x3F, 0xDF); break;
+			case OpSFX.RAMB: /*                                                */ AssembleLongOp(0x3E, 0xDF); break;
+			case OpSFX.ROMB: /*                                                */ AssembleLongOp(0x3F, 0xDF); break;
 
 			// More complex, instruction-specific handlers
 			case OpSFX.CMP:

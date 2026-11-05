@@ -28,52 +28,52 @@ unsafe partial class Assembler {
 				DoStandardAccumulatorModes(0x80, targD, valD, targS, valS);
 				break;
 
-			case OpSPC.ADDW: /*                                                                    */ AssembleYAopD(0x7A); break;
+			case OpSPC.ADDW: /*                                                */ AssembleYAopD(0x7A); break;
 
 			case OpSPC.AND:
 				(targD, targS, valD, valS) = GetDoubleAddressingModes();
 				DoStandardAccumulatorModes(0x20, targD, valD, targS, valS);
 				break;
 
-			case OpSPC.AND0: /*                                                                    */ AssembleOneBitOpsWithNot(0, 0x4A, 0x6A); break;
-			case OpSPC.AND1: /*                                                                    */ AssembleOneBitOpsWithNot(1, 0x4A, 0x6A); break;
-			case OpSPC.AND2: /*                                                                    */ AssembleOneBitOpsWithNot(2, 0x4A, 0x6A); break;
-			case OpSPC.AND3: /*                                                                    */ AssembleOneBitOpsWithNot(3, 0x4A, 0x6A); break;
-			case OpSPC.AND4: /*                                                                    */ AssembleOneBitOpsWithNot(4, 0x4A, 0x6A); break;
-			case OpSPC.AND5: /*                                                                    */ AssembleOneBitOpsWithNot(5, 0x4A, 0x6A); break;
-			case OpSPC.AND6: /*                                                                    */ AssembleOneBitOpsWithNot(6, 0x4A, 0x6A); break;
-			case OpSPC.AND7: /*                                                                    */ AssembleOneBitOpsWithNot(7, 0x4A, 0x6A); break;
+			case OpSPC.AND0: /*                                                */ AssembleOneBitOpsWithNot(0, 0x4A, 0x6A); break;
+			case OpSPC.AND1: /*                                                */ AssembleOneBitOpsWithNot(1, 0x4A, 0x6A); break;
+			case OpSPC.AND2: /*                                                */ AssembleOneBitOpsWithNot(2, 0x4A, 0x6A); break;
+			case OpSPC.AND3: /*                                                */ AssembleOneBitOpsWithNot(3, 0x4A, 0x6A); break;
+			case OpSPC.AND4: /*                                                */ AssembleOneBitOpsWithNot(4, 0x4A, 0x6A); break;
+			case OpSPC.AND5: /*                                                */ AssembleOneBitOpsWithNot(5, 0x4A, 0x6A); break;
+			case OpSPC.AND6: /*                                                */ AssembleOneBitOpsWithNot(6, 0x4A, 0x6A); break;
+			case OpSPC.AND7: /*                                                */ AssembleOneBitOpsWithNot(7, 0x4A, 0x6A); break;
 
-			case OpSPC.ASL: /*                                                                     */ DoShiftRolls(0x00); break;
+			case OpSPC.ASL: /*                                                 */ DoShiftRolls(0x00); break;
 
-			case OpSPC.BBC0: /*                                                                    */ AssembleBranchBitTest(0x13); break;
-			case OpSPC.BBC1: /*                                                                    */ AssembleBranchBitTest(0x33); break;
-			case OpSPC.BBC2: /*                                                                    */ AssembleBranchBitTest(0x53); break;
-			case OpSPC.BBC3: /*                                                                    */ AssembleBranchBitTest(0x73); break;
-			case OpSPC.BBC4: /*                                                                    */ AssembleBranchBitTest(0x93); break;
-			case OpSPC.BBC5: /*                                                                    */ AssembleBranchBitTest(0xB3); break;
-			case OpSPC.BBC6: /*                                                                    */ AssembleBranchBitTest(0xD3); break;
-			case OpSPC.BBC7: /*                                                                    */ AssembleBranchBitTest(0xF3); break;
-			case OpSPC.BBS0: /*                                                                    */ AssembleBranchBitTest(0x03); break;
-			case OpSPC.BBS1: /*                                                                    */ AssembleBranchBitTest(0x23); break;
-			case OpSPC.BBS2: /*                                                                    */ AssembleBranchBitTest(0x43); break;
-			case OpSPC.BBS3: /*                                                                    */ AssembleBranchBitTest(0x63); break;
-			case OpSPC.BBS4: /*                                                                    */ AssembleBranchBitTest(0x83); break;
-			case OpSPC.BBS5: /*                                                                    */ AssembleBranchBitTest(0xA3); break;
-			case OpSPC.BBS6: /*                                                                    */ AssembleBranchBitTest(0xC3); break;
-			case OpSPC.BBS7: /*                                                                    */ AssembleBranchBitTest(0xE3); break;
+			case OpSPC.BBC0: /*                                                */ AssembleBranchBitTest(0x13); break;
+			case OpSPC.BBC1: /*                                                */ AssembleBranchBitTest(0x33); break;
+			case OpSPC.BBC2: /*                                                */ AssembleBranchBitTest(0x53); break;
+			case OpSPC.BBC3: /*                                                */ AssembleBranchBitTest(0x73); break;
+			case OpSPC.BBC4: /*                                                */ AssembleBranchBitTest(0x93); break;
+			case OpSPC.BBC5: /*                                                */ AssembleBranchBitTest(0xB3); break;
+			case OpSPC.BBC6: /*                                                */ AssembleBranchBitTest(0xD3); break;
+			case OpSPC.BBC7: /*                                                */ AssembleBranchBitTest(0xF3); break;
+			case OpSPC.BBS0: /*                                                */ AssembleBranchBitTest(0x03); break;
+			case OpSPC.BBS1: /*                                                */ AssembleBranchBitTest(0x23); break;
+			case OpSPC.BBS2: /*                                                */ AssembleBranchBitTest(0x43); break;
+			case OpSPC.BBS3: /*                                                */ AssembleBranchBitTest(0x63); break;
+			case OpSPC.BBS4: /*                                                */ AssembleBranchBitTest(0x83); break;
+			case OpSPC.BBS5: /*                                                */ AssembleBranchBitTest(0xA3); break;
+			case OpSPC.BBS6: /*                                                */ AssembleBranchBitTest(0xC3); break;
+			case OpSPC.BBS7: /*                                                */ AssembleBranchBitTest(0xE3); break;
 
-			case OpSPC.BCC: /*                                                                     */ AssembleBranch(opstr, 0x90); break;
-			case OpSPC.BCS: /*                                                                     */ AssembleBranch(opstr, 0xB0); break;
-			case OpSPC.BEQ: /*                                                                     */ AssembleBranch(opstr, 0xF0); break;
-			case OpSPC.BMI: /*                                                                     */ AssembleBranch(opstr, 0x30); break;
-			case OpSPC.BNE: /*                                                                     */ AssembleBranch(opstr, 0xD0); break;
-			case OpSPC.BPL: /*                                                                     */ AssembleBranch(opstr, 0x10); break;
-			case OpSPC.BRA: /*                                                                     */ AssembleBranch(opstr, 0x2F); break;
-			case OpSPC.BVC: /*                                                                     */ AssembleBranch(opstr, 0x50); break;
-			case OpSPC.BVS: /*                                                                     */ AssembleBranch(opstr, 0x70); break;
+			case OpSPC.BCC: /*                                                 */ AssembleBranch(opstr, 0x90); break;
+			case OpSPC.BCS: /*                                                 */ AssembleBranch(opstr, 0xB0); break;
+			case OpSPC.BEQ: /*                                                 */ AssembleBranch(opstr, 0xF0); break;
+			case OpSPC.BMI: /*                                                 */ AssembleBranch(opstr, 0x30); break;
+			case OpSPC.BNE: /*                                                 */ AssembleBranch(opstr, 0xD0); break;
+			case OpSPC.BPL: /*                                                 */ AssembleBranch(opstr, 0x10); break;
+			case OpSPC.BRA: /*                                                 */ AssembleBranch(opstr, 0x2F); break;
+			case OpSPC.BVC: /*                                                 */ AssembleBranch(opstr, 0x50); break;
+			case OpSPC.BVS: /*                                                 */ AssembleBranch(opstr, 0x70); break;
 
-			case OpSPC.BRK: /*                                                                     */ AssembleImplied(opstr, size, 0x0F); break;
+			case OpSPC.BRK: /*                                                 */ AssembleImplied(opstr, size, 0x0F); break;
 
 			case OpSPC.CALL:
 				OnlyDotW(size);
@@ -140,18 +140,18 @@ unsafe partial class Assembler {
 
 				break;
 
-			case OpSPC.CLR0: /*                                                                    */ AssembleDirectPageOnly(0x12); break;
-			case OpSPC.CLR1: /*                                                                    */ AssembleDirectPageOnly(0x32); break;
-			case OpSPC.CLR2: /*                                                                    */ AssembleDirectPageOnly(0x52); break;
-			case OpSPC.CLR3: /*                                                                    */ AssembleDirectPageOnly(0x72); break;
-			case OpSPC.CLR4: /*                                                                    */ AssembleDirectPageOnly(0x92); break;
-			case OpSPC.CLR5: /*                                                                    */ AssembleDirectPageOnly(0xB2); break;
-			case OpSPC.CLR6: /*                                                                    */ AssembleDirectPageOnly(0xD2); break;
-			case OpSPC.CLR7: /*                                                                    */ AssembleDirectPageOnly(0xF2); break;
+			case OpSPC.CLR0: /*                                                */ AssembleDirectPageOnly(0x12); break;
+			case OpSPC.CLR1: /*                                                */ AssembleDirectPageOnly(0x32); break;
+			case OpSPC.CLR2: /*                                                */ AssembleDirectPageOnly(0x52); break;
+			case OpSPC.CLR3: /*                                                */ AssembleDirectPageOnly(0x72); break;
+			case OpSPC.CLR4: /*                                                */ AssembleDirectPageOnly(0x92); break;
+			case OpSPC.CLR5: /*                                                */ AssembleDirectPageOnly(0xB2); break;
+			case OpSPC.CLR6: /*                                                */ AssembleDirectPageOnly(0xD2); break;
+			case OpSPC.CLR7: /*                                                */ AssembleDirectPageOnly(0xF2); break;
 
-			case OpSPC.CLRC: /*                                                                    */ AssembleImplied(opstr, size, 0x60); break;
-			case OpSPC.CLRP: /*                                                                    */ AssembleImplied(opstr, size, 0x20); break;
-			case OpSPC.CLRV: /*                                                                    */ AssembleImplied(opstr, size, 0xE0); break;
+			case OpSPC.CLRC: /*                                                */ AssembleImplied(opstr, size, 0x60); break;
+			case OpSPC.CLRP: /*                                                */ AssembleImplied(opstr, size, 0x20); break;
+			case OpSPC.CLRV: /*                                                */ AssembleImplied(opstr, size, 0xE0); break;
 
 			case OpSPC.CMP:
 				(targD, targS, valD, valS) = GetDoubleAddressingModes();
@@ -159,18 +159,18 @@ unsafe partial class Assembler {
 				switch (targD) {
 					case SPC700Target.X:
 						switch (ResolveAmbiguities(targS, valS)) {
-							case SPC700Target.Immediate: /*                                        */ WriteBAgg(0xC8, valS); return;
-							case SPC700Target.DirectPage: /*                                       */ WriteDotB(0x3E, valS); return;
-							case SPC700Target.Absolute: /*                                         */ WriteDotW(0x1E, valS); return;
-							default: /*                                                            */ InvalidAddressingMode(); return;
+							case SPC700Target.Immediate: /*                    */ WriteBAgg(0xC8, valS); return;
+							case SPC700Target.DirectPage: /*                   */ WriteDotB(0x3E, valS); return;
+							case SPC700Target.Absolute: /*                     */ WriteDotW(0x1E, valS); return;
+							default: /*                                        */ InvalidAddressingMode(); return;
 						}
 
 					case SPC700Target.Y:
 						switch (ResolveAmbiguities(targS, valS)) {
-							case SPC700Target.Immediate: /*                                        */ WriteBAgg(0xAD, valS); return;
-							case SPC700Target.DirectPage: /*                                       */ WriteDotB(0x7E, valS); return;
-							case SPC700Target.Absolute: /*                                         */ WriteDotW(0x5E, valS); return;
-							default: /*                                                            */ InvalidAddressingMode(); return;
+							case SPC700Target.Immediate: /*                    */ WriteBAgg(0xAD, valS); return;
+							case SPC700Target.DirectPage: /*                   */ WriteDotB(0x7E, valS); return;
+							case SPC700Target.Absolute: /*                     */ WriteDotW(0x5E, valS); return;
+							default: /*                                        */ InvalidAddressingMode(); return;
 						}
 
 					default:
@@ -178,10 +178,10 @@ unsafe partial class Assembler {
 						return;
 				}
 
-			case OpSPC.CMPW: /*                                                                    */ AssembleYAopD(0x5A); break;
+			case OpSPC.CMPW: /*                                                */ AssembleYAopD(0x5A); break;
 
-			case OpSPC.DAA: /*                                                                     */ AssembleATargeted(0xDF); break;
-			case OpSPC.DAS: /*                                                                     */ AssembleATargeted(0xBE); break;
+			case OpSPC.DAA: /*                                                 */ AssembleATargeted(0xDF); break;
+			case OpSPC.DAS: /*                                                 */ AssembleATargeted(0xBE); break;
 
 			case OpSPC.DBNZ:
 				if (!opstr.SplitByComma(out strD, out strS)) {
@@ -271,18 +271,18 @@ unsafe partial class Assembler {
 				(targD, valD) = GetOneMode(opstr);
 
 				switch (ResolveAmbiguities(targD, valD)) {
-					case SPC700Target.A: /*                                                        */ WriteNoToken(0x9C); return;
-					case SPC700Target.X: /*                                                        */ WriteNoToken(0x1D); return;
-					case SPC700Target.Y: /*                                                        */ WriteNoToken(0xDC); return;
-					case SPC700Target.DirectPage: /*                                               */ WriteDotB(0x8B, valD); return;
-					case SPC700Target.DirectPageIndexedX: /*                                       */ WriteBAgg(0x9B, valD); return;
-					case SPC700Target.Absolute: /*                                                 */ WriteDotW(0x8C, valD); return;
-					default: /*                                                                    */ InvalidAddressingMode(); return;
+					case SPC700Target.A: /*                                    */ WriteNoToken(0x9C); return;
+					case SPC700Target.X: /*                                    */ WriteNoToken(0x1D); return;
+					case SPC700Target.Y: /*                                    */ WriteNoToken(0xDC); return;
+					case SPC700Target.DirectPage: /*                           */ WriteDotB(0x8B, valD); return;
+					case SPC700Target.DirectPageIndexedX: /*                   */ WriteBAgg(0x9B, valD); return;
+					case SPC700Target.Absolute: /*                             */ WriteDotW(0x8C, valD); return;
+					default: /*                                                */ InvalidAddressingMode(); return;
 				}
 
-			case OpSPC.DECW: /*                                                                    */ AssembleDirectPageOnly(0x1A); break;
+			case OpSPC.DECW: /*                                                */ AssembleDirectPageOnly(0x1A); break;
 
-			case OpSPC.DI: /*                                                                      */ AssembleImplied(opstr, size, 0xC0); break;
+			case OpSPC.DI: /*                                                  */ AssembleImplied(opstr, size, 0xC0); break;
 
 			case OpSPC.DIV:
 				// assemble it right away then let errors happen
@@ -298,36 +298,36 @@ unsafe partial class Assembler {
 				InvalidAddressingMode();
 				break;
 
-			case OpSPC.EI: /*                                                                      */ AssembleImplied(opstr, size, 0xA0); break;
+			case OpSPC.EI: /*                                                  */ AssembleImplied(opstr, size, 0xA0); break;
 
 			case OpSPC.EOR:
 				(targD, targS, valD, valS) = GetDoubleAddressingModes();
 				DoStandardAccumulatorModes(0x40, targD, valD, targS, valS);
 				break;
 
-			case OpSPC.EOR0: /*                                                                    */ AssembleOneBitOps(0, 0x8A); break;
-			case OpSPC.EOR1: /*                                                                    */ AssembleOneBitOps(1, 0x8A); break;
-			case OpSPC.EOR2: /*                                                                    */ AssembleOneBitOps(2, 0x8A); break;
-			case OpSPC.EOR3: /*                                                                    */ AssembleOneBitOps(3, 0x8A); break;
-			case OpSPC.EOR4: /*                                                                    */ AssembleOneBitOps(4, 0x8A); break;
-			case OpSPC.EOR5: /*                                                                    */ AssembleOneBitOps(5, 0x8A); break;
-			case OpSPC.EOR6: /*                                                                    */ AssembleOneBitOps(6, 0x8A); break;
-			case OpSPC.EOR7: /*                                                                    */ AssembleOneBitOps(7, 0x8A); break;
+			case OpSPC.EOR0: /*                                                */ AssembleOneBitOps(0, 0x8A); break;
+			case OpSPC.EOR1: /*                                                */ AssembleOneBitOps(1, 0x8A); break;
+			case OpSPC.EOR2: /*                                                */ AssembleOneBitOps(2, 0x8A); break;
+			case OpSPC.EOR3: /*                                                */ AssembleOneBitOps(3, 0x8A); break;
+			case OpSPC.EOR4: /*                                                */ AssembleOneBitOps(4, 0x8A); break;
+			case OpSPC.EOR5: /*                                                */ AssembleOneBitOps(5, 0x8A); break;
+			case OpSPC.EOR6: /*                                                */ AssembleOneBitOps(6, 0x8A); break;
+			case OpSPC.EOR7: /*                                                */ AssembleOneBitOps(7, 0x8A); break;
 
 			case OpSPC.INC:
 				(targD, valD) = GetOneMode(opstr);
 
 				switch (ResolveAmbiguities(targD, valD)) {
-					case SPC700Target.A: /*                                                        */ WriteNoToken(0xBC); return;
-					case SPC700Target.X: /*                                                        */ WriteNoToken(0x3D); return;
-					case SPC700Target.Y: /*                                                        */ WriteNoToken(0xFC); return;
-					case SPC700Target.DirectPage: /*                                               */ WriteDotB(0xAB, valD); return;
-					case SPC700Target.DirectPageIndexedX: /*                                       */ WriteBAgg(0xBB, valD); return;
-					case SPC700Target.Absolute: /*                                                 */ WriteDotW(0xAC, valD); return;
-					default: /*                                                                    */ InvalidAddressingMode(); return;
+					case SPC700Target.A: /*                                    */ WriteNoToken(0xBC); return;
+					case SPC700Target.X: /*                                    */ WriteNoToken(0x3D); return;
+					case SPC700Target.Y: /*                                    */ WriteNoToken(0xFC); return;
+					case SPC700Target.DirectPage: /*                           */ WriteDotB(0xAB, valD); return;
+					case SPC700Target.DirectPageIndexedX: /*                   */ WriteBAgg(0xBB, valD); return;
+					case SPC700Target.Absolute: /*                             */ WriteDotW(0xAC, valD); return;
+					default: /*                                                */ InvalidAddressingMode(); return;
 				}
 
-			case OpSPC.INCW: /*                                                                    */ AssembleDirectPageOnly(0x3A); break;
+			case OpSPC.INCW: /*                                                */ AssembleDirectPageOnly(0x3A); break;
 
 			case OpSPC.JMP:
 				(targD, valD) = GetOneMode(opstr);
@@ -336,15 +336,15 @@ unsafe partial class Assembler {
 
 				switch (targD) {
 					case SPC700Target.Ambiguous:
-					case SPC700Target.Absolute: /*                                                 */ WriteOpW(0x5F, valD); break;
+					case SPC700Target.Absolute: /*                             */ WriteOpW(0x5F, valD); break;
 					case SPC700Target.AmbiguousIndirectX:
-					case SPC700Target.AbsoluteIndirectIndexedX: /*                                 */ WriteOpW(0x1F, valD); break;
-					default: /*                                                                    */ InvalidAddressingMode(); break;
+					case SPC700Target.AbsoluteIndirectIndexedX: /*             */ WriteOpW(0x1F, valD); break;
+					default: /*                                                */ InvalidAddressingMode(); break;
 				}
 
 				break;
 
-			case OpSPC.LSR: /*                                                                     */ DoShiftRolls(0x40); break;
+			case OpSPC.LSR: /*                                                 */ DoShiftRolls(0x40); break;
 
 			case OpSPC.MOV:
 				(targD, targS, valD, valS) = GetDoubleAddressingModes();
@@ -352,40 +352,40 @@ unsafe partial class Assembler {
 				switch (targD) {
 					case SPC700Target.A:
 						switch (ResolveAmbiguities(targS, valS)) {
-							case SPC700Target.X: /*                                                */ WriteNoToken(0x7D); return;
-							case SPC700Target.Y: /*                                                */ WriteNoToken(0xDD); return;
-							case SPC700Target.Immediate: /*                                        */ WriteBAgg(0xE8, valS); return;
-							case SPC700Target.DirectPage: /*                                       */ WriteDotB(0xE4, valS); return;
-							case SPC700Target.DirectPageIndexedX: /*                               */ WriteDotB(0xF4, valS); return;
-							case SPC700Target.DirectPageIndirectY: /*                              */ WriteBAgg(0xF7, valS); return;
-							case SPC700Target.DirectPageIndirectX: /*                              */ WriteBAgg(0xE7, valS); return;
-							case SPC700Target.Absolute: /*                                         */ WriteDotW(0xE5, valS); return;
-							case SPC700Target.AbsoluteIndexedX: /*                                 */ WriteDotW(0xF5, valS); return;
-							case SPC700Target.AbsoluteIndexedY: /*                                 */ WriteDotW(0xF6, valS); return;
-							case SPC700Target.XIndirect: /*                                        */ WriteNoToken(0xE6); return;
-							case SPC700Target.XIndirectIncrement: /*                               */ WriteNoToken(0xBF); return;
-							default: /*                                                            */ InvalidAddressingMode(); return;
+							case SPC700Target.X: /*                            */ WriteNoToken(0x7D); return;
+							case SPC700Target.Y: /*                            */ WriteNoToken(0xDD); return;
+							case SPC700Target.Immediate: /*                    */ WriteBAgg(0xE8, valS); return;
+							case SPC700Target.DirectPage: /*                   */ WriteDotB(0xE4, valS); return;
+							case SPC700Target.DirectPageIndexedX: /*           */ WriteDotB(0xF4, valS); return;
+							case SPC700Target.DirectPageIndirectY: /*          */ WriteBAgg(0xF7, valS); return;
+							case SPC700Target.DirectPageIndirectX: /*          */ WriteBAgg(0xE7, valS); return;
+							case SPC700Target.Absolute: /*                     */ WriteDotW(0xE5, valS); return;
+							case SPC700Target.AbsoluteIndexedX: /*             */ WriteDotW(0xF5, valS); return;
+							case SPC700Target.AbsoluteIndexedY: /*             */ WriteDotW(0xF6, valS); return;
+							case SPC700Target.XIndirect: /*                    */ WriteNoToken(0xE6); return;
+							case SPC700Target.XIndirectIncrement: /*           */ WriteNoToken(0xBF); return;
+							default: /*                                        */ InvalidAddressingMode(); return;
 						}
 
 					case SPC700Target.X:
 						switch (ResolveAmbiguities(targS, valS)) {
-							case SPC700Target.A: /*                                                */ WriteNoToken(0x5D); return;
-							case SPC700Target.SP: /*                                               */ WriteNoToken(0x9D); return;
-							case SPC700Target.Immediate: /*                                        */ WriteBAgg(0xCD, valS); return;
-							case SPC700Target.DirectPage: /*                                       */ WriteDotB(0xF8, valS); return;
-							case SPC700Target.DirectPageIndexedY: /*                               */ WriteBAgg(0xF9, valS); return;
-							case SPC700Target.Absolute: /*                                         */ WriteDotW(0xE9, valS); return;
-							default: /*                                                            */ InvalidAddressingMode(); return;
+							case SPC700Target.A: /*                            */ WriteNoToken(0x5D); return;
+							case SPC700Target.SP: /*                           */ WriteNoToken(0x9D); return;
+							case SPC700Target.Immediate: /*                    */ WriteBAgg(0xCD, valS); return;
+							case SPC700Target.DirectPage: /*                   */ WriteDotB(0xF8, valS); return;
+							case SPC700Target.DirectPageIndexedY: /*           */ WriteBAgg(0xF9, valS); return;
+							case SPC700Target.Absolute: /*                     */ WriteDotW(0xE9, valS); return;
+							default: /*                                        */ InvalidAddressingMode(); return;
 						}
 
 					case SPC700Target.Y:
 						switch (ResolveAmbiguities(targS, valS)) {
-							case SPC700Target.A: /*                                                */ WriteNoToken(0xFD); return;
-							case SPC700Target.Immediate: /*                                        */ WriteBAgg(0x8D, valS); return;
-							case SPC700Target.DirectPage: /*                                       */ WriteDotB(0xEB, valS); return;
-							case SPC700Target.DirectPageIndexedX: /*                               */ WriteBAgg(0xFB, valS); return;
-							case SPC700Target.Absolute: /*                                         */ WriteDotW(0xEC, valS); return;
-							default: /*                                                            */ InvalidAddressingMode(); return;
+							case SPC700Target.A: /*                            */ WriteNoToken(0xFD); return;
+							case SPC700Target.Immediate: /*                    */ WriteBAgg(0x8D, valS); return;
+							case SPC700Target.DirectPage: /*                   */ WriteDotB(0xEB, valS); return;
+							case SPC700Target.DirectPageIndexedX: /*           */ WriteBAgg(0xFB, valS); return;
+							case SPC700Target.Absolute: /*                     */ WriteDotW(0xEC, valS); return;
+							default: /*                                        */ InvalidAddressingMode(); return;
 						}
 
 					case SPC700Target.SP:
@@ -417,30 +417,30 @@ unsafe partial class Assembler {
 				switch (targS) {
 					case SPC700Target.A:
 						switch (ResolveAmbiguities(targD, valD)) {
-							case SPC700Target.DirectPage: /*                                       */ WriteDotB(0xC4, valD); return;
-							case SPC700Target.DirectPageIndexedX: /*                               */ WriteDotB(0xD4, valD); return;
-							case SPC700Target.DirectPageIndirectX: /*                              */ WriteBAgg(0xC7, valD); return;
-							case SPC700Target.DirectPageIndirectY: /*                              */ WriteBAgg(0xD7, valD); return;
-							case SPC700Target.Absolute: /*                                         */ WriteDotW(0xC5, valD); return;
-							case SPC700Target.AbsoluteIndexedX: /*                                 */ WriteDotW(0xD5, valD); return;
-							case SPC700Target.AbsoluteIndexedY: /*                                 */ WriteDotW(0xD6, valD); return;
-							default: /*                                                            */ InvalidAddressingMode(); return;
+							case SPC700Target.DirectPage: /*                   */ WriteDotB(0xC4, valD); return;
+							case SPC700Target.DirectPageIndexedX: /*           */ WriteDotB(0xD4, valD); return;
+							case SPC700Target.DirectPageIndirectX: /*          */ WriteBAgg(0xC7, valD); return;
+							case SPC700Target.DirectPageIndirectY: /*          */ WriteBAgg(0xD7, valD); return;
+							case SPC700Target.Absolute: /*                     */ WriteDotW(0xC5, valD); return;
+							case SPC700Target.AbsoluteIndexedX: /*             */ WriteDotW(0xD5, valD); return;
+							case SPC700Target.AbsoluteIndexedY: /*             */ WriteDotW(0xD6, valD); return;
+							default: /*                                        */ InvalidAddressingMode(); return;
 						}
 
 					case SPC700Target.X:
 						switch (ResolveAmbiguities(targD, valD)) {
-							case SPC700Target.DirectPage: /*                                       */ WriteDotB(0xD8, valD); return;
-							case SPC700Target.DirectPageIndexedY: /*                               */ WriteBAgg(0xD9, valD); return;
-							case SPC700Target.Absolute: /*                                         */ WriteDotW(0xC9, valD); return;
-							default: /*                                                            */ InvalidAddressingMode(); return;
+							case SPC700Target.DirectPage: /*                   */ WriteDotB(0xD8, valD); return;
+							case SPC700Target.DirectPageIndexedY: /*           */ WriteBAgg(0xD9, valD); return;
+							case SPC700Target.Absolute: /*                     */ WriteDotW(0xC9, valD); return;
+							default: /*                                        */ InvalidAddressingMode(); return;
 						}
 
 					case SPC700Target.Y:
 						switch (ResolveAmbiguities(targD, valD)) {
-							case SPC700Target.DirectPage: /*                                       */ WriteDotB(0xCB, valD); return;
-							case SPC700Target.DirectPageIndexedX: /*                               */ WriteBAgg(0xDB, valD); return;
-							case SPC700Target.Absolute: /*                                         */ WriteDotW(0xCC, valD); return;
-							default: /*                                                            */ InvalidAddressingMode(); return;
+							case SPC700Target.DirectPage: /*                   */ WriteDotB(0xCB, valD); return;
+							case SPC700Target.DirectPageIndexedX: /*           */ WriteBAgg(0xDB, valD); return;
+							case SPC700Target.Absolute: /*                     */ WriteDotW(0xCC, valD); return;
+							default: /*                                        */ InvalidAddressingMode(); return;
 						}
 
 					case SPC700Target.Immediate:
@@ -461,14 +461,14 @@ unsafe partial class Assembler {
 				InvalidAddressingMode();
 				break;
 
-			case OpSPC.MOV0: /*                                                                    */ AssembleOneBitMov(0); break;
-			case OpSPC.MOV1: /*                                                                    */ AssembleOneBitMov(1); break;
-			case OpSPC.MOV2: /*                                                                    */ AssembleOneBitMov(2); break;
-			case OpSPC.MOV3: /*                                                                    */ AssembleOneBitMov(3); break;
-			case OpSPC.MOV4: /*                                                                    */ AssembleOneBitMov(4); break;
-			case OpSPC.MOV5: /*                                                                    */ AssembleOneBitMov(5); break;
-			case OpSPC.MOV6: /*                                                                    */ AssembleOneBitMov(6); break;
-			case OpSPC.MOV7: /*                                                                    */ AssembleOneBitMov(7); break;
+			case OpSPC.MOV0: /*                                                */ AssembleOneBitMov(0); break;
+			case OpSPC.MOV1: /*                                                */ AssembleOneBitMov(1); break;
+			case OpSPC.MOV2: /*                                                */ AssembleOneBitMov(2); break;
+			case OpSPC.MOV3: /*                                                */ AssembleOneBitMov(3); break;
+			case OpSPC.MOV4: /*                                                */ AssembleOneBitMov(4); break;
+			case OpSPC.MOV5: /*                                                */ AssembleOneBitMov(5); break;
+			case OpSPC.MOV6: /*                                                */ AssembleOneBitMov(6); break;
+			case OpSPC.MOV7: /*                                                */ AssembleOneBitMov(7); break;
 
 			case OpSPC.MOVW:
 				if (opstr.SplitByComma(out strD, out strS)) {
@@ -512,32 +512,32 @@ unsafe partial class Assembler {
 
 				break;
 
-			case OpSPC.NOP: /*                                                                     */ AssembleImplied(opstr, size, 0x00); break;
+			case OpSPC.NOP: /*                                                 */ AssembleImplied(opstr, size, 0x00); break;
 
-			case OpSPC.NOT0: /*                                                                    */ AssembleOneBitNot(0); break;
-			case OpSPC.NOT1: /*                                                                    */ AssembleOneBitNot(1); break;
-			case OpSPC.NOT2: /*                                                                    */ AssembleOneBitNot(2); break;
-			case OpSPC.NOT3: /*                                                                    */ AssembleOneBitNot(3); break;
-			case OpSPC.NOT4: /*                                                                    */ AssembleOneBitNot(4); break;
-			case OpSPC.NOT5: /*                                                                    */ AssembleOneBitNot(5); break;
-			case OpSPC.NOT6: /*                                                                    */ AssembleOneBitNot(6); break;
-			case OpSPC.NOT7: /*                                                                    */ AssembleOneBitNot(7); break;
+			case OpSPC.NOT0: /*                                                */ AssembleOneBitNot(0); break;
+			case OpSPC.NOT1: /*                                                */ AssembleOneBitNot(1); break;
+			case OpSPC.NOT2: /*                                                */ AssembleOneBitNot(2); break;
+			case OpSPC.NOT3: /*                                                */ AssembleOneBitNot(3); break;
+			case OpSPC.NOT4: /*                                                */ AssembleOneBitNot(4); break;
+			case OpSPC.NOT5: /*                                                */ AssembleOneBitNot(5); break;
+			case OpSPC.NOT6: /*                                                */ AssembleOneBitNot(6); break;
+			case OpSPC.NOT7: /*                                                */ AssembleOneBitNot(7); break;
 
-			case OpSPC.NOTC: /*                                                                    */ AssembleImplied(opstr, size, 0xED); break;
+			case OpSPC.NOTC: /*                                                */ AssembleImplied(opstr, size, 0xED); break;
 
 			case OpSPC.OR:
 				(targD, targS, valD, valS) = GetDoubleAddressingModes();
 				DoStandardAccumulatorModes(0x00, targD, valD, targS, valS);
 				break;
 
-			case OpSPC.OR0: /*                                                                     */ AssembleOneBitOpsWithNot(0, 0x0A, 0x2A); break;
-			case OpSPC.OR1: /*                                                                     */ AssembleOneBitOpsWithNot(1, 0x0A, 0x2A); break;
-			case OpSPC.OR2: /*                                                                     */ AssembleOneBitOpsWithNot(2, 0x0A, 0x2A); break;
-			case OpSPC.OR3: /*                                                                     */ AssembleOneBitOpsWithNot(3, 0x0A, 0x2A); break;
-			case OpSPC.OR4: /*                                                                     */ AssembleOneBitOpsWithNot(4, 0x0A, 0x2A); break;
-			case OpSPC.OR5: /*                                                                     */ AssembleOneBitOpsWithNot(5, 0x0A, 0x2A); break;
-			case OpSPC.OR6: /*                                                                     */ AssembleOneBitOpsWithNot(6, 0x0A, 0x2A); break;
-			case OpSPC.OR7: /*                                                                     */ AssembleOneBitOpsWithNot(7, 0x0A, 0x2A); break;
+			case OpSPC.OR0: /*                                                 */ AssembleOneBitOpsWithNot(0, 0x0A, 0x2A); break;
+			case OpSPC.OR1: /*                                                 */ AssembleOneBitOpsWithNot(1, 0x0A, 0x2A); break;
+			case OpSPC.OR2: /*                                                 */ AssembleOneBitOpsWithNot(2, 0x0A, 0x2A); break;
+			case OpSPC.OR3: /*                                                 */ AssembleOneBitOpsWithNot(3, 0x0A, 0x2A); break;
+			case OpSPC.OR4: /*                                                 */ AssembleOneBitOpsWithNot(4, 0x0A, 0x2A); break;
+			case OpSPC.OR5: /*                                                 */ AssembleOneBitOpsWithNot(5, 0x0A, 0x2A); break;
+			case OpSPC.OR6: /*                                                 */ AssembleOneBitOpsWithNot(6, 0x0A, 0x2A); break;
+			case OpSPC.OR7: /*                                                 */ AssembleOneBitOpsWithNot(7, 0x0A, 0x2A); break;
 
 			case OpSPC.PCALL:
 				NoTokens(size);
@@ -590,43 +590,43 @@ unsafe partial class Assembler {
 				PlaceholderOp(0x2D);
 				break;
 
-			case OpSPC.RET: /*                                                                     */ AssembleImplied(opstr, size, 0x6F); break;
-			case OpSPC.RETI: /*                                                                    */ AssembleImplied(opstr, size, 0x7F); break;
+			case OpSPC.RET: /*                                                 */ AssembleImplied(opstr, size, 0x6F); break;
+			case OpSPC.RETI: /*                                                */ AssembleImplied(opstr, size, 0x7F); break;
 
-			case OpSPC.ROL: /*                                                                     */ DoShiftRolls(0x20); break;
-			case OpSPC.ROR: /*                                                                     */ DoShiftRolls(0x60); break;
+			case OpSPC.ROL: /*                                                 */ DoShiftRolls(0x20); break;
+			case OpSPC.ROR: /*                                                 */ DoShiftRolls(0x60); break;
 
 			case OpSPC.SBC:
 				(targD, targS, valD, valS) = GetDoubleAddressingModes();
 				DoStandardAccumulatorModes(0xA0, targD, valD, targS, valS);
 				break;
 
-			case OpSPC.SET0: /*                                                                    */ AssembleDirectPageOnly(0x02); break;
-			case OpSPC.SET1: /*                                                                    */ AssembleDirectPageOnly(0x22); break;
-			case OpSPC.SET2: /*                                                                    */ AssembleDirectPageOnly(0x42); break;
-			case OpSPC.SET3: /*                                                                    */ AssembleDirectPageOnly(0x62); break;
-			case OpSPC.SET4: /*                                                                    */ AssembleDirectPageOnly(0x82); break;
-			case OpSPC.SET5: /*                                                                    */ AssembleDirectPageOnly(0xA2); break;
-			case OpSPC.SET6: /*                                                                    */ AssembleDirectPageOnly(0xC2); break;
-			case OpSPC.SET7: /*                                                                    */ AssembleDirectPageOnly(0xE2); break;
+			case OpSPC.SET0: /*                                                */ AssembleDirectPageOnly(0x02); break;
+			case OpSPC.SET1: /*                                                */ AssembleDirectPageOnly(0x22); break;
+			case OpSPC.SET2: /*                                                */ AssembleDirectPageOnly(0x42); break;
+			case OpSPC.SET3: /*                                                */ AssembleDirectPageOnly(0x62); break;
+			case OpSPC.SET4: /*                                                */ AssembleDirectPageOnly(0x82); break;
+			case OpSPC.SET5: /*                                                */ AssembleDirectPageOnly(0xA2); break;
+			case OpSPC.SET6: /*                                                */ AssembleDirectPageOnly(0xC2); break;
+			case OpSPC.SET7: /*                                                */ AssembleDirectPageOnly(0xE2); break;
 
-			case OpSPC.SETC: /*                                                                    */ AssembleImplied(opstr, size, 0x80); break;
-			case OpSPC.SETP: /*                                                                    */ AssembleImplied(opstr, size, 0x40); break;
+			case OpSPC.SETC: /*                                                */ AssembleImplied(opstr, size, 0x80); break;
+			case OpSPC.SETP: /*                                                */ AssembleImplied(opstr, size, 0x40); break;
 
-			case OpSPC.SLEEP: /*                                                                   */ AssembleImplied(opstr, size, 0xEF); break;
-			case OpSPC.STOP: /*                                                                    */ AssembleImplied(opstr, size, 0xFF); break;
+			case OpSPC.SLEEP: /*                                               */ AssembleImplied(opstr, size, 0xEF); break;
+			case OpSPC.STOP: /*                                                */ AssembleImplied(opstr, size, 0xFF); break;
 
-			case OpSPC.SUBW: /*                                                                    */ AssembleYAopD(0x9A); break;
+			case OpSPC.SUBW: /*                                                */ AssembleYAopD(0x9A); break;
 
 			case OpSPC.TCALL:
 				NoTokens(size);
 				WriteOpImplied(new SpcTcallInstruction(ParseOperand(opstr)));
 				break;
 
-			case OpSPC.TCLR: /*                                                                    */ AssembleTmodA(0x4E); break;
-			case OpSPC.TSET: /*                                                                    */ AssembleTmodA(0x0E); break;
+			case OpSPC.TCLR: /*                                                */ AssembleTmodA(0x4E); break;
+			case OpSPC.TSET: /*                                                */ AssembleTmodA(0x0E); break;
 
-			case OpSPC.XCN: /*                                                                     */ AssembleATargeted(0x9F); break;
+			case OpSPC.XCN: /*                                                 */ AssembleATargeted(0x9F); break;
 		}
 
 		return;
@@ -793,11 +793,11 @@ unsafe partial class Assembler {
 			var (srTarg, srVal) = GetOneMode(opstr);
 
 			switch (ResolveAmbiguities(srTarg, srVal)) {
-				case SPC700Target.A: /*                                                            */ WriteNoToken((byte) (opbase | 0x1C)); return;
-				case SPC700Target.DirectPage: /*                                                   */ WriteDotB((byte) (opbase | 0x0B), srVal); return;
-				case SPC700Target.Absolute: /*                                                     */ WriteDotW((byte) (opbase | 0x0C), srVal); return;
-				case SPC700Target.DirectPageIndexedX: /*                                           */ WriteBAgg((byte) (opbase | 0x1B), srVal); return;
-				default: /*                                                                        */ InvalidAddressingMode(); return;
+				case SPC700Target.A: /*                                        */ WriteNoToken((byte) (opbase | 0x1C)); return;
+				case SPC700Target.DirectPage: /*                               */ WriteDotB((byte) (opbase | 0x0B), srVal); return;
+				case SPC700Target.Absolute: /*                                 */ WriteDotW((byte) (opbase | 0x0C), srVal); return;
+				case SPC700Target.DirectPageIndexedX: /*                       */ WriteBAgg((byte) (opbase | 0x1B), srVal); return;
+				default: /*                                                    */ InvalidAddressingMode(); return;
 			}
 		}
 
@@ -805,15 +805,15 @@ unsafe partial class Assembler {
 			switch (destination) {
 				case SPC700Target.A:
 					switch (ResolveAmbiguities(source, valS)) {
-						case SPC700Target.Immediate: /*                                            */ WriteBAgg((byte) (opbase | 0x08), valS); return;
-						case SPC700Target.XIndirect: /*                                            */ WriteNoToken((byte) (opbase | 0x06)); return;
-						case SPC700Target.DirectPage: /*                                           */ WriteDotB((byte) (opbase | 0x04), valS); return;
-						case SPC700Target.DirectPageIndexedX: /*                                   */ WriteDotB((byte) (opbase | 0x14), valS); return;
-						case SPC700Target.DirectPageIndirectY: /*                                  */ WriteBAgg((byte) (opbase | 0x17), valS); return;
-						case SPC700Target.DirectPageIndirectX: /*                                  */ WriteBAgg((byte) (opbase | 0x07), valS); return;
-						case SPC700Target.Absolute: /*                                             */ WriteDotW((byte) (opbase | 0x05), valS); return;
-						case SPC700Target.AbsoluteIndexedX: /*                                     */ WriteDotW((byte) (opbase | 0x15), valS); return;
-						case SPC700Target.AbsoluteIndexedY: /*                                     */ WriteDotW((byte) (opbase | 0x16), valS); return;
+						case SPC700Target.Immediate: /*                        */ WriteBAgg((byte) (opbase | 0x08), valS); return;
+						case SPC700Target.XIndirect: /*                        */ WriteNoToken((byte) (opbase | 0x06)); return;
+						case SPC700Target.DirectPage: /*                       */ WriteDotB((byte) (opbase | 0x04), valS); return;
+						case SPC700Target.DirectPageIndexedX: /*               */ WriteDotB((byte) (opbase | 0x14), valS); return;
+						case SPC700Target.DirectPageIndirectY: /*              */ WriteBAgg((byte) (opbase | 0x17), valS); return;
+						case SPC700Target.DirectPageIndirectX: /*              */ WriteBAgg((byte) (opbase | 0x07), valS); return;
+						case SPC700Target.Absolute: /*                         */ WriteDotW((byte) (opbase | 0x05), valS); return;
+						case SPC700Target.AbsoluteIndexedX: /*                 */ WriteDotW((byte) (opbase | 0x15), valS); return;
+						case SPC700Target.AbsoluteIndexedY: /*                 */ WriteDotW((byte) (opbase | 0x16), valS); return;
 					}
 
 					break;
