@@ -42,14 +42,14 @@ unsafe partial class Assembler {
 				return false;
 			}
 
-			if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString nextArg)) {
+			if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out CharSpan nextArg)) {
 				Error("Missing or invalid macro parameter name");
 				return false;
 			}
 
 			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-			args.Add(nextArg);
+			args.Add(new string(nextArg));
 
 			if (*_reading is ',') {
 				_reading++;
@@ -168,8 +168,9 @@ unsafe partial class Assembler {
 	private void InvokeMacro() {
 		_reading++;
 
-		if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString macroname)) {
+		if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out CharSpan macroname)) {
 			Error(MsgInfo.InvalidMacroName);
+
 		} else if (_macros.TryGetValue(macroname, out var macrocalled)) {
 			if (ReadOutCommaItemsWithParen(out var macroargs)) {
 				if (macrocalled.TryGetInvoker(CurrentSourceLine, macroargs, out var macrovoke, out var errors)) {

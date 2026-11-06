@@ -37,11 +37,15 @@ unsafe partial class Assembler {
 	private SpannedLookup<UserFunction> _functions = new(128);
 
 	private Dictionary<string, Symbol> _initialSymbols = [];
-
 	private Dictionary<string, Variable> _initialVariables = [];
 
 	// coax all of these collections onto the large object heap to help reduce GC pressure
 	// TODO more case testing to find the best values here to prevent reallocations when extra large
+	// jpdasm:
+	//     branch requests    : 11731
+	//     jump requests      : 3447
+	//     simple requests    : 11633
+	//     symbols            : 24554
 	private SpannedLookup<Symbol> _symbols = new(50000);
 	private List<SimpleRequest> _simpleRequests = new(50000);
 	private List<BranchRequest> _branchRequests =  new(50000);
@@ -534,8 +538,8 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryReadTopLevelName([NotNullWhen(true)] out string? fullName) {
-		if (FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString symbolName)) {
-			fullName = symbolName;
+		if (FastRead.TryReadIdentifier(ref _reading, _fileEnd, out CharSpan symbolName)) {
+			fullName = new(symbolName);
 			return true;
 		} else {
 			fullName = null;

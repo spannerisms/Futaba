@@ -930,6 +930,7 @@ unsafe partial class Assembler {
 
 		if (targ.Length is 0) {
 			triggers = _defaultBpTriggers;
+
 		} else {
 			triggers = BreakpointTriggers.None;
 

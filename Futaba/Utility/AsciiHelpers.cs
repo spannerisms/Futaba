@@ -74,7 +74,11 @@ internal static unsafe class AsciiHelpers {
 		internal bool IsNiceBoundary {
 			[DebuggerStepThrough]
 			//[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => c is ' ' or '\t' or '\r' or CommentChar or BadChar or NewLine;
+			//get => c is ' ' or '\t' or '\r' or NewLine or CommentChar or BadChar;
+			// TODO watch this issue
+#pragma warning disable IDE0078 // Use pattern matching - https://github.com/dotnet/runtime/issues/107801
+			get => c == ' ' || c == '\t' || c == '\r' || c == CommentChar || c == NewLine || c == BadChar;
+#pragma warning restore IDE0078 // Use pattern matching
 		}
 
 		internal bool IsLetterOrUnderscore {
