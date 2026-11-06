@@ -12,6 +12,7 @@ internal static class FunctionCall {
 		[Asin.Name] = Asin.Create,
 		[Acos.Name] = Acos.Create,
 		[Atan.Name] = Atan.Create,
+		[Degrees.Name] = Degrees.Create,
 
 		[Log10.Name] = Log10.Create,
 		[Log2.Name] = Log2.Create,
@@ -318,6 +319,24 @@ internal static class FunctionCall {
 
 		protected override decimal Equate(decimal a) {
 			return (decimal) Math.Atan((double) a);
+		}
+	}
+
+	private sealed class Degrees(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Degrees> {
+		public const string Name = "deg";
+		public static string FunctionName => Name;
+		public static Degrees? Create(Assembler assembler, List<ExpressionItem> args) {
+			if (IFunctionFactory<Degrees>.TestForBadArity(args, assembler)) {
+				return new Degrees(args[0]);
+			} else {
+				return null;
+			}
+		}
+
+		public override ExpressionItem Clone() => new Degrees(Item.Clone());
+
+		protected override decimal Equate(decimal a) {
+			return a * MathHelpers.Rad;
 		}
 	}
 

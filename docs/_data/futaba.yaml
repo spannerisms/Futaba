@@ -133,6 +133,9 @@ functions:
   - name: "atan"
     args: [ "&theta;" ]
     desc: "Returns the arctangent of %1"
+  - name: "deg"
+    args: [ "d" ]
+    desc: "Converts %1 from degrees to radians"
   - name: "log"
     args: [ "x" ]
     desc: "Returns log<sub>10</sub>(%1)"

@@ -281,7 +281,7 @@ unsafe partial class Assembler {
 				case "rand": /*          */ return _random.NextUInt64();
 				case "pi": /*            */ return 3.14159265358979323846264M;
 				case "e": /*             */ return 2.71828182845904523536028M;
-				case "rad": /*           */ return 0.01745329251994329576923M;
+				case "rad": /*           */ return MathHelpers.Rad;
 				case "name": /*          */ return 0x03FF;
 				case "line": /*          */ return _sourceLine;
 				case "version": /*       */ return FutabaApp.VersionDecimal;
@@ -295,7 +295,7 @@ unsafe partial class Assembler {
 			}
 		}
 
-		Error("Invalid internal variable name");
+		Error("Invalid internal variable name", $"'{CharSpanHelpers.ClampForMessage(name)}'");
 
 		return MathHelpers.NaN;
 	}
