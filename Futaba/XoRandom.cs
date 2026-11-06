@@ -24,10 +24,6 @@ namespace Futaba;
 internal unsafe sealed class XoRandom {
 	private ulong _s0, _s1, _s2, _s3;
 
-	public XoRandom() {
-
-	}
-
 	public XoRandom(UInt128 seed) {
 		Reseed(seed);
 	}

@@ -2,20 +2,24 @@
 
 internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : ExpressionItem, IReturnableToken, IToken, IExpressionReturn {
 	public Symbol Item => item;
-
 	public string Name => Item.Name;
-
 	public SymbolContext Context => context;
+
+	public TokenType Type => TokenType.Symbol;
+	public TokenRule Rule => TokenRule.Primary;
+
+
 	public bool ForcesUnary => false;
 	public bool IsInfix => false;
 	public bool Resolved => Item.Resolved;
 	public bool NeedsRequest => !Item.Resolved;
+
 	public override ExpressionState State => Item.Resolved ? ExpressionState.Resolved : ExpressionState.MissingSymbol;
 	public ExpressionState ReturnState => State;
+	private ExpressionState _resolved = ExpressionState.Unresolved;
 
 	// Have the getter do value resolution
 	// because this object should be considered resolved as soon as the label exists
-	private ExpressionState _resolved = ExpressionState.Unresolved;
 	public decimal Value {
 		get {
 			if (_resolved is ExpressionState.Resolved) {
@@ -36,10 +40,6 @@ internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : Exp
 			return MathHelpers.NaN;
 		}
 	}
-
-	public TokenType Type => TokenType.Symbol;
-
-	public TokenRule Rule => TokenRule.Primary;
 
 	public override (decimal, ExpressionState) TryEvaluate() {
 		return (Value, _resolved);

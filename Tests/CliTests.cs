@@ -1,9 +1,8 @@
-﻿namespace FutabaCLI;
+﻿using System.Text;
 
-#if UNITTESTS
-#pragma warning disable IDE0079
-#pragma warning disable CS1591 // debug only class, not part of the public API
-internal static class FutabaCliTests {
+namespace Tests;
+
+public static class CliTests {
 	public static void RunAll() {
 		// Regression test for a bug where ParseManifest() compared a decoded char
 		// count against the file's raw byte length. A UTF-8 BOM (3 bytes, 0
@@ -41,4 +40,3 @@ internal static class FutabaCliTests {
 		Console.WriteLine(test);
 	}
 }
-#endif

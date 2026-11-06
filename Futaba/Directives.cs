@@ -46,7 +46,9 @@ internal static class Directives {
 		REBANK                        = "rebank",
 		SITE                          = "site",
 		WARNPC                        = "warnpc",
+		GUARDPC                       = "guardpc",
 		WARNSITE                      = "warnsite",
+		GUARDSITE                     = "guardsite",
 		SAFEORG                       = "safeorg",
 		SKIP                          = "skip",
 		SKIPTO                        = "skipto",
@@ -81,6 +83,9 @@ internal static class Directives {
 		MACRO                         = "macro",
 		ENDMACRO                      = "endmacro",
 		FUNCTION                      = "function",
+
+		REPEAT                        = "repeat",
+		ENDREPEAT                     = "endrepeat",
 
 		ALLOCATE                      = "allocate",
 		ENDALLOCATE                   = "endallocate",

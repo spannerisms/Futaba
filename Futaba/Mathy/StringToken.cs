@@ -16,7 +16,6 @@ internal sealed class StringToken : ExpressionItem, IStringToken, IToken {
 	}
 
 	public TokenType Type => TokenType.String;
-
 	public TokenRule Rule => TokenRule.Primary;
 
 	public bool ForcesUnary => false;

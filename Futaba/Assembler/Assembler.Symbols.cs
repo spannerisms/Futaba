@@ -1,6 +1,7 @@
 ﻿namespace Futaba;
 
 // TODO include lang with symbol or something to differentiate?
+// no performance difference but a little hard to justify...
 unsafe partial class Assembler {
 	/// <summary>
 	/// Returns a new copy of this instance's symbols dictionary.
@@ -66,7 +67,6 @@ unsafe partial class Assembler {
 		_simpleRequests.Add(new SimpleRequest(item, offset, size, _time, CurrentSourceLine));
 	}
 
-	// TODO need real world performance tests to micro benchmark vectorization of these writes using a mask (and possibly a size mask in an indexed array)
 	private void ResolveAllRequests() {
 		const string CouldntDoIt = "Unable to resolve request";
 
@@ -390,6 +390,9 @@ unsafe partial class Assembler {
 		_poolHeaders.Clear();
 	}
 
+	// TODO idea?: `piling <IDENTIFIER> :: <size>, <element size>
+	// TODO??    : fill piling :: <value>
+	// should pilings automatically advance to their end after declaration?
 	private void Directive_PILING() {
 		if (!DemandSpaceWithError()) return;
 

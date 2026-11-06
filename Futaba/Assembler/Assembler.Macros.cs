@@ -98,9 +98,7 @@ unsafe partial class Assembler {
 		ref var getFunc = ref _functions.GetRefOrDefault(funcName);
 
 		if (getFunc is not null) {
-			Error("A user function with this name already exists");
-			AbortCommand();
-			return;
+			Warning("A user function with this name already exists");
 		}
 
 		List<IToken> tokens = new((int) (funcEnd - funcStart));

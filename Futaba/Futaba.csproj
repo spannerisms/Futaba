@@ -10,7 +10,7 @@
     <IsAotCompatible>true</IsAotCompatible>
     <IsTrimmable>true</IsTrimmable>
     <AssemblyName>futaba.core</AssemblyName>
-    <Configurations>Debug;Release;UnitTests</Configurations>
+    <Configurations>Debug;Release</Configurations>
     <Authors>kan</Authors>
     <ApplicationIcon>..\futaba.ico</ApplicationIcon>
     <Copyright>(c) 2026</Copyright>
@@ -19,8 +19,9 @@
     <RepositoryUrl>https://github.com/spannerisms/futaba</RepositoryUrl>
     <PackageTags>snes;assembler;assembly;65816;spc700;superfx</PackageTags>
     <Title>Futaba</Title>
+    <AssemblyTitle>Futaba</AssemblyTitle>
     <Description>Futaba is a symbolic assembler targetting the Super Famicom and Super Nintendo Entertainment System.</Description>
-    <VersionPrefix>0.3.0.0</VersionPrefix>
+    <VersionPrefix>0.4.0.0</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>
     <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
@@ -41,12 +42,6 @@
     <Optimize>True</Optimize>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnitTests|AnyCPU'">
-    <DebugType>portable</DebugType>
-    <Optimize>False</Optimize>
-    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -70,6 +65,10 @@
 
   <ItemGroup>
     <PackageReference Include="System.IO.Hashing" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+    <InternalsVisibleTo Include="Tests" />
   </ItemGroup>
 
 </Project>

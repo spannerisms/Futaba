@@ -57,13 +57,6 @@ internal static partial class Igarashi {
 	/// </summary>
 	[STAThread]
 	static int Main(string[] args) {
-#if UNITTESTS
-		Assembler.UnitTester.TestMain();
-		FutabaCliTests.RunAll();
-
-		return 0;
-#else
-
 		// heh
 		RootCommand rootaba = new("Futaba Assembler\r\nFor full documentation, see <https://spannerisms.github.io/futaba#cli>");
 
@@ -91,7 +84,7 @@ internal static partial class Igarashi {
 			Arg_OutputManifest
 		};
 		template.SetAction(CreateTemplateFile);
-		template.AddOptions(Option_ProjectType);
+		template.AddOptions(Option_ProjectType, Option_EmptyTemplate);
 
 		Command checksums = new("checksum", "Calculate various checksums for a file") {
 			Arg_TargetRom
@@ -111,10 +104,8 @@ internal static partial class Igarashi {
 
 		VersionOption cmdversion = new("--version") {
 			Action = new ShowVersionThing(() => {
-				{
-					Console.WriteLine($"Futaba CLI version:       {Assembler.Version}");
-					Console.WriteLine($"Futaba Assembler version: {Version}");
-				}
+				Console.WriteLine($"Futaba CLI version:       {Assembler.Version}");
+				Console.WriteLine($"Futaba Assembler version: {Version}");
 			})
 		};
 
@@ -130,7 +121,6 @@ internal static partial class Igarashi {
 		rootaba.Add(cmdversion);
 
 		return rootaba.Parse(args).Invoke();
-#endif
 	}
 
 	static int CreateTemplateFile(ParseResult res) {
@@ -143,6 +133,7 @@ internal static partial class Igarashi {
 		string? projectType = res.GetValue(Option_ProjectType);
 
 		bool makingDisassembly = projectType?.EqualsI("disassembly") ?? false;
+		bool makeItEmpty = res.GetValue(Option_EmptyTemplate);
 
 		FileInfo templateFile = new(fileName);
 
@@ -160,7 +151,7 @@ internal static partial class Igarashi {
 
 			stream.WriteLine("[FUTABA:assemble]");
 
-			foreach (var (cat, list) in ManifestContainer.ManifestKeywords) {
+			foreach (var (cat, list) in ManifestOption.ManifestKeywords) {
 				if (cat is "disassembly" && !makingDisassembly) {
 					continue;
 				}
@@ -168,8 +159,18 @@ internal static partial class Igarashi {
 				stream.WriteLine();
 				stream.WriteLine($"{cat}:");
 
-				foreach (string key in list) {
-					stream.WriteLine($"\t{key,-20}= ");
+				foreach (var option in list.Values) {
+					string itemValue;
+
+					if (option == ManifestOption.ProjectType && projectType is not null) {
+						itemValue = projectType;
+					} else if (!makeItEmpty) {
+						itemValue = option.TemplateDefault;
+					} else {
+						itemValue = string.Empty;
+					}
+
+					stream.WriteLine($"\t{option.Name,-20}= {itemValue}");
 				}
 			}
 
@@ -367,7 +368,7 @@ internal static partial class Igarashi {
 				}
 			}
 
-			Exit:
+		Exit:
 			return;
 		}
 
@@ -1086,7 +1087,9 @@ internal static partial class Igarashi {
 	internal static Register[] SPC => field ??= Register.Spc700Registers;
 	internal static Register[] SuperFX => field ??= Register.SuperFxRegisters;
 
+	//
 	// Arguments
+	//
 	static readonly Argument<FileInfo> Arg_ManifestFile = new("manifest"){
 		Description = "manifest file with assembly configuration",
 		Arity = ArgumentArity.ExactlyOne,
@@ -1123,7 +1126,9 @@ internal static partial class Igarashi {
 		Arity = ArgumentArity.ExactlyOne,
 	};
 
+	//
 	// Options
+	//
 	static readonly Option<bool> Option_PreserveConsole = new("--keep-old-logs", "-k") {
 		Description = "Disables clearing the console on each assembly",
 		Arity = ArgumentArity.Zero,
@@ -1162,8 +1167,13 @@ internal static partial class Igarashi {
 	};
 
 	static readonly Option<string?> Option_ProjectType = new("--type") {
-		Description = "Automatically adjusts the checksum",
+		Description = "Type of project",
 		Arity = ArgumentArity.ZeroOrOne,
+	};
+
+	static readonly Option<bool> Option_EmptyTemplate = new("--empty", "-e") {
+		Description = "Produce an empty template",
+		Arity = ArgumentArity.Zero,
 	};
 
 }
@@ -1173,7 +1183,6 @@ file sealed class ShowVersionThing : System.CommandLine.Invocation.SynchronousCo
 
 	internal ShowVersionThing(Action action) => _syncAction = action;
 
-	/// <inheritdoc />
 	public override int Invoke(ParseResult parseResult) {
 		_syncAction();
 		return 1;

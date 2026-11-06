@@ -36,13 +36,15 @@ public abstract class Symbol {
 	/// </summary>
 	internal virtual bool Resolved => true;
 
+	internal virtual SnesArchitecture Scope { get; init; }
+
 	private protected Symbol(string name) {
 		Name = name;
 	}
 
 	internal abstract bool TryGetProperty(SymbolContext prop, out int val);
 
-	/// <inheritdoc cref="object.ToString()"/>
+	/// <inheritdoc/>
 	public override string ToString() {
 		if (Resolved) {
 			return $"{Name} = {DefaultValue}";

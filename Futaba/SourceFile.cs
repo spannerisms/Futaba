@@ -3,16 +3,15 @@
 namespace Futaba;
 
 /// <summary>
-/// Encapsulates an assembly source file.
+/// Represents an assembly source file.
 /// </summary>
 internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFileFactory<SourceFile> {
 	public SafeFileHandle? Handle { get; private set; }
-	public override FileInfo FileInfo { get; }
 
 	public string FileName { get; }
 	internal string ShortName { get; init; }
 	public override string ObjectName => ShortName;
-	public string? DirectoryName { get; }
+	public override string? DirectoryName { get; }
 
 	public DateTime LastLoaded { get; private set; } = default;
 
@@ -22,28 +21,34 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 	public WatcherChangeTypes Change { get; set; }
 
 	public bool WasUsed { get; set; } = false;
-	internal override bool IsMacro => false;
+	internal override SourceObjectType SourceType => SourceObjectType.SourceFile;
 
 	/// <summary>
 	/// Creates a new source file container.
 	/// </summary>
-	private SourceFile(string path) {
-		Handle = IWatchedFile.OpenHandle(path);
-
-		FileInfo = new(path);
-		ShortName = FileInfo.Name;
-		FileName = FileInfo.FullName;
-		DirectoryName = FileInfo.DirectoryName;
-
-		Refresh();
+	private SourceFile(string path, SafeFileHandle? handle) {
+		Handle = handle;
+		ShortName = Path.GetFileName(path);
+		FileName = Path.GetFullPath(path);
+		DirectoryName = Path.GetDirectoryName(path);
 	}
 
 	public CharSpan AsSpan() {
 		return new CharSpan(SourceStart, Length);
 	}
 
-	public static SourceFile Create(string path) {
-		return new SourceFile(path);
+	public static SourceFile TryCreate(string path) {
+		SafeFileHandle? handle = IWatchedFile.TryOpenHandle(path, out string? error);
+
+		SourceFile ret = new(path, handle) {
+			Error = error
+		};
+
+		if (error is null && handle is not null) {
+			ret.Refresh();
+		}
+
+		return ret;
 	}
 
 	public void Refresh() {
@@ -124,10 +129,13 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 	internal static readonly SourceObject Empty = new EmptySource();
 }
 
+/// <summary>
+/// Represents a missing source object.
+/// </summary>
 file sealed class EmptySource : SourceObject {
-	public override FileInfo? FileInfo => null;
-	internal override bool IsMacro => false;
+	internal override SourceObjectType SourceType => SourceObjectType.Empty;
 	public override string ObjectName => string.Empty;
+	public override string? DirectoryName => null;
 
 	internal EmptySource() {
 		_disposed = true;

@@ -23,7 +23,7 @@ unsafe partial class Assembler {
 	// jpdasm: 676000 allocs for number
 	// usdasm: 300000
 	// push: 6000
-	private IExpressionReturn ParseOperand(char* opreading, char* opend, SymbolContext context) {
+	internal IExpressionReturn ParseOperand(char* opreading, char* opend, SymbolContext context) {
 		FastRead.TrimWhiteSpace(ref opreading, ref opend);
 
 		if (opreading == opend) {
@@ -110,7 +110,7 @@ unsafe partial class Assembler {
 
 				char* symbolNameStart = opreading;
 
-				int llen = FastRead.ReadAlphanumericHelper(opreading, opend);
+				int llen = FastRead.GetAlphaNumericRunLength(opreading, opend);
 				opreading += llen;
 
 				// check why the loop broke
@@ -119,7 +119,7 @@ unsafe partial class Assembler {
 					opreading++;
 					last = new FunctionToken(new string(funcName));
 				} else {
-					int sublen = FastRead.ReadSublabelBetter(opreading, opend);
+					int sublen = FastRead.GetSublabelRunLength(opreading, opend);
 					opreading += sublen;
 					CharSpan symbolName = CharSpanHelpers.CreateSpan(symbolNameStart, opreading);
 
@@ -450,7 +450,7 @@ unsafe partial class Assembler {
 
 					char* symbolNameStart = exprReading;
 
-					int llen = FastRead.ReadAlphanumericHelper(exprReading, exprEnd);
+					int llen = FastRead.GetAlphaNumericRunLength(exprReading, exprEnd);
 					exprReading += llen;
 
 					// check why the loop broke
@@ -460,7 +460,7 @@ unsafe partial class Assembler {
 						goto Advance1;
 
 					} else {
-						int sublen = FastRead.ReadSublabelBetter(exprReading, exprEnd);
+						int sublen = FastRead.GetSublabelRunLength(exprReading, exprEnd);
 						exprReading += sublen;
 
 						CharSpan symbolName = CharSpanHelpers.CreateSpan(symbolNameStart, exprReading);
@@ -512,7 +512,7 @@ unsafe partial class Assembler {
 						goto Advance2;
 					}
 
-					last = SymbolicToken.NullCoalescePostfix;
+					last = SymbolicToken.PostfixNullCoalesce;
 					goto Advance1;
 
 				// DOT
@@ -777,6 +777,11 @@ unsafe partial class Assembler {
 		bool error = false;
 
 		ExpressionItem tree = Expression();
+
+		if (index < max) {
+			Error("Syntax error");
+			return MathHelpers.BadExpressionNode;
+		}
 
 		if (!error) {
 			return tree;

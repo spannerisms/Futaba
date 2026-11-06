@@ -1,6 +1,5 @@
 ﻿namespace Futaba;
 
-// TODO can maybe be made into an abstract class instead
 internal interface INeedResolution {
 	public IExpressionReturn Item { get; }
 

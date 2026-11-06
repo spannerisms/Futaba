@@ -1,9 +1,9 @@
 ﻿namespace Futaba;
 
 internal interface IExpressionReturn : IFormattable {
-	public ExpressionState ReturnState { get; }
+	public abstract ExpressionState ReturnState { get; }
 
-	public decimal Value { get; }
+	public abstract decimal Value { get; }
 
 	public int ValueInt32 {
 		[DebuggerStepThrough]
@@ -11,9 +11,9 @@ internal interface IExpressionReturn : IFormattable {
 		get => Value.AsInt();
 	}
 
-	public bool Resolved { get; }
+	public abstract bool Resolved { get; }
 
-	public bool NeedsRequest { get; }
+	public abstract bool NeedsRequest { get; }
 
 	public bool TryToResolve();
 

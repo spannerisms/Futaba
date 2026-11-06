@@ -15,24 +15,13 @@ unsafe partial class Assembler {
 	private char* _reading = default;
 	private char* _fileEnd = default;
 	private char* _commandStart = default;
-	private IfLink? _ifChain = null;
+	private ScopeLink? _scopeChain = null;
 	private int _sourceLine = 0;
+	private ContextMode _context = ContextMode.Code;
 
-	/// <summary>
-	/// Things that should be done both before and after assembly
-	/// to clean up allocations and maintain a consistent public state.
-	/// </summary>
-	private protected virtual void RequiredInitAndCleanUp() {
-		_currentEncoder = SnesEncoder.ASCII;
-
-		_previousState = null;
-		_ifChain = null;
-		_currentSegment = null;
-
-		Array.Fill(_nameHierarchy, string.Empty);
-		Array.Clear(_pcHierarchy);
-
-		ClearPools();
+	private enum ContextMode {
+		Code,
+		Allocation
 	}
 
 	private void TryAssembly() {
@@ -60,7 +49,7 @@ unsafe partial class Assembler {
 			WarningCount = 0;
 			ErrorLine = null;
 
-			if (!TryGetSource(EntryPoint.FullName, out var entryObj)) {
+			if (!TryGetSource(EntryPoint, out var entryObj)) {
 				return;
 			}
 
@@ -110,8 +99,10 @@ unsafe partial class Assembler {
 			RequiredInitAndCleanUp();
 
 			// reset source state
-			_previousState = null;
+			_context = ContextMode.Code;
 			TransferSourceControl(entryObj);
+			// This must occur after TransferSourceControl
+			_previousState = null;
 
 			StartAssembly();
 			ResolveAllRequests();
@@ -188,15 +179,12 @@ unsafe partial class Assembler {
 				char c = *_reading;
 
 				// these are so common that we'll handle them outside of the switch for efficiency
-				// TODO benchmark if this is still a good idea (probably irrelevant)
 				// skip over spaces
 				if (c.IsSkippableSpace) {
-					_reading++;
 					// very fast whitespace skipping
-					//char* rd = reading; // put in register
-					//while ((++rd)->IsSkippableSpace) ;
-					//
-					//reading = rd;
+					char* rd = _reading; // put in register
+					while ((++rd)->IsSkippableSpace) ;
+					_reading = rd;
 					continue;
 
 				} else if (c is NewLine) {
@@ -380,14 +368,6 @@ unsafe partial class Assembler {
 			directive.FastLower(dirword);
 
 			switch (dirword) {
-				case PILE:
-					Directive_PILE();
-					return;
-
-				case PLOP:
-					Directive_PLOP();
-					return;
-
 				case PILING:
 					Directive_PILING();
 					return;
@@ -461,6 +441,7 @@ unsafe partial class Assembler {
 					return;
 
 				case WARNPC:
+				case GUARDPC:
 					if (DemandSpaceWithError() && TryReadRestAsExpression(WARNPC, SymbolContext.Provenance, out IExpressionReturn warnpc)) {
 						WarnCounter(warnpc.ValueInt32, _pc);
 					}
@@ -468,6 +449,7 @@ unsafe partial class Assembler {
 					return;
 
 				case WARNSITE:
+				case GUARDSITE:
 					if (DemandSpaceWithError() && TryReadRestAsExpression(WARNPC, SymbolContext.Provenance, out IExpressionReturn warnsite)) {
 						WarnCounter(warnsite.ValueInt32, Provenance);
 					}
@@ -560,7 +542,10 @@ unsafe partial class Assembler {
 					return;
 
 				case ALLOCATE:
+					ContextMode prev = _context;
+					_context = ContextMode.Allocation;
 					Directive_ALLOCATE();
+					_context = prev;
 					return;
 
 				case FILL:
@@ -668,6 +653,14 @@ unsafe partial class Assembler {
 				Directive_FUNCTION();
 				return true;
 
+			case REPEAT:
+				Directive_REPEAT();
+				return true;
+
+			case ENDREPEAT:
+				Directive_ENDREPEAT();
+				return true;
+
 			case IF:
 				Directive_IF();
 				return true;
@@ -683,70 +676,110 @@ unsafe partial class Assembler {
 			case ENCODER:
 				Directive_ENCODER();
 				return true;
+
+			case PILE:
+				Directive_PILE();
+				return true;
+
+			case PLOP:
+				Directive_PLOP();
+				return true;
 		}
 
 		return false;
 	}
 
-	private void TransferSourceControl<T>(T source) where T : SourceObject {
+	/// <summary>
+	/// Things that should be done both before and after assembly
+	/// to clean up allocations and maintain a consistent public state.
+	/// </summary>
+	private protected virtual void RequiredInitAndCleanUp() {
+		_currentEncoder = SnesEncoder.ASCII;
+
+		_previousState = null;
+		_scopeChain = null;
+		_currentSegment = null;
+
+		Array.Fill(_nameHierarchy, string.Empty);
+		Array.Clear(_pcHierarchy);
+
+		ClearPools();
+	}
+
+	private void TransferSourceControl(SourceObject source) {
+		if (source.SourceType > SourceObjectType.TrackedType) {
+			_loadedSourceObjects.Add(source);
+		}
+
 		if ((_previousState?.Depth ?? 0) >= MaxChain) {
 			string MaxObj = $"The maximum number ({MaxChain}) of nested or chained assembly objects has been hit.";
 			Error(MaxObj);
 			throw new InvalidOperationException(MaxObj);
 		}
 
-		if (typeof(T) != typeof(SourceFile)) {
-			_loadedSourceObjects.Add(source);
-		}
-
-		if (_currentSourceObject != SourceFile.Empty) {
-			_previousState = new(_currentSourceObject, _reading, _sourceLine, _ifChain, _previousState);
-		}
+		_previousState = new(_currentSourceObject, _reading, _sourceLine, _scopeChain, _previousState);
 
 		_currentSourceObject = source;
 		_fileEnd = source.SourceEnd;
 		_reading = source.SourceStart;
 		_commandStart = _reading;
 		_sourceLine = 1;
-		_ifChain = null;
+		_scopeChain = null;
 	}
 
 	private bool PopSourceControl() {
+		// errors for unclosed blocks
+		while (_scopeChain is not null) {
+			string errorMessage = _scopeChain switch {
+				RepeatLink /*     */ => MsgInfo.UnclosedRepeat,
+				IfLink /*         */ => MsgInfo.UnclosedIf,
+				_ /*              */ => "Unclosed syntax block"
+			};
+
+			Error(errorMessage);
+
+			_scopeChain = _scopeChain.Parent;
+		}
+
 		// check the parent for where to resume or if we should end
 		if (_previousState is SourcePointers sp) {
-
-			// TODO maybe have this for a verbose mode
-#if DEBUG
-			//if (CurrentSourceObject is SourceFile) {
-			//	Console.WriteLine($"Finished {CurrentSourceObject}");
-			//}
-#endif
-
 			_previousState = sp.Parent;
-			(_currentSourceObject, _reading, _sourceLine, _ifChain) = sp;
+			(_currentSourceObject, _reading, _sourceLine, _scopeChain) = sp;
 			_fileEnd = _currentSourceObject.SourceEnd;
-
 			return true;
+
 		} else {
 			return false;
 		}
 	}
 
-	private sealed class IfLink(IfLink? parent) {
-		internal IfLink? Parent { get; } = parent;
-		internal int Depth { get; } = parent?.Depth ?? 1;
+	private abstract class ScopeLink(ScopeLink? parent) {
+		internal ScopeLink? Parent { get; } = parent;
+		internal int Depth { get; } = parent?.Depth + 1 ?? 1;
+	}
+
+	private sealed class IfLink(ScopeLink? parent) : ScopeLink(parent) {
 		internal bool HitElse { get; set; } = false;
 	}
 
-	private sealed class SourcePointers(SourceObject source, char* current, int line, IfLink? ifstack, SourcePointers? parent) {
+	private sealed class RepeatLink(char* start, int loops, int lineStart, ScopeLink? parent) : ScopeLink(parent) {
+		private int _loops = loops;
+		public char* Start => start;
+		public int LineStart => lineStart;
+		public bool TickLoops() {
+			return (--_loops) > 0;
+		}
+	}
+
+	private sealed class SourcePointers(SourceObject source, char* current, int line, ScopeLink? scopeStack, SourcePointers? parent) {
 		internal SourcePointers? Parent { get; } = parent;
 		internal SourceObject Source { get; } = source;
 		internal char* Current { get; } = current;
 		internal int Line { get; } = line;
-		internal IfLink? IfStack { get; } = ifstack;
+		internal ScopeLink? IfStack { get; } = scopeStack;
 		internal int Depth { get; } = (parent?.Depth + 1) ?? 0;
 
-		public void Deconstruct(out SourceObject _source, out char* _current, out int _line, out IfLink? _ifstack) {
+		public void Deconstruct(out SourceObject _source, out char* _current, out int _line, out ScopeLink? _ifstack) {
 			_current = Current;
 			_line = Line;
 			_source = Source;

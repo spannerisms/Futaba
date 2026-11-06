@@ -3,7 +3,7 @@
 unsafe partial class Assembler {
 	private void FinishCommand() {
 		if (!AdvanceOverWhitespace()) {
-			Error("Extraneous content after expected end of command");
+			Error(MsgInfo.CommandGarbage);
 			AbortCommand();
 		}
 	}
@@ -39,6 +39,7 @@ unsafe partial class Assembler {
 		if (_reading->IsSkippableSpace) {
 			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 			return true;
+
 		} else {
 			if (AtEndOfCommand()) {
 				Error("Unexpected end of command");
@@ -65,8 +66,12 @@ unsafe partial class Assembler {
 				break;
 			}
 
+			// no need to validate these, because the command has been aborted
+			if (c is CharDelim) {
+				_ = FastRead.SkipToMatchingApos(ref read, theend);
+			}
+
 			if (c is '"') {
-				// no need to validate the quotes, because the command has been aborted
 				_ = FastRead.SkipToMatchingQuote(ref read, theend);
 			}
 
@@ -115,12 +120,15 @@ unsafe partial class Assembler {
 				}
 
 				Error(MsgInfo.InvalidAddressingMode, details: $"invalid size token: {tok}.");
+
 			} else {
 				_reading = read;
 				UnexpectedCharacter();
 			}
+
 		} else if (read->IsNiceBoundary) {
 			return SizeToken.Unspecified;
+
 		} else {
 			UnexpectedCharacter();
 		}
@@ -128,10 +136,9 @@ unsafe partial class Assembler {
 		return SizeToken.Invalid;
 	}
 
-	private bool ReadUntilAllocator(out OperandString conts) {
+	private bool ReadUntilAllocator(out OperandString preContents) {
 		char* theend = _fileEnd;
 		char* read = _reading;
-		char* constart = read;
 
 		for (; read < theend; read++) {
 			char c = *read;
@@ -141,28 +148,28 @@ unsafe partial class Assembler {
 			}
 
 			if (c is '"') {
-				FastRead.SkipToMatchingQuote(ref read, theend);
-				continue;
-			}
+				_ = FastRead.SkipToMatchingQuote(ref read, theend);
 
-			if (c is ':') {
+			} else if (c is CharDelim) {
+				_ = FastRead.SkipToMatchingApos(ref read, theend);
+
+			} else if (c is ':') {
 				if (FastRead.ColonIsSeparator(read)) {
-					conts = new(constart, read);
+					preContents = new(_reading, read);
 					_reading = read + 1;
 					return false;
 				}
 
 				if (read[1] is ':') {
-					conts = new(constart, read);
+					preContents = new(_reading, read);
 					_reading = read + 2;
 					return true;
 				}
-				continue;
 			}
 		}
 
+		preContents = OperandString.CreateTrimmed(_reading, read);
 		_reading = read;
-		conts = OperandString.CreateTrimmed(constart, read);
 		return false;
 	}
 
@@ -185,6 +192,7 @@ unsafe partial class Assembler {
 
 			if (value.Resolved) {
 				return true;
+
 			} else {
 				Error_BadResolve(value, MsgInfo.MustBeResolvedNow(directiveName));
 			}
@@ -203,7 +211,10 @@ unsafe partial class Assembler {
 
 		if (len is < 1) {
 			return string.Empty;
+
 		} else if (len > LongestDirectiveLength) {
+			// if it's too long, it will definitely fail
+			// so just return without transforming
 			return cspan;
 		}
 
@@ -237,6 +248,7 @@ unsafe partial class Assembler {
 	private bool DemandRestOfCommand(out OperandString operand) {
 		if (ReadRestOfCommand(out operand)) {
 			return true;
+
 		} else {
 			Error(MsgInfo.MissingDirectiveArgument);
 			return false;
@@ -255,6 +267,30 @@ unsafe partial class Assembler {
 	}
 
 	/// <summary>
+	/// doesn't advance on new lines
+	/// </summary>
+	private bool CaptureLineShort(out CharSpan operand) {
+		bool ret = ReadRestOfCommand(out operand);
+
+		if (!ret) {
+			CaptureLineContinue();
+		}
+
+		return ret;
+	}
+
+	/// <summary>
+	/// Advances for new line if necessary
+	/// </summary>
+	private void CaptureLineContinue() {
+		if (*_reading is NewLine) {
+			_sourceLine++;
+			_reading++;
+		}
+	}
+
+
+	/// <summary>
 	/// returns false if nothing is found. trims ends of string
 	/// </summary>
 	private bool RestOfCommand(out char* opstart, out char* opend) {
@@ -270,29 +306,27 @@ unsafe partial class Assembler {
 			// line increment needs to be deferred to the caller
 			if (c is NewLine) {
 				break;
-			}
 
-			if (c is CommentChar) {
+			} else if (c is CommentChar) {
 				_reading = read + 1;
 				FastRead.ReadUntilLineEnd(ref _reading, theend);
-
 				goto FinishUp;
-			}
 
-			if (FastRead.TestIfColonAndSeparator(read)) {
+			} else if (c is CommandSeparator && FastRead.ColonIsSeparator(read)) {
 				_reading = read + 2;
 				goto FinishUp;
-			}
 
-			if (c is '"') {
+			} else if (c is CharDelim) {
+				_ = FastRead.SkipToMatchingApos(ref read, theend);
+
+			} else if (c is '"') {
 				FastRead.SkipToMatchingQuote(ref read, theend);
 			}
 		}
 
 		_reading = read;
 
-		FinishUp:
-
+	FinishUp:
 		opend = read;
 		FastRead.TrimWhiteSpace(ref opstart, ref opend);
 
@@ -306,39 +340,37 @@ unsafe partial class Assembler {
 		FastRead.SkipInlineWhitespace(ref _reading, theend);
 
 		char* read = _reading;
-		char* start = read;
 
 		for (; read < theend; read++) {
 			char c = *read;
+
 			if (c is NewLine or CommentChar) {
 				break;
-			}
 
-			if (c is '"') {
+			} else if (c is CharDelim) {
+				if (FastRead.SkipToMatchingApos(ref read, theend)) continue;
+				break;
+
+			} else if (c is '"') {
 				if (FastRead.SkipToMatchingQuote(ref read, theend)) continue;
 				break;
-			}
 
-			// skip parens, since those may have commas in them for functions and macros
-			if (c is '(') {
+			} else if (c is '(') { // skip parens, since those may have commas in them for functions and macros
 				if (FastRead.SkipToMatchingParenthesis(ref read, theend)) continue;
 				break;
-			}
 
-			if (FastRead.TestIfColonAndSeparator(read)) {
+			} else if (c is CommandSeparator && FastRead.ColonIsSeparator(read)) {
 				break;
-			}
 
-			if (c is ',') {
-				stuff = OperandString.CreateTrimmed(start, read);
+			} else if (c is ',') {
+				stuff = OperandString.CreateTrimmed(_reading, read);
 				_reading = read + 1;
 				return true;
 			}
 		}
 
+		stuff = OperandString.CreateTrimmed(_reading, read);
 		_reading = read;
-
-		stuff = OperandString.CreateTrimmed(start, read);
 		return false;
 	}
 
@@ -357,18 +389,12 @@ unsafe partial class Assembler {
 				continue;
 			}
 
-			if (blockLine.IsEmpty) {
-				continue;
-			}
-
 			if (IsActualKeyWord(blockLine, endBlock)) {
 				if (blockLine.Length > endBlock.Length) {
 					Error($"{endBlock} must appear by itself");
 				}
 
-				blockDepth--;
-
-				if (blockDepth is 0) {
+				if (--blockDepth is 0) {
 					break;
 				}
 
@@ -382,7 +408,7 @@ unsafe partial class Assembler {
 		return ret;
 
 		static bool IsActualKeyWord(CharSpan checkline, string testString) {
-			if (checkline.BeginsWithIgnoreSpace(testString)) {
+			if (checkline.BeginsWithIgnoreCase(testString)) {
 				if (checkline.Length == testString.Length) {
 					return true;
 				}
@@ -397,6 +423,7 @@ unsafe partial class Assembler {
 		if (FastRead.TryReadOutQuotedString(ref stread, stend, out CharSpan span)) {
 			str = ExplodeStringContents(span);
 			return true;
+
 		} else {
 			str = null;
 			return false;
@@ -429,35 +456,35 @@ unsafe partial class Assembler {
 		for (; read < theend; read++) {
 			char c = *read;
 
-			if (c is NewLine or CommentChar) {
-				break;
-			}
-
 			if (c is '"') {
-				if (FastRead.SkipToMatchingQuote(ref read, theend)) continue;
-				break;
-			}
+				if (!FastRead.SkipToMatchingQuote(ref read, theend)) {
+					break;
+				}
 
-			// skip parens, since those may have commas in them when functions
-			if (c is '(') {
-				if (FastRead.SkipToMatchingParenthesis(ref read, theend)) continue;
-				break;
-			}
+			} else if (c is CharDelim) {
+				if (!FastRead.SkipToMatchingApos(ref read, theend)) {
+					break;
+				}
 
-			if (c is ',') {
+			} else if (c is '(') { // skip parens, since those may have commas between them
+				if (!FastRead.SkipToMatchingParenthesis(ref read, theend)) {
+					break;
+				}
+
+			} else if (c is ',') {
 				args.Add(OperandString.CreateTrimmed(start, read));
 				start = read + 1;
-				continue;
-			}
 
-			if (c is ')') {
+			} else if (c is ')') {
 				args.Add(OperandString.CreateTrimmed(start, read));
 				read++;
 				_reading = read;
 				return true;
-			}
 
-			if (FastRead.TestIfColonAndSeparator(read)) {
+			} else if (c is NewLine or CommentChar) {
+				break;
+
+			} else if (c is CommandSeparator && FastRead.ColonIsSeparator(read)) {
 				break;
 			}
 		}
@@ -613,7 +640,8 @@ unsafe partial class Assembler {
 									alignedLeft = true;
 									i++;
 									break;
-								// to account for size being next
+
+								// to account for size being next with just 'c'
 								case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7' or '8' or '9':
 									alignedLeft = true;
 									break;
@@ -659,6 +687,7 @@ unsafe partial class Assembler {
 									}
 								}
 							}
+
 							return;
 
 						case 'l' or 'L' or 'r' or 'R':
@@ -708,8 +737,10 @@ unsafe partial class Assembler {
 								padChar = BadChar;
 								Warning("Bad padding char");
 								return false;
+
 							} else if (qcheck is EscapeChar) {
 								padChar = GetEscapedCharacter(cmdWhole[i++]);
+
 							} else {
 								padChar = cmdWhole[i++];
 							}
@@ -732,12 +763,12 @@ unsafe partial class Assembler {
 					bool TryGetLength(out int len) {
 						if (cmdWhole.TryReadInlineDecimalInteger(ref i, out len)) {
 							return true;
+
 						} else {
 							Error("Missing length argument in resize command");
 							return false;
 						}
 					}
-
 				}
 
 				void Recase(Func<char, char> transform) {

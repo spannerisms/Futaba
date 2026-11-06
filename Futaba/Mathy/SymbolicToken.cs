@@ -1,437 +1,557 @@
 ﻿namespace Futaba;
 
-internal abstract class SymbolicToken : IToken {
-	public abstract TokenType Type { get; }
-	public abstract TokenRule Rule { get; }
-	public abstract bool ForcesUnary { get; }
-	public abstract bool IsInfix { get; }
+internal class SymbolicToken(TokenType type, TokenRule rule, bool forceUnary, bool infix) : IToken {
+	public TokenType Type => type;
+	public TokenRule Rule => rule;
+	public bool ForcesUnary => forceUnary;
+	public bool IsInfix => infix;
 
-	public virtual ExpressionItem CreateExpressionItem() {
-		return MathHelpers.BadExpressionNode;
-	}
+	public virtual ExpressionItem CreateExpressionItem() => MathHelpers.BadExpressionNode;
+	public virtual ExpressionItem CreateExpressionItem(ExpressionItem item) => MathHelpers.BadExpressionNode;
+	public virtual ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) => MathHelpers.BadExpressionNode;
 
-	public virtual ExpressionItem CreateExpressionItem(ExpressionItem item) {
-		return MathHelpers.BadExpressionNode;
-	}
+	//
+	// What follows here is a bunch of singletons
+	//
 
-	public virtual ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-		return MathHelpers.BadExpressionNode;
-	}
+	public static readonly SymbolicToken Start      = new(type: TokenType.Start, rule: TokenRule.Expression, forceUnary: true, infix: true);
+	public static readonly SymbolicToken End        = new(type: TokenType.End, rule: TokenRule.Expression, forceUnary: true, infix: true);
+	public static readonly SymbolicToken LeftParen  = new(type: TokenType.LeftParen, rule: TokenRule.Primary, forceUnary: true, infix: false);
+	public static readonly SymbolicToken RightParen = new(type: TokenType.RightParen, rule: TokenRule.Primary, forceUnary: false, infix: false);
+	public static readonly SymbolicToken Comma      = new(type: TokenType.Comma, rule: TokenRule.Primary, forceUnary: true, infix: false);
 
-	/*
-	 * What follows here is a bunch of singletos
-	 * to help speedup the type and rule checks and the expression item creation
-	 */
-	// TODO make these properties of a single sealed class instead?
-	public static readonly SymbolicToken Start = new SingletonStart();
-	private sealed class SingletonStart : SymbolicToken {
-		public override TokenType Type => TokenType.Start;
-		public override TokenRule Rule => TokenRule.Expression;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
-	}
-
-	public static readonly SymbolicToken End = new SingletonEnd();
-	private sealed class SingletonEnd : SymbolicToken {
-		public override TokenType Type => TokenType.End;
-		public override TokenRule Rule => TokenRule.Expression;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => true;
-	}
-
-	public static readonly SymbolicToken LeftParen = new SingletonLeftParen();
-	private sealed class SingletonLeftParen : SymbolicToken {
-		public override TokenType Type => TokenType.LeftParen;
-		public override TokenRule Rule => TokenRule.Primary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
-	}
-
-	public static readonly SymbolicToken RightParen = new SingletonRightParen();
-	private sealed class SingletonRightParen : SymbolicToken {
-		public override TokenType Type => TokenType.RightParen;
-		public override TokenRule Rule => TokenRule.Primary;
-		public override bool ForcesUnary => false;
-		public override bool IsInfix => false;
-	}
-
-	public static readonly SymbolicToken Comma = new SingletonComma();
-	private sealed class SingletonComma : SymbolicToken {
-		public override TokenType Type => TokenType.Comma;
-		public override TokenRule Rule => TokenRule.Primary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
-	}
+	//
+	// Actual operators
+	//
 
 	public static readonly SymbolicToken Addition = new SingletonAddition();
-	private sealed class SingletonAddition : SymbolicToken {
-		public override TokenType Type => TokenType.Addition;
-		public override TokenRule Rule => TokenRule.Additive;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => true;
+	private sealed class SingletonAddition()
+		: SymbolicToken(type: TokenType.Addition, rule: TokenRule.Additive, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.Addition(left, right);
+			return new ExprAddition(left, right);
+		}
+
+		private sealed class ExprAddition(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprAddition(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a + b;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Subtraction = new SingletonSubtraction();
-	private sealed class SingletonSubtraction : SymbolicToken {
-		public override TokenType Type => TokenType.Subtraction;
-		public override TokenRule Rule => TokenRule.Additive;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => true;
+	private sealed class SingletonSubtraction()
+		: SymbolicToken(type: TokenType.Subtraction, rule: TokenRule.Additive, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.Subtraction(left, right);
+			return new ExprSubtraction(left, right);
+		}
+
+		private sealed class ExprSubtraction(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprSubtraction(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a - b;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Multiplication = new SingletonMultiplication();
-	private sealed class SingletonMultiplication : SymbolicToken {
-		public override TokenType Type => TokenType.Multiplication;
-		public override TokenRule Rule => TokenRule.Multiplicative;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => true;
+	private sealed class SingletonMultiplication()
+		: SymbolicToken(type: TokenType.Multiplication, rule: TokenRule.Multiplicative, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.Multiplication(left, right);
+			return new ExprMultiplication(left, right);
+		}
+
+		private sealed class ExprMultiplication(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprMultiplication(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a * b;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Division = new SingletonDivision();
-	private sealed class SingletonDivision : SymbolicToken {
-		public override TokenType Type => TokenType.Division;
-		public override TokenRule Rule => TokenRule.Multiplicative;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => true;
+	private sealed class SingletonDivision()
+		: SymbolicToken(type: TokenType.Division, rule: TokenRule.Multiplicative, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.Division(left, right);
+			return new ExprDivision(left, right);
+		}
+
+		private sealed class ExprDivision(ExpressionItem left, ExpressionItem right) : ValidatedDivisorExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprDivision(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a / b;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken IntegerDivision = new SingletonIntegerDivision();
-	private sealed class SingletonIntegerDivision : SymbolicToken {
-		public override TokenType Type => TokenType.IntegerDivision;
-		public override TokenRule Rule => TokenRule.Multiplicative;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonIntegerDivision()
+		: SymbolicToken(type: TokenType.IntegerDivision, rule: TokenRule.Multiplicative, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.IntegerDivision(left, right);
+			return new ExprIntegerDivision(left, right);
+		}
+
+		private sealed class ExprIntegerDivision(ExpressionItem left, ExpressionItem right) : ValidatedDivisorExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprIntegerDivision(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return (a / b).AsLong();
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Modulo = new SingletonModulo();
-	private sealed class SingletonModulo : SymbolicToken {
-		public override TokenType Type => TokenType.Modulo;
-		public override TokenRule Rule => TokenRule.Multiplicative;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonModulo()
+		: SymbolicToken(type: TokenType.Modulo, rule: TokenRule.Multiplicative, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.Modulo(left, right);
+			return new ExprModulo(left, right);
+		}
+
+		private sealed class ExprModulo(ExpressionItem left, ExpressionItem right) : ValidatedDivisorExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprModulo(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a % b;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken ArithmeticLeftShift = new SingletonArithmeticLeftShift();
-	private sealed class SingletonArithmeticLeftShift : SymbolicToken {
-		public override TokenType Type => TokenType.ArithmeticLeftShift;
-		public override TokenRule Rule => TokenRule.Shifts;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonArithmeticLeftShift()
+		: SymbolicToken(type: TokenType.ArithmeticLeftShift, rule: TokenRule.Shifts, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.ArithmeticLeftShift(left, right);
+			return new ExprArithmeticLeftShift(left, right);
+		}
+
+		private sealed class ExprArithmeticLeftShift(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprArithmeticLeftShift(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a.AsLong() << b.AsInt();
+			}
 		}
 	}
 
 	public static readonly SymbolicToken LogicalRightShift = new SingletonLogicalRightShift();
-	private sealed class SingletonLogicalRightShift : SymbolicToken {
-		public override TokenType Type => TokenType.LogicalRightShift;
-		public override TokenRule Rule => TokenRule.Shifts;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonLogicalRightShift()
+		: SymbolicToken(type: TokenType.LogicalRightShift, rule: TokenRule.Shifts, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.LogicalRightShift(left, right);
+			return new ExprLogicalRightShift(left, right);
+		}
+
+		private sealed class ExprLogicalRightShift(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprLogicalRightShift(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a.AsLong() >> b.AsInt();
+			}
 		}
 	}
 
 	public static readonly SymbolicToken ArithmeticRightShift = new SingletonArithmeticRightShift();
-	private sealed class SingletonArithmeticRightShift : SymbolicToken {
-		public override TokenType Type => TokenType.ArithmeticRightShift;
-		public override TokenRule Rule => TokenRule.Shifts;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonArithmeticRightShift()
+		: SymbolicToken(type: TokenType.ArithmeticRightShift, rule: TokenRule.Shifts, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.ArithmeticRightShift(left, right);
+			return new ExprArithmeticRightShift(left, right);
+		}
+
+		private sealed class ExprArithmeticRightShift(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprArithmeticRightShift(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a.AsLong() >>> b.AsInt();
+			}
 		}
 	}
 
 	public static readonly SymbolicToken BitwiseAnd = new SingletonBitwiseAnd();
-	private sealed class SingletonBitwiseAnd : SymbolicToken {
-		public override TokenType Type => TokenType.BitwiseAnd;
-		public override TokenRule Rule => TokenRule.BitwiseAnd;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonBitwiseAnd()
+		: SymbolicToken(type: TokenType.BitwiseAnd, rule: TokenRule.BitwiseAnd, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.BitwiseAnd(left, right);
+			return new ExprBitwiseAnd(left, right);
+		}
+
+		private sealed class ExprBitwiseAnd(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprBitwiseAnd(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a.AsLong() & b.AsLong();
+			}
 		}
 	}
 
 	public static readonly SymbolicToken BitwiseOr = new SingletonBitwiseOr();
-	private sealed class SingletonBitwiseOr : SymbolicToken {
-		public override TokenType Type => TokenType.BitwiseOr;
-		public override TokenRule Rule => TokenRule.BitwiseOr;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonBitwiseOr()
+		: SymbolicToken(type: TokenType.BitwiseOr, rule: TokenRule.BitwiseOr, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.BitwiseOr(left, right);
+			return new ExprBitwiseOr(left, right);
+		}
+
+		private sealed class ExprBitwiseOr(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprBitwiseOr(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a.AsLong() | b.AsLong();
+			}
 		}
 	}
 
 	public static readonly SymbolicToken BitwiseEor = new SingletonBitwiseEor();
-	private sealed class SingletonBitwiseEor : SymbolicToken {
-		public override TokenType Type => TokenType.BitwiseEor;
-		public override TokenRule Rule => TokenRule.BitwiseEor;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonBitwiseEor()
+		: SymbolicToken(type: TokenType.BitwiseEor, rule: TokenRule.BitwiseEor, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.BitwiseEor(left, right);
+			return new ExprBitwiseEor(left, right);
+		}
+
+		private sealed class ExprBitwiseEor(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprBitwiseEor(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a.AsLong() ^ b.AsLong();
+			}
 		}
 	}
 
 	public static readonly SymbolicToken LEMerge = new SingletonLEMerge();
-	private sealed class SingletonLEMerge : SymbolicToken {
-		public override TokenType Type => TokenType.LEMerge;
-		public override TokenRule Rule => TokenRule.BitwiseOr;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonLEMerge()
+		: SymbolicToken(type: TokenType.LEMerge, rule: TokenRule.BitwiseOr, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.LittleEndianMerge(left, right);
+			return new ExprLittleEndianMerge(left, right);
+		}
+
+		private sealed class ExprLittleEndianMerge(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprLittleEndianMerge(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return (a.AsLong() & 0xFFL) | ((b.AsLong() & 0xFFL) << 8);
+			}
 		}
 	}
 
 	public static readonly SymbolicToken LogicalAnd = new SingletonLogicalAnd();
-	private sealed class SingletonLogicalAnd : SymbolicToken {
-		public override TokenType Type => TokenType.LogicalAnd;
-		public override TokenRule Rule => TokenRule.LogicalAnd;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonLogicalAnd()
+		: SymbolicToken(type: TokenType.LogicalAnd, rule: TokenRule.LogicalAnd, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.LogicalAnd(left, right);
+			return new ExprLogicalAnd(left, right);
+		}
+
+		private sealed class ExprLogicalAnd(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprLogicalAnd(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return MathHelpers.GetTruth(a.IsTrue() && b.IsTrue());
+			}
 		}
 	}
 
 	public static readonly SymbolicToken LogicalOr = new SingletonLogicalOr();
-	private sealed class SingletonLogicalOr : SymbolicToken {
-		public override TokenType Type => TokenType.LogicalOr;
-		public override TokenRule Rule => TokenRule.LogicalOr;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonLogicalOr()
+		: SymbolicToken(type: TokenType.LogicalOr, rule: TokenRule.LogicalOr, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.LogicalOr(left, right);
+			return new ExprLogicalOr(left, right);
+		}
+
+		private sealed class ExprLogicalOr(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprLogicalOr(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return MathHelpers.GetTruth(a.IsTrue() || b.IsTrue());
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Not = new SingletonNot();
-	private sealed class SingletonNot : SymbolicToken {
-		public override TokenType Type => TokenType.Not;
-		public override TokenRule Rule => TokenRule.Unary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
+	private sealed class SingletonNot()
+		: SymbolicToken(type: TokenType.Not, rule: TokenRule.Unary, forceUnary: true, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.Not(item);
+			return new ExprNot(item);
+		}
+
+		private sealed class ExprNot(ExpressionItem item) : UnaryExpression(item) {
+			public override ExpressionItem Clone() => new ExprNot(Item.Clone());
+			protected override decimal Equate(decimal a) {
+				return ~a.AsLong();
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Negate = new SingletonNegate();
-	private sealed class SingletonNegate : SymbolicToken {
-		public override TokenType Type => TokenType.Negate;
-		public override TokenRule Rule => TokenRule.Unary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
+	private sealed class SingletonNegate()
+		: SymbolicToken(type: TokenType.Negate, rule: TokenRule.Unary, forceUnary: true, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.Negate(item);
+			return new ExprNegate(item);
+		}
+
+		private sealed class ExprNegate(ExpressionItem item) : UnaryExpression(item) {
+			public override ExpressionItem Clone() => new ExprNegate(Item.Clone());
+			protected override decimal Equate(decimal a) {
+				return -a;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken LowByte = new SingletonLowByte();
-	private sealed class SingletonLowByte : SymbolicToken {
-		public override TokenType Type => TokenType.LowByte;
-		public override TokenRule Rule => TokenRule.Unary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
+	private sealed class SingletonLowByte()
+		: SymbolicToken(type: TokenType.LowByte, rule: TokenRule.Unary, forceUnary: true, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.LowByte(item);
+			return new ExprLowByte(item);
+		}
+
+		private sealed class ExprLowByte(ExpressionItem item) : UnaryExpression(item) {
+			public override ExpressionItem Clone() => new ExprLowByte(Item.Clone());
+			protected override decimal Equate(decimal a) {
+				return a.AsLong() & 0xFFL;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken HighByte = new SingletonHighByte();
-	private sealed class SingletonHighByte : SymbolicToken {
-		public override TokenType Type => TokenType.HighByte;
-		public override TokenRule Rule => TokenRule.Unary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
+	private sealed class SingletonHighByte()
+		: SymbolicToken(type: TokenType.HighByte, rule: TokenRule.Unary, forceUnary: true, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.HighByte(item);
+			return new ExprHighByte(item);
+		}
+
+		private sealed class ExprHighByte(ExpressionItem item) : UnaryExpression(item) {
+			public override ExpressionItem Clone() => new ExprHighByte(Item.Clone());
+			protected override decimal Equate(decimal a) {
+				return (a.AsLong() >> 8) & 0xFFL;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken BankByte = new SingletonBankByte();
-	private sealed class SingletonBankByte : SymbolicToken {
-		public override TokenType Type => TokenType.BankByte;
-		public override TokenRule Rule => TokenRule.Unary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
+	private sealed class SingletonBankByte()
+		: SymbolicToken(type: TokenType.BankByte, rule: TokenRule.Unary, forceUnary: true, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.BankByte(item);
+			return new ExprBankByte(item);
+		}
+
+		private sealed class ExprBankByte(ExpressionItem item) : UnaryExpression(item) {
+			public override ExpressionItem Clone() => new ExprBankByte(Item.Clone());
+			protected override decimal Equate(decimal a) {
+				return (a.AsLong() >> 16) & 0xFFL;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Low16 = new SingletonLow16();
-	private sealed class SingletonLow16 : SymbolicToken {
-		public override TokenType Type => TokenType.Low16;
-		public override TokenRule Rule => TokenRule.Unary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
+	private sealed class SingletonLow16()
+		: SymbolicToken(type: TokenType.Low16, rule: TokenRule.Unary, forceUnary: true, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.Low16(item);
+			return new ExprLow16(item);
+		}
+
+		private sealed class ExprLow16(ExpressionItem item) : UnaryExpression(item) {
+			public override ExpressionItem Clone() => new ExprLow16(Item.Clone());
+			protected override decimal Equate(decimal a) {
+				return a.AsLong() & SnesHelpers.AbsoluteMask;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken High16 = new SingletonHigh16();
-	private sealed class SingletonHigh16 : SymbolicToken {
-		public override TokenType Type => TokenType.High16;
-		public override TokenRule Rule => TokenRule.Unary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
+	private sealed class SingletonHigh16()
+		: SymbolicToken(type: TokenType.High16, rule: TokenRule.Unary, forceUnary: true, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.High16(item);
+			return new ExprHigh16(item);
+		}
+
+		private sealed class ExprHigh16(ExpressionItem item) : UnaryExpression(item) {
+			public override ExpressionItem Clone() => new ExprHigh16(Item.Clone());
+			protected override decimal Equate(decimal a) {
+				return (a.AsLong() >> 8) & 0xFFFFL;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken BankOnly = new SingletonBankOnly();
-	private sealed class SingletonBankOnly : SymbolicToken {
-		public override TokenType Type => TokenType.BankOnly;
-		public override TokenRule Rule => TokenRule.Unary;
-		public override bool ForcesUnary => true;
-		public override bool IsInfix => false;
+	private sealed class SingletonBankOnly()
+		: SymbolicToken(type: TokenType.BankOnly, rule: TokenRule.Unary, forceUnary: true, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.BankOnly(item);
+			return new ExprBankOnly(item);
+		}
+
+		private sealed class ExprBankOnly(ExpressionItem item) : UnaryExpression(item) {
+			public override ExpressionItem Clone() => new ExprBankOnly(Item.Clone());
+			protected override decimal Equate(decimal a) {
+				return a.AsLong() & SnesHelpers.BankMask;
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Equality = new SingletonEquality();
-	private sealed class SingletonEquality : SymbolicToken {
-		public override TokenType Type => TokenType.Equality;
-		public override TokenRule Rule => TokenRule.Equality;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonEquality()
+		: SymbolicToken(type: TokenType.Equality, rule: TokenRule.Equality, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.Equality(left, right);
+			return new ExprEquality(left, right);
+		}
+
+		private sealed class ExprEquality(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprEquality(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return MathHelpers.GetTruth(a == b);
+			}
 		}
 	}
 
 	public static readonly SymbolicToken Inequality = new SingletonInequality();
-	private sealed class SingletonInequality : SymbolicToken {
-		public override TokenType Type => TokenType.Inequality;
-		public override TokenRule Rule => TokenRule.Equality;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonInequality()
+		: SymbolicToken(type: TokenType.Inequality, rule: TokenRule.Equality, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.Inequality(left, right);
+			return new ExprInequality(left, right);
+		}
+
+		private sealed class ExprInequality(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprInequality(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return MathHelpers.GetTruth(a != b);
+			}
 		}
 	}
 
 	public static readonly SymbolicToken GreaterThan = new SingletonGreaterThan();
-	private sealed class SingletonGreaterThan : SymbolicToken {
-		public override TokenType Type => TokenType.GreaterThan;
-		public override TokenRule Rule => TokenRule.Comparison;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonGreaterThan()
+		: SymbolicToken(type: TokenType.GreaterThan, rule: TokenRule.Comparison, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.GreaterThan(left, right);
+			return new ExprGreaterThan(left, right);
+		}
+
+		private sealed class ExprGreaterThan(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprGreaterThan(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return MathHelpers.GetTruth(a > b);
+			}
 		}
 	}
 
 	public static readonly SymbolicToken LessThan = new SingletonLessThan();
-	private sealed class SingletonLessThan : SymbolicToken {
-		public override TokenType Type => TokenType.LessThan;
-		public override TokenRule Rule => TokenRule.Comparison;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonLessThan()
+		: SymbolicToken(type: TokenType.LessThan, rule: TokenRule.Comparison, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.LessThan(left, right);
+			return new ExprLessThan(left, right);
+		}
+
+		private sealed class ExprLessThan(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprLessThan(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return MathHelpers.GetTruth(a < b);
+			}
 		}
 	}
 
 	public static readonly SymbolicToken GreaterThanEqual = new SingletonGreaterThanEqual();
-	private sealed class SingletonGreaterThanEqual : SymbolicToken {
-		public override TokenType Type => TokenType.GreaterThanEqual;
-		public override TokenRule Rule => TokenRule.Comparison;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonGreaterThanEqual()
+		: SymbolicToken(type: TokenType.GreaterThanEqual, rule: TokenRule.Comparison, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.GreaterThanEqual(left, right);
+			return new ExprGreaterThanEqual(left, right);
+		}
+
+		private sealed class ExprGreaterThanEqual(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprGreaterThanEqual(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return MathHelpers.GetTruth(a >= b);
+			}
 		}
 	}
 
 	public static readonly SymbolicToken LessThanEqual = new SingletonLessThanEqual();
-	private sealed class SingletonLessThanEqual : SymbolicToken {
-		public override TokenType Type => TokenType.LessThanEqual;
-		public override TokenRule Rule => TokenRule.Comparison;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonLessThanEqual()
+		: SymbolicToken(type: TokenType.LessThanEqual, rule: TokenRule.Comparison, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.LessThanEqual(left, right);
+			return new ExprLessThanEqual(left, right);
+		}
+
+		private sealed class ExprLessThanEqual(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprLessThanEqual(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return MathHelpers.GetTruth(a <= b);
+			}
 		}
 	}
 
 	public static readonly SymbolicToken NullCoalesce = new SingletonNullCoalesce();
-	private sealed class SingletonNullCoalesce : SymbolicToken {
-		public override TokenType Type => TokenType.NullCoalesce;
-		public override TokenRule Rule => TokenRule.NullCoalesce;
-		public override bool IsInfix => true;
-		public override bool ForcesUnary => true;
+	private sealed class SingletonNullCoalesce()
+		: SymbolicToken(type: TokenType.NullCoalesce, rule: TokenRule.NullCoalesce, forceUnary: true, infix: true) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new BinaryExpression.NullCoalesce(left, right);
+			return new ExprNullCoalesce(left, right);
+		}
+
+		private sealed class ExprNullCoalesce(ExpressionItem left, ExpressionItem right) : ExpressionItem {
+			public ExpressionItem Left => left;
+			public ExpressionItem Right => right;
+			public static int Arity => 2;
+
+			public override ExpressionState State => _state;
+			private ExpressionState _state = ExpressionState.Unresolved;
+
+			public override ExpressionItem Clone() => new ExprNullCoalesce(Left.Clone(), Right.Clone());
+
+			public override (decimal, ExpressionState) TryEvaluate() {
+				var (value, state) = Left.TryEvaluate();
+
+				if (state.IsResolved) {
+					return (value, _state = state);
+				} else {
+					(value, state) = Right.TryEvaluate();
+
+					if (state.IsResolved) {
+						return (value, _state = ExpressionState.ResolvedButForceRequest);
+					}
+				}
+
+				return (MathHelpers.NaN, _state = state);
+			}
 		}
 	}
 
-	public static readonly SymbolicToken NullCoalescePostfix = new SingletonNullCoalescePostfix();
-	private sealed class SingletonNullCoalescePostfix : SymbolicToken {
-		public override TokenType Type => TokenType.NullCoalesceShort;
-		public override TokenRule Rule => TokenRule.Postfix;
-		public override bool IsInfix => false;
-		public override bool ForcesUnary => false;
+	public static readonly SymbolicToken PostfixNullCoalesce = new SingletonPostfixNullCoalesce();
+	private sealed class SingletonPostfixNullCoalesce()
+		: SymbolicToken(type: TokenType.NullCoalesceShort, rule: TokenRule.Postfix, forceUnary: false, infix: false) {
 
 		public override ExpressionItem CreateExpressionItem(ExpressionItem item) {
-			return new UnaryExpression.NullCoalesce(item);
+			return new ExprNullCoalesce(item);
+		}
+
+		private sealed class ExprNullCoalesce(ExpressionItem item) : ExpressionItem {
+			public ExpressionItem Item => item;
+			public static int Arity => 1;
+
+			public sealed override ExpressionState State => _state;
+			private ExpressionState _state = ExpressionState.Unresolved;
+			public override ExpressionItem Clone() => new ExprNullCoalesce(Item.Clone());
+
+			public override (decimal, ExpressionState) TryEvaluate() {
+				var (value, state) = Item.TryEvaluate();
+
+				if (state.WarrantsRequest) {
+					return (value, _state = ExpressionState.ResolvedButForceRequest);
+
+				} else if (!state.IsResolved) {
+					value = MathHelpers.NaN;
+				}
+
+				return (value, _state = state);
+			}
 		}
 	}
 }

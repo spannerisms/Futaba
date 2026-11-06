@@ -4,7 +4,6 @@
 /// Represents a symbol that has been explicitly assigned to an expression.
 /// </summary>
 public sealed class AssignedSymbol : Symbol {
-
 	private readonly int _value;
 
 	/// <inheritdoc/>

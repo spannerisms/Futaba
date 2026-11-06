@@ -1,6 +1,7 @@
 ﻿namespace Futaba;
 
 internal enum VariableType {
+	Uninitialized = 0,
 	String,
 	Value,
 }
@@ -68,7 +69,6 @@ public sealed class Variable : IFormattable {
 	}
 
 	private decimal _value = 0;
-
 	internal decimal Value {
 		get {
 			if (VarType is VariableType.Value) {
@@ -84,7 +84,7 @@ public sealed class Variable : IFormattable {
 		}
 	}
 
-	private Variable(string name) {
+	internal Variable(string name) {
 		Name = name;
 	}
 

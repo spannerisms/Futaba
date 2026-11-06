@@ -11,8 +11,7 @@ internal enum TokenRule {
 	LogicalOr,      // logicaland ( "||" logicaland )*
 	LogicalAnd,     // bitwiseor ( "&&" bitwiseor )*
 
-	// TODO maybe give ][ high precedence
-	BitwiseOr,      // bitwiseeor ( "|" bitwiseeor )*
+	BitwiseOr,      // bitwiseeor ( ( "|" | "][" ) bitwiseeor )*
 	BitwiseEor,     // bitwiseand ( "^" bitwiseand )*
 	BitwiseAnd,     // shifts ( "&" shifts )*
 
@@ -22,7 +21,7 @@ internal enum TokenRule {
 	Multiplicative, // unary ( ( "*" | "/" | "//" | "%" ) unary )*
 
 	Unary,          // ( "-" | "+" | ( "<" | ">" | "^" | "<&" | ">&" | "^&" ) expression | primary
-	Postfix,        // primary ( "?" )
+	Postfix,        // primary ( "?" )*
 
 	FunctionCall,
 

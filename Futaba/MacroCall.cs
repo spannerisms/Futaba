@@ -1,19 +1,13 @@
 ﻿namespace Futaba;
 
 internal unsafe sealed class MacroCall {
-	private readonly string _name;
 	private readonly SourceLine _declarationSite;
-
-	internal int Arity { get; }
-
-	internal bool IsFunction { get; init; }
-
-	private readonly List<string> _arguments;
-
+	private readonly string _name;
 	private readonly string _body;
-
 	private readonly string _identifier;
+	private readonly List<string> _arguments;
 	private int _invokeCount = 0;
+	internal int Arity { get; }
 
 	// using reserved unicode characters to allow fast replacement
 	// (they need replacing anyways to preempt false positives)
@@ -37,7 +31,6 @@ internal unsafe sealed class MacroCall {
 
 		_identifier = $"M{macronum:X5}";
 		_declarationSite = decSite;
-
 	}
 
 	internal bool TryExplode(List<OperandString> args, string uniqueId, [NotNullWhen(true)] out string? invoker, [MaybeNullWhen(true)] out string? errors) {
@@ -56,7 +49,6 @@ internal unsafe sealed class MacroCall {
 		StringBuilder ret = new(_body);
 
 		// replace these temporarily to prevent recursive replacements
-
 		for (int i = 0; i < Arity; i++) {
 			CharSpan repv = (string) args[i];
 
@@ -70,7 +62,6 @@ internal unsafe sealed class MacroCall {
 		ret.Replace(SpecialID, uniqueId);
 
 		invoker = ret.ToString();
-
 		errors = null;
 		return true;
 	}
@@ -86,19 +77,16 @@ internal unsafe sealed class MacroCall {
 		}
 
 		invoker = new MacroInvocation(this, theBody, uniqueId, callSite);
-
 		errors = null;
-
 		return true;
 	}
 
 	private sealed class MacroInvocation : SourceObject {
-		internal override bool IsMacro => true;
-		private readonly string _identifier;
-
-		public override FileInfo? FileInfo => _callSite.Source.FileInfo;
 		private readonly SourceLine _callSite;
 		private readonly MacroCall _macroType;
+		public override string ObjectName { get; }
+		public override string? DirectoryName => _callSite.Source.DirectoryName;
+		internal override SourceObjectType SourceType => SourceObjectType.Macro;
 
 		internal MacroInvocation(MacroCall macroType, string body, string name, SourceLine callSite) {
 			int bufferLen = body.Length;
@@ -112,13 +100,11 @@ internal unsafe sealed class MacroCall {
 			SourceEnd = SourceStart + body.Length;
 
 			ApplyPadding();
-			_identifier = name;
+			ObjectName = name;
 
 			_callSite = callSite;
 			_macroType = macroType;
 		}
-
-		public override string ObjectName => _identifier;
 
 		public override string ToString() {
 			return $"{_callSite.Source}: [Macro \"{_macroType._name}\" (@{_macroType._declarationSite})] ";
@@ -126,5 +112,4 @@ internal unsafe sealed class MacroCall {
 
 		protected override void DisposeResources() { }
 	}
-
 }

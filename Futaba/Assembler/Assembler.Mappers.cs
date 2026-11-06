@@ -5,7 +5,15 @@ partial class Assembler {
 	/// <param name="mode"><inheritdoc cref="CreateAssemblerWithMapper(MapperMode,FileInfo)" path="/param[@name='mode']"/></param>
 	/// <param name="path">The path of the file to be used as an entry point</param>
 	public static Assembler CreateAssemblerWithMapper(MapperMode mode, string path) {
-		return CreateAssemblerWithMapper(mode, new FileInfo(path));
+		return mode switch {
+			MapperMode.None /*               */ => new UnmappedAssembler(path),
+			MapperMode.Lorom /*              */ => new LoromAssembler(path),
+			MapperMode.ExLorom /*            */ => new ExLoromAssembler(path),
+			MapperMode.Hirom /*              */ => new HiromAssembler(path),
+			MapperMode.ExHirom /*            */ => new ExHiromAssembler(path),
+			MapperMode.Sa1 /*                */ => new Sa1Assembler(path),
+			_ => /*                          */ throw new ArgumentException("Invalid mapper mode.", nameof(mode)),
+		};
 	}
 
 	/// <summary>
@@ -15,15 +23,7 @@ partial class Assembler {
 	/// <param name="mode">The enum for the desired mapper.</param>
 	/// <param name="entry">The <see cref="FileInfo"/> object to be used as the entry point of assembly.</param>
 	public static Assembler CreateAssemblerWithMapper(MapperMode mode, FileInfo entry) {
-		return mode switch {
-			MapperMode.None /*               */ => new UnmappedAssembler(entry),
-			MapperMode.Lorom /*              */ => new LoromAssembler(entry),
-			MapperMode.ExLorom /*            */ => new ExLoromAssembler(entry),
-			MapperMode.Hirom /*              */ => new HiromAssembler(entry),
-			MapperMode.ExHirom /*            */ => new ExHiromAssembler(entry),
-			MapperMode.Sa1 /*                */ => new Sa1Assembler(entry),
-			_ => /*                          */ throw new ArgumentException("Invalid mapper mode.", nameof(mode)),
-		};
+		return CreateAssemblerWithMapper(mode, entry.FullName);
 	}
 
 	/// <summary>
@@ -165,10 +165,10 @@ public sealed class UnmappedAssembler : Assembler {
 	/// <summary>
 	/// Creates a new assembler instance with no mapper map using the given file as its entry point.
 	/// </summary>
-	public UnmappedAssembler(FileInfo entry) : base(entry) { }
+	public UnmappedAssembler(FileInfo entry) : base(entry.FullName) { }
 
 	/// <inheritdoc cref="UnmappedAssembler(FileInfo)"/>
-	public UnmappedAssembler(string entry) : this(new FileInfo(entry)) { }
+	public UnmappedAssembler(string entry) : base(entry) { }
 
 	/// <inheritdoc/>
 	public override MapperMode Mapper => MapperMode.None;
@@ -217,10 +217,10 @@ public sealed class LoromAssembler : Assembler {
 	/// <summary>
 	/// Creates a new assembler instance with the lorom mapping mode using the given file as its entry point.
 	/// </summary>
-	public LoromAssembler(FileInfo entry) : base(entry) { }
+	public LoromAssembler(FileInfo entry) : base(entry.FullName) { }
 
 	/// <inheritdoc cref="LoromAssembler(FileInfo)"/>
-	public LoromAssembler(string entry) : this(new FileInfo(entry)) { }
+	public LoromAssembler(string entry) : base(entry) { }
 
 	/// <inheritdoc/>
 	public override MapperMode Mapper => MapperMode.Lorom;
@@ -258,10 +258,10 @@ public sealed class HiromAssembler : Assembler {
 	/// <summary>
 	/// Creates a new assembler instance with the hirom mapping mode using the given file as its entry point.
 	/// </summary>
-	public HiromAssembler(FileInfo entry) : base(entry) { }
+	public HiromAssembler(FileInfo entry) : base(entry.FullName) { }
 
 	/// <inheritdoc cref="HiromAssembler(FileInfo)"/>
-	public HiromAssembler(string entry) : this(new FileInfo(entry)) { }
+	public HiromAssembler(string entry) : base(entry) { }
 
 	/// <inheritdoc/>
 	public override MapperMode Mapper => MapperMode.Hirom;
@@ -299,10 +299,10 @@ public sealed class ExLoromAssembler : Assembler {
 	/// <summary>
 	/// Creates a new assembler instance with the exlorom mapping mode using the given file as its entry point.
 	/// </summary>
-	public ExLoromAssembler(FileInfo entry) : base(entry) { }
+	public ExLoromAssembler(FileInfo entry) : base(entry.FullName) { }
 
 	/// <inheritdoc cref="ExLoromAssembler(FileInfo)"/>
-	public ExLoromAssembler(string entry) : this(new FileInfo(entry)) { }
+	public ExLoromAssembler(string entry) : base(entry) { }
 
 	/// <inheritdoc/>
 	public override MapperMode Mapper => MapperMode.ExLorom;
@@ -342,10 +342,10 @@ public sealed class ExHiromAssembler : Assembler {
 	/// <summary>
 	/// Creates a new assembler instance with the ExHirom mapping mode using the given file as its entry point.
 	/// </summary>
-	public ExHiromAssembler(FileInfo entry) : base(entry) { }
+	public ExHiromAssembler(FileInfo entry) : base(entry.FullName) { }
 
 	/// <inheritdoc cref="ExHiromAssembler(FileInfo)"/>
-	public ExHiromAssembler(string entry) : this(new FileInfo(entry)) { }
+	public ExHiromAssembler(string entry) : base(entry) { }
 
 	/// <inheritdoc/>
 	public override MapperMode Mapper => MapperMode.ExHirom;
@@ -385,10 +385,10 @@ public sealed class Sa1Assembler : Assembler {
 	/// <summary>
 	/// Creates a new assembler instance with the SA-1 using the given file as its entry point.
 	/// </summary>
-	public Sa1Assembler(FileInfo entry) : base(entry) { }
+	public Sa1Assembler(FileInfo entry) : base(entry.FullName) { }
 
 	/// <inheritdoc cref="Sa1Assembler(FileInfo)"/>
-	public Sa1Assembler(string entry) : this(new FileInfo(entry)) { }
+	public Sa1Assembler(string entry) : base(entry) { }
 
 	/// <inheritdoc/>
 	public override MapperMode Mapper => MapperMode.Sa1;

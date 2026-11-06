@@ -42,8 +42,12 @@ internal unsafe readonly struct SourceLine {
 				break;
 			}
 
+			if (c is CharDelim) {
+				_ = FastRead.SkipToMatchingApos(ref read, theend);
+			}
+
 			if (c is '"') {
-				FastRead.SkipToMatchingQuote(ref read, theend);
+				_ = FastRead.SkipToMatchingQuote(ref read, theend);
 			}
 		}
 

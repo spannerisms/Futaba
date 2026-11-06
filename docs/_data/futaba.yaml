@@ -95,8 +95,10 @@ internal_variables:
     desc: Current program counter
   - name: site
     desc: Current provenance
+  - name: alloc
+    desc: Current allocation address
   - name: here
-    desc: Alias for <fvab>!:site</fvab>
+    desc: Context-sensitive alias for <fvab>!:site</fvab> or <fvab>!:alloc</fvab>
   - name: offset
     desc: Current binary offset
   - name: line
@@ -271,6 +273,8 @@ cli_args:
               desc: <fblk>ppu</fblk>, <fblk>cpu</fblk>, <fblk>joypad</fblk>, <fblk>dma</fblk>
             - name: apu
               desc: <fblk>spc</fblk>, <fblk>dsp</fblk>
+        - name: base
+          desc: Relative path to a file to use as a base binary
         - name: nullfill
           desc: Pre-initialize the output buffer before assembly
           valuelist:
@@ -292,8 +296,6 @@ cli_args:
             If the file grows in size, the expanded region will be initialized to all 0.
         - name: randomseed
           desc: Seeds the assembler for deterministic random numbers using the given string
-        - name: base
-          desc: Relative path to a file to use as a base binary
         - name: incremental
           desc: |
             When true, the application will listen for changes to the manifest or
@@ -348,10 +350,6 @@ cli_args:
         - name: symbols
           desc: Output format for symbols found during assembly
           values: [ "mlb", "wla" ]
-        - name: stdout
-          desc: Relative path to text file for print directives. If unspecified, everything is written to the console.
-        - name: errorout
-          desc: Relative path to text file for warnings and errors. If unspecified, everything is written to the console.
         - name: overflow
           desc: Action to take if assembly occurs outside the buffer.
           values: [ "error", "grow", "expand" ]
@@ -363,6 +361,10 @@ cli_args:
           values: *BoolInputs
         - name: maxerrors
           desc: Set the maximum number of errors. If this limit is exceeded, an exception is thrown.
+        - name: stdout
+          desc: Relative path to text file for print directives. If unspecified, everything is written to the console.
+        - name: errorout
+          desc: Relative path to text file for warnings and errors. If unspecified, everything is written to the console.
     - name: disassembly
       items:
         - name: crc

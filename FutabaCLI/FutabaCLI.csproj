@@ -10,17 +10,19 @@
     <ApplicationIcon>..\futaba.ico</ApplicationIcon>
     <IsAotCompatible>true</IsAotCompatible>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <Configurations>Debug;Release;UnitTests</Configurations>
+    <Configurations>Debug;Release</Configurations>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <Title>futaba</Title>
+    <Title>Futaba CLI</Title>
+    <AssemblyTitle>Futaba CLI</AssemblyTitle>
     <Authors>kan</Authors>
     <Copyright>(c) 2026</Copyright>
     <PackageProjectUrl>https://spannerisms.github.io/futaba</PackageProjectUrl>
-    <VersionPrefix>0.3.0.0</VersionPrefix>
+    <VersionPrefix>0.4.0.0</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>
     <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <RepositoryUrl>https://github.com/spannerisms/futaba</RepositoryUrl>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -31,12 +33,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>none</DebugType>
     <Optimize>True</Optimize>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UnitTests|AnyCPU'">
-    <DebugType>portable</DebugType>
-    <Optimize>False</Optimize>
-    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -56,10 +52,8 @@
     <EmbeddedResource Include="..\logo.png" LogicalName="futaba.png" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(Configuration)'=='UnitTests'">
-    <None Update="Tests\*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+    <InternalsVisibleTo Include="Tests" />
   </ItemGroup>
 
 </Project>

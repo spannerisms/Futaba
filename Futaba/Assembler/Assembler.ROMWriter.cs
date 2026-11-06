@@ -65,11 +65,26 @@ unsafe partial class Assembler {
 	private bool _shutUpAboutAddresses = false;
 	private bool _shutUpAboutSegments = false;
 
+
+	// FF_0* adds coverage for anything completely out of bounds
+	private const int BankGuardMask_Off = unchecked((int) 0xFF_00_0000);
+	private const int BankGuardMask_Half = unchecked((int) 0xFF_FF_8000);
+	private const int BankGuardMask_Full = unchecked((int) 0xFF_FF_0000);
+	private int _bankGuardMask = BankGuardMask_Half;
+
+
 	private List<Dock> _segments = [];
 	private Dock? _currentSegment = null;
 
 	private Stack<int> _pcStack = new(64);
 	private Stack<int?> _provStack = new(64);
+
+	private void AdjustPC(int newpc) {
+		_pc = newpc;
+
+		_shutUpAboutAddresses = false;
+		_shutUpAboutSegments = false;
+	}
 
 	private void PushPC() {
 		_pcStack.Push(_pc);
@@ -77,7 +92,7 @@ unsafe partial class Assembler {
 
 	private void PullPC() {
 		if (_pcStack.TryPop(out int newpc)) {
-			_pc = newpc;
+			AdjustPC(newpc);
 			_offset = AddressToOffset(_pc);
 			_pcPtr = _romPtr + _offset;
 		} else {
@@ -344,7 +359,6 @@ unsafe partial class Assembler {
 		}
 	}
 
-	// TODO try to use vector128.shuffle?
 	private void InsertEncodedString(int offset, int wordsize, string text, SnesEncoder encoder) {
 		int length = text.Length;
 
@@ -362,6 +376,7 @@ unsafe partial class Assembler {
 			case 2:
 				if (BitConverter.IsLittleEndian && encoder == SnesEncoder.Unicode) {
 					text.AsSpan().CopyTo(new Span<char>(bufferB, length));
+
 				} else {
 					foreach (char c in text) {
 						SnesHelpers.WriteW(bufferB, (int) enc(c));
@@ -396,7 +411,7 @@ unsafe partial class Assembler {
 
 	// The routines in this region are roughly organized such that
 	// the TrackAndStep routines appear after the ones that use them
-	// just to maybe influence cleaner compilation wrt cache
+	// just to maybe influence cleaner compilation wrt cache lines
 	#region writes
 
 	private void WriteOpImplied(IExpressionReturn opcode) {
@@ -449,9 +464,11 @@ unsafe partial class Assembler {
 				if (c is BROP) {
 					WriteOpBrop(opcode);
 					return;
+
 				} else if (c is JNOP) {
 					WriteOpB(opcode, 0x00);
 					return;
+
 				} else if (c is BTYS) {
 					WriteOpB(opcode, 0xFE);
 					return;
@@ -701,6 +718,7 @@ unsafe partial class Assembler {
 
 				SnesHelpers.WriteW(wr + 1, vval);
 			}
+
 			TrackAndStep3();
 		}
 	}
@@ -777,13 +795,6 @@ unsafe partial class Assembler {
 
 	#endregion
 
-	// FF_8* covers anything completely out of bounds
-	private const int BankGuardMask_Off = unchecked((int) 0xFF_80_0000);
-	private const int BankGuardMask_Half = unchecked((int) 0xFF_FF_8000);
-	private const int BankGuardMask_Full = unchecked((int) 0xFF_FF_0000);
-
-	private int _bankGuardMask = BankGuardMask_Half;
-
 	internal bool TryAdvanceProgramCounter(int step) {
 		if (!TestOffsetBounds(_offset + step)) {
 			if (!_shutUpAboutAddresses) {
@@ -829,13 +840,9 @@ unsafe partial class Assembler {
 
 		if (TestOffsetBounds(offset)) {
 			if (AddressIsRom(addr)) {
-				// TODO make a single MovePc(int) and use that for all explicit moves
-				_pc = addr;
+				AdjustPC(addr);
 				_offset = offset;
 				_pcPtr = _romPtr + offset;
-
-				_shutUpAboutAddresses = false;
-				_shutUpAboutSegments = false;
 
 				TestProtectedSegments(offset);
 			} else {

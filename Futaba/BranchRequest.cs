@@ -20,12 +20,12 @@ internal class BranchRequest(IExpressionReturn item, int offset, int address, ui
 		return Item.TryToResolve();
 	}
 
-	public virtual bool DistanceTooLarge => !SnesHelpers.TestGetBranchDistance(Address, Item.ValueInt32).Item1;
+	public virtual bool DistanceTooLarge => !SnesHelpers.TestGetBranchDistance(Address, Item.ValueInt32).Valid;
 }
 
 internal sealed class BranchRequestLong(IExpressionReturn item, int offset, int address, uint time, SourceLine line)
 	: BranchRequest(item, offset, address, time, line) {
 	public override int Size => 2;
-	public override bool DistanceTooLarge => !SnesHelpers.TestGetBranchDistanceLong(Address, Item.ValueInt32).Item1;
+	public override bool DistanceTooLarge => !SnesHelpers.TestGetBranchDistanceLong(Address, Item.ValueInt32).Valid;
 
 }

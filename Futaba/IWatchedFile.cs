@@ -3,7 +3,7 @@
 namespace Futaba;
 
 internal interface IWatchedFileFactory<T> where T : class, IWatchedFile {
-	public static abstract T Create(string path);
+	public static abstract T TryCreate(string path);
 }
 
 internal interface IWatchedFile : IDisposable {
@@ -26,13 +26,21 @@ internal interface IWatchedFile : IDisposable {
 
 	public abstract void Refresh();
 
-	internal static SafeFileHandle OpenHandle(string path) {
-		return File.OpenHandle(path,
-			FileMode.Open,
-			FileAccess.Read,
-			FileShare.ReadWrite | FileShare.Delete | FileShare.Inheritable,
-			FileOptions.SequentialScan | FileOptions.Asynchronous
-		);
+	internal static SafeFileHandle? TryOpenHandle(string path, out string? error) {
+		try {
+			SafeFileHandle ret = File.OpenHandle(path,
+				FileMode.Open,
+				FileAccess.Read,
+				FileShare.ReadWrite | FileShare.Delete | FileShare.Inheritable,
+				FileOptions.SequentialScan | FileOptions.Asynchronous
+			);
+			error = null;
+			return ret;
+
+		} catch (Exception e) {
+			error = e.Message;
+			return null;
+		}
 	}
 
 	internal static bool RevalidateHandle(IWatchedFile file, [NotNullWhen(true)] out SafeFileHandle? handle, [NotNullWhen(false)] out string? error) {
@@ -44,9 +52,8 @@ internal interface IWatchedFile : IDisposable {
 			string path = file.FileName;
 
 			if (File.Exists(path)) {
-				handle = OpenHandle(path);
-				error = null;
-				return true;
+				handle = TryOpenHandle(path, out error);
+				return handle is not null;
 
 			} else {
 				error = $"File {Path.GetFileName(path)} does not exist.";

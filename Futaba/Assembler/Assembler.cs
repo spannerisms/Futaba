@@ -12,13 +12,14 @@ public unsafe abstract partial class Assembler : IDisposable {
 	private SnesArchitecture _architecture = SnesArchitecture.WDC65816;
 
 	private SnesEncoder _currentEncoder = SnesEncoder.ASCII;
-	private SpannedLookup<SnesEncoder> _encoders = new(32);
+	private SpannedLookup<SnesEncoder> _encoders = new();
 
 	private Dictionary<string, SourceFile> _loadedFiles = new(32);
-	private Dictionary<string, SourceBinary> _loadedBinaries = new(64);
-	private List<SourceObject> _loadedSourceObjects = new(128);
+	private Dictionary<string, SourceBinary> _loadedBinaries = new(32);
+	private List<SourceObject> _loadedSourceObjects = new(32);
 
 	private int _nextAllocBlockStart = -1;
+	private int _allocationAddress = -1;
 
 	private BreakpointsControl _bpControl = BreakpointsControl.Off;
 	private BreakpointInserts _defaultBpInsert = BreakpointInserts.Nothing;
@@ -31,20 +32,21 @@ public unsafe abstract partial class Assembler : IDisposable {
 
 	private byte[]? _baseRom = null;
 
-	private UInt128 _randomSeed = new((ulong) DateTime.Now.Ticks, (ulong) DateTime.UtcNow.Ticks);
+	private UInt128 _randomSeed = new(0x426562656C6F766, 0x573636865657365);
 	internal readonly XoRandom _random = new(0);
 
 	// need to use private fields for these
 	// so they can be removed during disposal without throwing an exception
 	private TextWriter _messageOut = Console.Out;
 	private TextWriter _errorOut = Console.Error;
+	private bool _errorsToConsole = true;
 
 	#endregion
 
 	/// <summary>
-	/// Gets the file that acts as the entry point of assembly.
+	/// Gets the full path of the file that acts as the entry point of assembly.
 	/// </summary>
-	public FileInfo EntryPoint { get; }
+	public string EntryPoint { get; }
 
 	/// <summary>
 	/// Gets or sets the base binary data used to populate the initial buffer.
@@ -126,12 +128,12 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// <summary>
 	/// Returns the number of errors encountered during assembly.
 	/// </summary>
-	public int ErrorCount { get; private set; } = 0;
+	public int ErrorCount { get; private set; }
 
 	/// <summary>
 	/// Returns the number of warnings encountered during assembly.
 	/// </summary>
-	public int WarningCount { get; private set; } = 0;
+	public int WarningCount { get; private set; }
 
 	/// <summary>
 	/// Gets or sets whether to treat warnings as errors.
@@ -172,7 +174,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// <remarks>
 	/// Note that the source line returned is not necessarily the cause of the exception.
 	/// </remarks>
-	public string? ErrorLine { get; private set; } = null;
+	public string? ErrorLine { get; private set; }
 
 	/// <summary>
 	/// Gets or sets where print messages are printed.
@@ -202,6 +204,8 @@ public unsafe abstract partial class Assembler : IDisposable {
 		get => _errorOut;
 		set {
 			ThrowIfAssembling();
+			_errorsToConsole = ReferenceEquals(value, Console.Error);		
+
 			_errorOut = value;
 		}
 	}
@@ -221,8 +225,8 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// <summary>
 	/// Creates a new assembler object using the given file as its entry point.
 	/// </summary>
-	private protected Assembler(FileInfo entry) {
-		EntryPoint = entry;
+	private protected Assembler(string entry) {
+		EntryPoint = Path.GetFullPath(entry);
 
 		_romPtr = default;
 		_timePtr = default;
@@ -396,7 +400,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 		_currentEncoder = default!;
 
 		_previousState = default;
-		_ifChain = default;
+		_scopeChain = default;
 
 		_simpleRequests.Clear();
 		_simpleRequests = default!;

@@ -121,7 +121,7 @@ unsafe partial class Assembler {
 
 		_reading = read;
 
-		if (*read is ';') {
+		if (*read is CommentChar) {
 			FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
 		} else {
 			AbortCommand();
@@ -473,47 +473,68 @@ unsafe partial class Assembler {
 					if (*pcheck is ']') {
 						var splitter = new StringSplitter(pread + 1, pcheck);
 
-						// we want more commas for the second operand
-						if (splitter.GetNextDoubleChar(':', out var rangeL)) {
-							if (!splitter.GetNextComma(out var rangeR)) {
-								bool rangeGood = true;
+						OperandString rangeR;
 
-								if (rangeL.IsEmpty) {
-									binstart = 0;
-								} else {
-									IExpressionReturn valL = ParseOperand(rangeL);
+						StringSplitResult resL = splitter.GetNextDoubleChar(':', out OperandString rangeL);
 
-									if (valL.Resolved) {
-										binstart = valL.ValueInt32;
-									} else {
-										rangeGood = false;
-										Error_BadResolve(valL);
-									}
-								}
+						if (resL.HasFlag(StringSplitResult.Invalid)) {
+							Error(MsgInfo.InvalidFileRange);
+							continue;
+						}
 
-								if (rangeR.IsEmpty) {
-									binend = binlen;
-								} else {
-									IExpressionReturn valR = ParseOperand(rangeR);
+						if (!resL.HasFlag(StringSplitResult.Found)) {
+							Error(MsgInfo.MissingAllocator);
+							continue;
+						}
 
-									if (valR.Resolved) {
-										binstart = valR.ValueInt32;
-									} else {
-										rangeGood = false;
-										Error_BadResolve(valR);
-									}
-								}
+						if (resL.HasFlag(StringSplitResult.MoreContent)) {
+							StringSplitResult resR = splitter.GetNextDoubleChar(':', out rangeR);
 
-								if (!rangeGood) {
-									continue;
-								}
-
-							} else {
-								Error("Too many allocators.");
+							if (resR.HasFlag(StringSplitResult.Invalid)) {
+								Error(MsgInfo.InvalidFileRange);
 								continue;
 							}
+
+							if (resR.HasFlag(StringSplitResult.MoreContent)) {
+								Error("Too many allocators");
+								continue;
+							}
+
 						} else {
-							Error(MsgInfo.MissingAllocator);
+							rangeR = default;
+						}
+
+						bool rangeGood = true;
+
+						if (rangeL.IsEmpty) {
+							binstart = 0;
+
+						} else {
+							IExpressionReturn valL = ParseOperand(rangeL);
+
+							if (valL.Resolved) {
+								binstart = valL.ValueInt32;
+							} else {
+								rangeGood = false;
+								Error_BadResolve(valL);
+							}
+						}
+
+						if (rangeR.IsEmpty) {
+							binend = binlen;
+
+						} else {
+							IExpressionReturn valR = ParseOperand(rangeR);
+
+							if (valR.Resolved) {
+								binstart = valR.ValueInt32;
+							} else {
+								rangeGood = false;
+								Error_BadResolve(valR);
+							}
+						}
+
+						if (!rangeGood) {
 							continue;
 						}
 					} else {
@@ -1197,7 +1218,6 @@ unsafe partial class Assembler {
 	}
 
 	private void Directive_ALLOCATE() {
-		int blockAddress = -1;
 		int blockEnd = -1;
 		bool sizedBlock = false;
 
@@ -1259,7 +1279,7 @@ unsafe partial class Assembler {
 
 							if (AdvanceOverWhitespace() || !FastRead.IsAllocator(_reading)) {
 								if (goodName) {
-									AssignedSymbol addsym = new(fullName!, blockAddress);
+									AssignedSymbol addsym = new(fullName!, _allocationAddress);
 									AddOrReplaceSymbol(addsym);
 								}
 							} else {
@@ -1284,7 +1304,7 @@ unsafe partial class Assembler {
 						if (dpeek is ':') {
 							_reading++;
 							if (DemandSpaceAfterColon()) {
-								AssignedSymbol addLabel = new(new string(labelName), blockAddress);
+								AssignedSymbol addLabel = new(new string(labelName), _allocationAddress);
 
 								AddOrReplaceSymbol(addLabel);
 								UpdateHierarchy(addLabel.Name, 0);
@@ -1341,7 +1361,7 @@ unsafe partial class Assembler {
 									continue;
 								}
 
-								blockAddress = _nextAllocBlockStart;
+								_allocationAddress = _nextAllocBlockStart;
 
 							} else {
 								IExpressionReturn addrLoc = ParseOperand(addrContents);
@@ -1352,14 +1372,14 @@ unsafe partial class Assembler {
 									continue;
 								}
 
-								blockAddress = addrLoc.ValueInt32;
+								_allocationAddress = addrLoc.ValueInt32;
 
-								if (!SnesHelpers.IsValidBusAddress(blockAddress)) {
+								if (!SnesHelpers.IsValidBusAddress(_allocationAddress)) {
 									Error("Invalid bus address.");
 									PanicAllocation();
 									continue;
 								} else {
-									_nextAllocBlockStart = blockAddress;
+									_nextAllocBlockStart = _allocationAddress;
 								}
 							}
 
@@ -1374,7 +1394,7 @@ unsafe partial class Assembler {
 								blockEnd = int.MaxValue;
 							} else {
 								int blockSize = sizeVal.ValueInt32;
-								blockEnd = blockAddress + blockSize;
+								blockEnd = _allocationAddress + blockSize;
 
 								if (blockSize < 1) {
 									Error("Block allocation size must be greater than 0");
@@ -1400,16 +1420,16 @@ unsafe partial class Assembler {
 						continue;
 
 						void AdvanceAllocation(int allocStep) {
-							blockAddress += allocStep;
+							_allocationAddress += allocStep;
 
 							if (sizedBlock) {
-								if (blockAddress > blockEnd) {
+								if (_allocationAddress > blockEnd) {
 									Warning("Allocation chunk has exceeded its allotted size.");
 									// unsize to avoid error spam
 									blockEnd = int.MaxValue;
 								}
 							} else {
-								_nextAllocBlockStart = blockAddress;
+								_nextAllocBlockStart = _allocationAddress;
 							}
 						}
 
@@ -1425,7 +1445,7 @@ unsafe partial class Assembler {
 								return;
 							}
 
-							AllocatedSymbol alloc = new(allocatedName, blockAddress, allocatedSizeOut);
+							AllocatedSymbol alloc = new(allocatedName, _allocationAddress, allocatedSizeOut);
 
 							AddOrReplaceSymbol(alloc);
 
@@ -1433,7 +1453,7 @@ unsafe partial class Assembler {
 						}
 
 						void PanicAllocation() {
-							blockAddress = 0;
+							_allocationAddress = 0;
 							_nextAllocBlockStart = -1;
 						}
 
@@ -1675,8 +1695,8 @@ unsafe partial class Assembler {
 			}
 
 			FinishCommand();
-
 			// end encoder creation
+
 		} else {
 			AbortCommand();
 		}
@@ -1685,44 +1705,55 @@ unsafe partial class Assembler {
 	private void Directive_IF() {
 		if (!DemandSpaceWithError()) return;
 
-		if (TryReadRestAsExpression("if", SymbolContext.Default, out var ifval)) {
-			_ifChain = new(_ifChain);
+		if (TryReadRestAsExpression(IF, SymbolContext.Default, out var ifval)) {
+			_scopeChain = new IfLink(_scopeChain);
 
 			if (ifval.Value.IsFalse()) {
 				SkipToElseOrEndIf();
 			}
 		} else {
-			SkipToEndIf();
+			AbortIfBlock();
 		}
 	}
 
 	private void SkipToElseOrEndIf() {
 		while (_reading < _fileEnd) {
-			if (CaptureLine(out CharSpan blockLine)) {
+			// we need to be careful with blocks
+			// and have to allow ENDIF to process itself
+			// so save the start of the command, in case it's an ENDIF
+			char* reading = _reading;
+			if (CaptureLineShort(out CharSpan blockLine)) {
 				if (blockLine.BeginsWithIgnoreCaseAndSpace(IF)) {
-					SkipToEndIf(); // this will also skip any ELSE inherently
+					CaptureLineContinue();
+					AbortIfBlock(); // this will also skip any ELSE inherently
 
-					// special case for when endif is last thing in file
-					if (_reading >= _fileEnd) {
-						return;
+				} else if (blockLine.BeginsWithIgnoreCaseAndSpaceOrEnd(ELSE, out bool loneElse)) {
+					if (!loneElse) {
+						Error(MsgInfo.CommandGarbage);
 					}
-				} else if (blockLine.MatchesIgnoreCase(ELSE) || blockLine.MatchesIgnoreCase(ENDIF)) {
+					CaptureLineContinue();
+					return;
+
+				} else if (blockLine.BeginsWithIgnoreCaseAndSpaceOrEnd(ENDIF, out _)) {
+					_reading = reading;
 					return;
 				}
 			}
 		}
-
-		Error(MsgInfo.UnclosedIf);
 	}
 
-	private void SkipToEndIf() {
+	private void AbortBlock(string blockHead, string blockEnd, string blockError) {
 		int blockDepth = 1;
 
 		while (_reading < _fileEnd) {
 			if (CaptureLine(out CharSpan blockLine)) {
-				if (blockLine.BeginsWithIgnoreCaseAndSpace(IF)) {
+				if (blockLine.BeginsWithIgnoreCaseAndSpace(blockHead)) {
 					blockDepth++;
-				} else if (blockLine.MatchesIgnoreCase(ENDIF)) {
+				} else if (blockLine.BeginsWithIgnoreCaseAndSpaceOrEnd(blockEnd, out bool loneEnd)) {
+					if (!loneEnd) {
+						Error(MsgInfo.CommandGarbage);
+					}
+
 					if (--blockDepth is 0) {
 						return;
 					}
@@ -1730,28 +1761,82 @@ unsafe partial class Assembler {
 			}
 		}
 
-		Error(MsgInfo.UnclosedIf);
+		Error(blockError);
+	}
+
+	private void AbortIfBlock() {
+		AbortBlock(IF, ENDIF, MsgInfo.UnclosedIf);
 	}
 
 	private void Directive_ELSE() {
-		if (_ifChain?.HitElse ?? true) {
-			Error($"Unexpected {ELSE}");
-			AbortCommand();
-		} else {
-			_ifChain.HitElse = true;
-			FinishCommand();
-			SkipToElseOrEndIf();
+		if (_scopeChain is IfLink ifChain) {
+			if (!ifChain.HitElse) {
+				ifChain.HitElse = true;
+				FinishCommand();
+				SkipToElseOrEndIf();
+				return;
+			}
 		}
+
+		Error($"Unexpected {ELSE}");
+		AbortCommand();
 	}
 
 	private void Directive_ENDIF() {
-		if (_ifChain is null) {
+		if (_scopeChain is not IfLink chain) {
 			Error($"Unexpected {ENDIF}");
 			AbortCommand();
 		} else {
-			_ifChain = _ifChain.Parent;
+			_scopeChain = chain.Parent;
 			FinishCommand();
 		}
+	}
+
+	private void Directive_REPEAT() {
+		if (!DemandSpaceWithError()) return;
+
+		if (TryReadRestAsExpression(REPEAT, SymbolContext.Default, out var repCount)) {
+			int count = repCount.ValueInt32;
+
+			if (count != repCount.Value) {
+				Warning("Repeat count is not an integer. Use 'int(<expr>)' to suppress this warning.");
+			}
+
+			if (count is < 1) {
+				if (count < 0) {
+					Error("Repeat count must be a non-negative value");
+				}
+
+				AbortRepeatBlock();
+				return;
+			}
+
+			_scopeChain = new RepeatLink(_reading, count, _sourceLine, _scopeChain);
+
+		} else {
+			AbortRepeatBlock();
+		}
+	}
+
+	private void Directive_ENDREPEAT() {
+		if (_scopeChain is not RepeatLink chain) {
+			Error($"Unexpected {ENDREPEAT}");
+			AbortCommand();
+
+		} else {
+			FinishCommand();
+
+			if (chain.TickLoops()) {
+				_reading = chain.Start;
+				_sourceLine = chain.LineStart;
+			} else {
+				_scopeChain = chain.Parent;
+			}
+		}
+	}
+
+	private void AbortRepeatBlock() {
+		AbortBlock(REPEAT, ENDREPEAT, MsgInfo.UnclosedRepeat);
 	}
 
 	private protected virtual void Directive_MMC() {
@@ -1781,7 +1866,7 @@ unsafe partial class Assembler {
 				}
 			}
 
-			Error($"Invalid bank guard name: {CharSpanHelpers.ClampForMessage(contents)}");
+			Error("Invalid bank guard name");
 		}
 	}
 
@@ -1835,11 +1920,11 @@ unsafe partial class Assembler {
 				}
 			}
 
-			Error($"Invalid vector name: {CharSpanHelpers.ClampForMessage(contents)}");
+			Error("Invalid vector name");
 
 			void TrySetVector(ref int? vector, string name) {
 				if (Mapper is MapperMode.None or MapperMode.Invalid) {
-					Error("This assembly mapper cannot apply interrupt vectors.");
+					Error("This mapper mode cannot set interrupt vectors.");
 					return;
 				}
 

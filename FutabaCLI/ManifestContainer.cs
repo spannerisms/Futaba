@@ -1,21 +1,26 @@
-﻿namespace FutabaCLI;
+﻿using System.Runtime.InteropServices;
+
+namespace FutabaCLI;
 
 internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private static readonly Random s_random = new();
 
+	private readonly Dictionary<string, BinaryWatcher> _watchedFiles = [];
+	private readonly Dictionary<string, WatchedBinary> _loadedBinaries = [];
 	private readonly string _fileName = manifest.FullName;
 
-	private LoadedItem<byte[]>? _baseRomFile = null;
-	private LoadedItem<byte[]>? _diffRomFile = null;
 	private byte[]? _baseRomData = null;
 
 	private int? _romSize = 0;
 	private int _fillStart = 0;
+	private bool _explicitSize = false;
+	private bool _sizeChanged = false;
 
 	private DateTime _lastUpdated = DateTime.MinValue;
 
 	private bool _assemblerNeedsUpdating = true;
 	private bool _assemblerIsSeeded = false;
+	private bool _firedChange;
 
 	private readonly Dictionary<string, ArgInfo> _manifestArguments = [];
 	private readonly Dictionary<string, Variable> _variables = [];
@@ -33,6 +38,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private LoadedItem<StreamWriter>? StdOut {
 		get;
 		set {
+			if (ReferenceEquals(field, value)) return;
 			field?.Dispose();
 			field = value;
 		}
@@ -41,6 +47,25 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private LoadedItem<StreamWriter>? ErrOut {
 		get;
 		set {
+			if (ReferenceEquals(field, value)) return;
+			field?.Dispose();
+			field = value;
+		}
+	} = null;
+
+	private WatchedBinary? BaseRomFile {
+		get;
+		set {
+			if (ReferenceEquals(field, value)) return;
+			field?.Dispose();
+			field = value;
+		}
+	} = null;
+
+	private WatchedBinary? DiffRomFile {
+		get;
+		set {
+			if (ReferenceEquals(field, value)) return;
 			field?.Dispose();
 			field = value;
 		}
@@ -54,6 +79,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private LoadedItem<Stream>? OutputStream {
 		get;
 		set {
+			if (ReferenceEquals(field, value)) return;
 			field?.Dispose();
 			field = value;
 		}
@@ -62,13 +88,17 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private Assembler? Assembler {
 		get;
 		set {
+			if (ReferenceEquals(field, value)) return;
 			field?.Dispose();
 			field = value;
 		}
 	} = null;
 
 	private void SomethingChanged(object source, FileSystemEventArgs e) {
-		_filesChanged?.Invoke(this, e);
+		if (Incremental && !_firedChange) {
+			_firedChange = true;
+			_filesChanged?.Invoke(this, e);
+		}
 	}
 
 	public Assembler GetAssembler() {
@@ -80,136 +110,42 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			Assembler.SeedRNG(s_random.NextInt64(), s_random.NextInt64());
 		}
 
+		ReloadBase();
 		return Assembler;
 	}
 
-	internal void Configure() {
-		try {
-			if (ManifestGood && _assemblerNeedsUpdating) {
-				PrepAssembler();
-			}
-		} catch {
-			ManifestGood = false;
-		}
-	}
-
-	private void PrepAssembler() {
-		if (!TryGetArg("entry", out var fileEntry)) {
-			ManifestErrorNoLine("No entry file specified.");
+	private void ReloadBase() {
+		if (Assembler is null) {
 			return;
 		}
 
-		if (!TryGetArg("mapmode", out var mapMode)) {
-			ManifestErrorNoLine("No mapper mode specified.");
+		if (TryGetBinaryFile("diff", out var diffRomFile, out _)) {
+			DiffRomFile = diffRomFile;
+		} else {
+			DiffRomFile = null;
+		}
+
+		if (TryGetBinaryFile("base", out var baseRomFile, out bool needsReload)) {
+			BaseRomFile = baseRomFile;
+		} else {
+			needsReload = BaseRomFile is not null;
+			BaseRomFile = null;
+		}
+
+		if (!(_sizeChanged || needsReload)) {
 			return;
 		}
 
-		if (!TryGetString("output", out var outputGet)) {
-			outputGet = Path.ChangeExtension(_fileName, Igarashi.RomExtension);
-		}
-
-		string entryPoint = fileEntry.Value;
-
-		if (RomHeader.TryGetMapperMode(mapMode.Value, out var modeEnum)) {
-			if (Assembler is null
-				|| Assembler.Mapper != modeEnum
-				|| Path.GetFullPath(entryPoint) != Assembler.EntryPoint.FullName) {
-
-				Igarashi.Notice("Creating assembler...");
-				Assembler = Assembler.CreateAssemblerWithMapper(modeEnum, entryPoint);
-			}
-		} else {
-			ManifestError($"Invalid mapper mode: {mapMode.Value}", mapMode.Line);
-			return;
-		}
-
-		Igarashi.Notice("Configuring assembler...");
-
-		Assembler.ClearInitialSymbols();
-		Assembler.ClearInitialVariables();
-
-		OutputPath = Path.GetFullPath(outputGet);
-
-		if (OutputStream is null || OutputStream.Reload(OutputPath)) {
-			OutputStream?.Dispose();
-
-			OutputStream = new(outputGet, Helpers.WaitForAndCreateStream(outputGet));
-		}
-
-		if (TryGetArg("coprocessor", out var coprocessor)
-			&& CoprocessorLookup.TryGetValue(coprocessor.Value, out var copval)) {
-			Assembler.Coprocessor = copval;
-
-		} else if (Assembler.Mapper is not MapperMode.Sa1) {
-			Assembler.Coprocessor = Coprocessor.None;
-		}
-
-		bool autofill = GetBoolOrDefault("autofill", false, out var _);
-		Assembler.AutoPopulateHeader = autofill;
-
-		Assembler.Title = GetStringOrDefault("title");
-		Assembler.MakerCode = GetStringOrDefault("makercode");
-		Assembler.GameCode = GetStringOrDefault("gamecode");
-
-		if (TryGetArg("region", out var regionGet)) {
-			if (Region.TryGetRegion(regionGet.Value, out var regionObj)) {
-				Assembler.Destination = regionObj;
-			} else {
-				ManifestWarning($"Invalid region name: '{regionGet.Value}'", regionGet.Line);
-			}
-		} else {
-			Assembler.Destination = Region.Japan;
-		}
-
-		Assembler.RomVersion = GetByteOrDefault("version", 0);
-		Assembler.SpecialVersion = GetByteOrDefault("specialversion", 0);
-		Assembler.CartridgeSubtype = GetByteOrDefault("cartridgetype", 0);
-
-		bool autochecksum = GetBoolOrDefault("checksum", false, out ArgParse parsed);
-
-		if (parsed is ArgParse.Valid && (autofill && !autochecksum)) {
-			ManifestWarningNoLine("Ignoring 'autochecksum=false' because header 'autofill=true'.");
-			autochecksum = true;
-		}
-		Assembler.CalculateChecksum = autochecksum;
-
-		Assembler.FastRom = GetBoolOrDefault("fastrom", false, out _);
-		Assembler.ExtendedHeader = GetBoolOrDefault("extended", true, out _);
-
-		if (TryGetArg("ramsize", out var ramsizeget)) {
-			if (RomHeader.TryGetRamSize(ramsizeget.Value, out int ramsizeval)) {
-				Assembler.RamSize = ramsizeval;
-			} else {
-				ManifestError($"Invalid argument to ramsize: \"{ramsizeget.Value}\"", ramsizeget.Line);
-				Assembler.RamSize = 0;
-			}
-		} else {
-			Assembler.RamSize = 0;
-		}
-
-		bool setSize = false;
 		bool forceNullFill = false;
+		bool setSize = _explicitSize;
 
-		if (TryGetArg("romsize", out var romsizestr)) {
-			if (RomHeader.TryGetRomSize(romsizestr.Value, out int romsizeget)) {
-				_romSize = romsizeget;
-				setSize = true;
-			} else {
-				ManifestError($"Invalid argument to romsize: \"{romsizestr.Value}\"", romsizestr.Line);
-				_romSize = null;
-			}
-		} else {
-			_romSize = null;
-		}
-
-		// this looks like a memory leak, but this field uses a byte[] so it doesn't need disposal
-		if (TryOpenBinary("base", ref _baseRomFile)) {
+		if (BaseRomFile?.Data is byte[] baseRomData) {
 			int allocSize;
 
 			setSize = true;
 
 			if (_romSize is null) {
-				allocSize = _baseRomFile.Item.Length;
+				allocSize = baseRomData.Length;
 				_fillStart = allocSize;
 
 				if (allocSize > Assembler.MaxRomSize) {
@@ -225,14 +161,14 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 				}
 
 			} else {
-				_fillStart = (int) long.Min(_baseRomFile.Item.Length, _romSize.Value);
+				_fillStart = (int) long.Min(baseRomData.Length, _romSize.Value);
 
 				allocSize = _romSize.Value;
 			}
 
 			AllocateBaseRom(allocSize);
 			Assembler.InitialRomSize = allocSize;
-			Array.Copy(_baseRomFile.Item, _baseRomData!, _fillStart);
+			Array.Copy(baseRomData, _baseRomData!, _fillStart);
 
 		} else {
 			_fillStart = 0;
@@ -337,6 +273,129 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 
 		Assembler.BaseRom = _baseRomData;
+	}
+
+	internal void Configure() {
+		_firedChange = false;
+		try {
+			if (ManifestGood && _assemblerNeedsUpdating) {
+				PrepAssembler();
+			}
+		} catch {
+			ManifestGood = false;
+		}
+	}
+
+	private void PrepAssembler() {
+		if (!TryGetArg("entry", out var fileEntry)) {
+			ManifestErrorNoLine("No entry file specified.");
+			return;
+		}
+
+		if (!TryGetArg("mapmode", out var mapMode)) {
+			ManifestErrorNoLine("No mapper mode specified.");
+			return;
+		}
+
+		if (!TryGetString("output", out var outputGet)) {
+			outputGet = Path.ChangeExtension(_fileName, Igarashi.RomExtension);
+		}
+
+		string entryPoint = fileEntry.Value;
+
+		if (RomHeader.TryGetMapperMode(mapMode.Value, out var modeEnum)) {
+			if (Assembler is null
+				|| Assembler.Mapper != modeEnum
+				|| Path.GetFullPath(entryPoint) != Assembler.EntryPoint) {
+
+				Igarashi.Notice("Creating assembler...");
+				Assembler = Assembler.CreateAssemblerWithMapper(modeEnum, entryPoint);
+			}
+		} else {
+			ManifestError($"Invalid mapper mode: {mapMode.Value}", mapMode.Line);
+			return;
+		}
+
+		Igarashi.Notice("Configuring assembler...");
+
+		Assembler.ClearInitialSymbols();
+		Assembler.ClearInitialVariables();
+
+		OutputPath = Path.GetFullPath(outputGet);
+
+		if (OutputStream is null || OutputStream.Reload(OutputPath)) {
+			OutputStream?.Dispose();
+
+			OutputStream = new(outputGet, Helpers.WaitForAndCreateStream(outputGet));
+		}
+
+		if (TryGetArg("coprocessor", out var coprocessor)
+			&& CoprocessorLookup.TryGetValue(coprocessor.Value, out var copval)) {
+			Assembler.Coprocessor = copval;
+
+		} else if (Assembler.Mapper is not MapperMode.Sa1) {
+			Assembler.Coprocessor = Coprocessor.None;
+		}
+
+		bool autofill = GetBoolOrDefault("autofill", false, out var _);
+		Assembler.AutoPopulateHeader = autofill;
+
+		Assembler.Title = GetStringOrDefault("title");
+		Assembler.MakerCode = GetStringOrDefault("makercode");
+		Assembler.GameCode = GetStringOrDefault("gamecode");
+
+		if (TryGetArg("region", out var regionGet)) {
+			if (Region.TryGetRegion(regionGet.Value, out var regionObj)) {
+				Assembler.Destination = regionObj;
+			} else {
+				ManifestWarning($"Invalid region name: '{regionGet.Value}'", regionGet.Line);
+			}
+		} else {
+			Assembler.Destination = Region.Japan;
+		}
+
+		Assembler.RomVersion = GetByteOrDefault("version", 0);
+		Assembler.SpecialVersion = GetByteOrDefault("specialversion", 0);
+		Assembler.CartridgeSubtype = GetByteOrDefault("cartridgetype", 0);
+
+		bool autochecksum = GetBoolOrDefault("checksum", false, out ArgParse parsed);
+
+		if (parsed is ArgParse.Valid && (autofill && !autochecksum)) {
+			ManifestWarningNoLine("Ignoring 'autochecksum=false' because header 'autofill=true'.");
+			autochecksum = true;
+		}
+		Assembler.CalculateChecksum = autochecksum;
+
+		Assembler.FastRom = GetBoolOrDefault("fastrom", false, out _);
+		Assembler.ExtendedHeader = GetBoolOrDefault("extended", true, out _);
+
+		if (TryGetArg("ramsize", out var ramsizeget)) {
+			if (RomHeader.TryGetRamSize(ramsizeget.Value, out int ramsizeval)) {
+				Assembler.RamSize = ramsizeval;
+			} else {
+				ManifestError($"Invalid argument to ramsize: \"{ramsizeget.Value}\"", ramsizeget.Line);
+				Assembler.RamSize = 0;
+			}
+		} else {
+			Assembler.RamSize = 0;
+		}
+
+		if (TryGetArg("romsize", out var romsizestr)) {
+			if (RomHeader.TryGetRomSize(romsizestr.Value, out int romsizeget)) {
+				_sizeChanged = _romSize == romsizeget;
+				_romSize = romsizeget;
+				_explicitSize = true;
+			} else {
+				ManifestError($"Invalid argument to romsize: \"{romsizestr.Value}\"", romsizestr.Line);
+				_romSize = null;
+				_explicitSize = false;
+			}
+		} else {
+			_sizeChanged = _romSize is not null;
+			_romSize = null;
+			_explicitSize = false;
+		}
+
 		_assemblerIsSeeded = TryGetString("randomseed", out var randomseed);
 
 		if (_assemblerIsSeeded) {
@@ -483,6 +542,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		return outStream is not null;
 	}
 
+	/// <returns>The parsed value or default.</returns>
 	private bool GetBoolOrDefault(string argName, bool defaultValue, out ArgParse parseStatus) {
 		if (TryGetArg(argName, out var argvalrecord)) {
 			string argvalstr = argvalrecord.Value;
@@ -541,6 +601,16 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			return;
 		}
 
+		var oldWatchers = _watchedFiles;
+
+		foreach (var watcher in oldWatchers.Values) {
+			if (watcher.IsEmpty) {
+				watcher.Enabled = false;
+			} else {
+				watcher.Clear();
+			}
+		}
+
 		_lastUpdated = update;
 		_assemblerNeedsUpdating = true;
 		char[]? buffer = null;
@@ -550,9 +620,10 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			_variables.Clear();
 			_symbols.Clear();
 
-			var ManifestWordsSpan = ManifestKeywords.GetAlternateLookup<ReadOnlySpan<char>>();
+			var ManifestWordsSpan = ManifestOption.ManifestKeywords.GetAlternateLookup<ReadOnlySpan<char>>();
 
-			using var reader = new StreamReader(_fileName, ManifestOptions);
+			// TODO switch to a handle
+			using var reader = new StreamReader(_fileName, ManifestFileStreamOptions);
 
 			Igarashi.Notice("Parsing manifest file...");
 
@@ -565,8 +636,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			int didRead = reader.ReadBlock(buffer);
 
 			if (!reader.EndOfStream) {
-				Igarashi.Error("Problem parsing manifest file.");
-				ManifestGood = false;
+				ManifestErrorNoLine("Problem parsing manifest file.");
 				return;
 			}
 
@@ -576,7 +646,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 			int lineNum = 0; // 0 to start at 1 because it increments at the beginning of the loop for simplicity
 
-			HashSet<string>.AlternateLookup<ReadOnlySpan<char>>? cmdset = null;
+			Dictionary<string, ManifestOption>.AlternateLookup<ReadOnlySpan<char>>? cmdset = null;
 
 			foreach (var lineElement in fileBuffer.EnumerateLines()) {
 				var line = lineElement.TrimEnd();
@@ -588,8 +658,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 						continue;
 					}
 
-					Igarashi.Error("Manifest files must begin with '[FUTABA:assemble]'");
-					ManifestGood = false;
+					ManifestErrorNoLine("Manifest files must begin with '[FUTABA:assemble]'");
 					return;
 				}
 
@@ -673,16 +742,21 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 						// Commands
 					} else {
-						if (cmdset is not HashSet<string>.AlternateLookup<ReadOnlySpan<char>> cmdset2) {
+						if (cmdset is not Dictionary<string, ManifestOption>.AlternateLookup<ReadOnlySpan<char>> cmdset2) {
 							ManifestError("Not in any category.", lineNum);
 						} else {
 							if (cmdset2.TryGetValue(cmdName, out var cmdReal)) {
-								if (_manifestArguments.ContainsKey(cmdReal)) {
-									ManifestWarning($"Ignoring duplicate key: {cmdName}", lineNum);
-								} else if (cmdVal.IsWhiteSpace()) {
+								if (cmdVal.IsWhiteSpace()) {
 									ManifestWarning($"Ignoring empty key", lineNum);
+
 								} else {
-									_manifestArguments[cmdReal] = new(lineNum, new string(cmdVal));
+									ref var addItem = ref CollectionsMarshal.GetValueRefOrAddDefault(_manifestArguments, cmdReal.Name, out bool existed);
+
+									if (!existed) {
+										addItem = new(lineNum, new string(cmdVal));
+									} else {
+										ManifestWarning($"Ignoring duplicate key: {cmdReal.Name}", lineNum);
+									}
 								}
 							} else {
 								ManifestError("Unrecognized command name.", lineNum);
@@ -733,46 +807,19 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 	int GetInt32OrDefault(string key, int defaultValue) {
 		if (TryGetArg(key, out var argGet)) {
-			if (Helpers.TryParseByte(argGet.Value, out byte value)) {
+			if (Helpers.TryParseInt32(argGet.Value, out int value)) {
 				return value;
 			} else {
-				ManifestWarning($"Unable to parse '{argGet.Value}' to an 8-bit value", argGet.Line);
+				ManifestWarning($"Unable to parse '{argGet.Value}' to an integer value", argGet.Line);
 			}
 		}
 
 		return defaultValue;
 	}
 
-	bool TryOpenBinary(string key, [NotNullWhen(true)] ref LoadedItem<byte[]>? binFile) {
-		if (TryGetArg(key, out var argGet)) {
-			FileInfo diffInfo = new(argGet.Value);
-
-			if (binFile?.Reload(diffInfo) ?? true) {
-				try {
-					var data = Helpers.GetFileAsArray(diffInfo);
-					binFile = new(argGet.Value, data);
-					return true;
-				} catch (Exception e) {
-					ManifestError($"Problem loading file: '{argGet.Value}' - {e.Message}", argGet.Line);
-				}
-			} else {
-				return true;
-			}
-		}
-
-		binFile = null;
-		return false;
-	}
-
 	internal bool TryGetDiffFile([NotNullWhen(true)] out byte[]? binFile) {
-		// this looks like a memory leak, but this field uses a byte[] so it doesn't need disposal
-		if (TryOpenBinary("diff", ref _diffRomFile)) {
-			binFile = _diffRomFile.Item;
-			return true;
-		}
-
-		binFile = null;
-		return false;
+		binFile = DiffRomFile?.Data;
+		return binFile is not null;
 	}
 
 	void ProblemLoadingFile(Exception e, int line) {
@@ -828,53 +875,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		{ "other", Coprocessor.Other },
 	};
 
-	// TODO populate these with a new type of object so that the template command can programmatically fill the options
-	internal static readonly Dictionary<string, HashSet<string>> ManifestKeywords = new() {
-		{ "assembly", [
-			"entry",
-			"type",
-			"output",
-			"addsymbols",
-			"nullfill",
-			"randomseed",
-			"base",
-			"incremental",
-		]},
-		{ "header", [
-			"autofill",
-			"checksum",
-			"mapmode",
-			"fastrom",
-			"title",
-			"romsize",
-			"ramsize",
-			"version",
-			"region",
-			"coprocessor",
-			"extended",
-			"gamecode",
-			"makercode",
-			"specialversion",
-			"cartridgetype",
-		]},
-		{ "debug", [
-			"stdout",
-			"errorout",
-			"overflow",
-			"tokens",
-			"symbols",
-			"warnaserror",
-			"maxerrors"
-		]},
-		{ "disassembly", [
-			"crc",
-			"md5",
-			"sha1",
-			"diff",
-		]},
-	};
-
-	private static readonly FileStreamOptions ManifestOptions = new() {
+	private static readonly FileStreamOptions ManifestFileStreamOptions = new() {
 		Mode = FileMode.Open,
 		Access = FileAccess.Read,
 		Share = FileShare.Read
@@ -949,6 +950,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		Assembler = null;
 		OutputStream = null;
 		_filesChanged = null;
+		DiffRomFile = null;
+		BaseRomFile = null;
 	}
 
 	static readonly Dictionary<string, Action<string, Assembler>> SymbolsOutputLookup = new(StringComparer.OrdinalIgnoreCase) {
@@ -963,5 +966,86 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		Empty = 0,
 		Valid,
 		Invalid,
+	}
+
+	internal string? TryGetFileName(string path) {
+		if (Path.IsPathFullyQualified(path)) {
+			return path;
+
+		} else if (manifest?.Directory is DirectoryInfo dir) {
+			return Path.Join(dir.FullName, path);
+
+		} else {
+			throw new InvalidOperationException("Unable to find current directory.");
+		}
+	}
+
+	[return: NotNullIfNotNull(nameof(directoryName))]
+	private BinaryWatcher? GetWatcher(string? directoryName) {
+		if (directoryName is null) {
+			return null;
+		}
+
+		ref var watcher = ref CollectionsMarshal.GetValueRefOrAddDefault(_watchedFiles, directoryName, out _);
+
+		if (watcher is null) {
+			watcher = new(directoryName);
+			watcher.SourceChange += SomethingChanged;
+		} else {
+			watcher.Enabled = true;
+		}
+
+		return watcher;
+	}
+
+	private bool TryGetBinaryFile(string key, [NotNullWhen(true)] out WatchedBinary? file, out bool needsReload) {
+		if (!TryGetArg(key, out var argGet)) {
+			file = null;
+			needsReload = false;
+			return false;
+		}
+
+		string path = argGet.Value;
+
+		try {
+			var fullPath = TryGetFileName(path);
+
+			if (fullPath is not null) {
+				ref WatchedBinary? fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_loadedBinaries, fullPath!, out _);
+
+				if (fileRef is not null) {
+					needsReload = fileRef.Refresh();
+
+				} else {
+					fileRef = WatchedBinary.TryCreate(fullPath);
+					needsReload = true;
+				}
+
+				if (fileRef.Error is not null) {
+					ManifestError($"Problem loading file: {fileRef.Error}", argGet.Line);
+
+					// we still want to watch this path for changes
+					GetWatcher(Path.GetDirectoryName(fullPath))?.WatchFile(path);
+
+					file = null;
+					return false;
+				}
+
+				GetWatcher(fileRef.DirectoryName)?.WatchFile(fileRef);
+
+				file = fileRef;
+				return true;
+
+			} else {
+				file = null;
+				needsReload = false;
+				return false;
+			}
+		} catch (Exception e) {
+			ManifestError($"Problem loading file: '{path}' - {e.Message}", argGet.Line);
+			file = null;
+			needsReload = false;
+			return false;
+		}
 	}
 }

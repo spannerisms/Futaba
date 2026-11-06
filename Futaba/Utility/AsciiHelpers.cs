@@ -13,18 +13,6 @@ internal static unsafe class AsciiHelpers {
 			get => c is >= '0' and <= '9';
 		}
 
-		// The difference between this and skippable space is
-		// that \r should be considered invalid for separating command parts
-		// TODO this needs to be made consistent or abandoned
-		/// <summary>
-		/// <c>\x20 \t</c>
-		/// </summary>
-		internal bool IsInlineSpace {
-			[DebuggerStepThrough]
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => c is ' ' or '\t';
-		}
-
 		/// <summary>
 		/// <c>\x20 \t \r</c>
 		/// </summary>
@@ -77,7 +65,7 @@ internal static unsafe class AsciiHelpers {
 		internal bool IsLineEnd {
 			[DebuggerStepThrough]
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => c is '\n' or BadChar;
+			get => c is NewLine or BadChar;
 		}
 
 		/// <summary>
@@ -86,7 +74,7 @@ internal static unsafe class AsciiHelpers {
 		internal bool IsNiceBoundary {
 			[DebuggerStepThrough]
 			//[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => c is ' ' or '\t' or '\r' or ';' or BadChar or '\n';
+			get => c is ' ' or '\t' or '\r' or CommentChar or BadChar or NewLine;
 		}
 
 		internal bool IsLetterOrUnderscore {
@@ -125,9 +113,6 @@ internal static unsafe class AsciiHelpers {
 	private const string ALPHANUMERIC = LETTERS + UNDERSCORE + DIGITS;
 
 	internal static readonly SearchValues<char> IdentifierSearch = SearchValues.Create(ALPHANUMERIC);
-	internal static readonly SearchValues<char> SublabelSearch = SearchValues.Create(ALPHANUMERIC + ".");
-
-	internal static readonly SearchValues<char> SpaceSearch = SearchValues.Create(" \r\t");
 
 	//                                            =    ~}|{zyxwvutsrqponmlkjihgfedcba`_^]\[ZYXWVUTSRQPONMLKJIHGFEDCBA@"
 	internal const ulong LettersMask /*        */ = 0b0000011111111111111111111111111010000111111111111111111111111110;
@@ -152,10 +137,22 @@ internal static unsafe class AsciiHelpers {
 	internal static readonly AsciiTable<sbyte> AddressMarkerAction = new();
 
 	static AsciiHelpers() {
-		// TODO add validation for the ulong masks
+		// validate the ulong masks
 #if DEBUG
-		
+		ValidateMask(LettersMask, '@', LETTERS + UNDERSCORE);
+		ValidateMask(WhiteSpaceMask, '\0', " \t\r");
+		ValidateMask(NumbersMask, '\0', DIGITS);
+		ValidateMask(SublabelsMask, '\0', DIGITS + ".");
 
+		static void ValidateMask(ulong mask, char offset, string charset) {
+			ulong testMask = 0;
+
+			foreach (char c in charset) {
+				testMask |= 1ul << (c - offset);
+			}
+
+			Debug.Assert(testMask == mask);
+		}
 #endif
 		InsertHex(ref AddressMarkerAction);
 
@@ -241,8 +238,7 @@ internal static unsafe class AsciiHelpers {
 		}
 	}
 
-	// TODO consider bringing this back with BitConverter.IsLittleEndian
-	// not necessary, because performance is fine, but we'll see; why not
+	// TODO slowly bring this back
 	private const ulong LowercaseMask = 0x0020_0020_0020_0020;
 	private const ulong UppercaseMask = unchecked((ulong) ~0x0020_0020_0020_0020);
 

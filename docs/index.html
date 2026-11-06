@@ -130,7 +130,7 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 <p>Additional encoders can be declared by using the <fkey>encoder</fkey> directive followed by an identifier and a file path. User-defined encoders can be selected the same way as the built-in encoders. The identifier must be a unique name among encoders and cannot be the reserved names <fblk>ascii</fblk> or <fblk>unicode</fblk>.</p>
 
 <div class="futsyntax">
-<fkey>encoder</fkey> {{IDENTIFIER}} {{FILENAME}}
+<fkey>encoder</fkey> {{IDENTIFIER}} = {{FILENAME}}
 </div>
 
 <p>The format of an encoding file is one definition per line, with the first character of that line containing the character to encode followed by an <nowrap>equals sign (<ftok>=</ftok>)</nowrap> then a prefix-less hexadecimal value. Any character not defined by the encoder will be mapped to 0.</p>
@@ -167,7 +167,7 @@ F
 
 <h4>String functions</h4>
 
-<p>When used in a data statement, functions can be invoked on a string by appending a <nowrap>triple-slash (<ftok>///</ftok>)</nowrap>. Multiple function can be provided for a single string by separating each function with a <nowrap>single-slash (<ftok>/</ftok>)</nowrap>.</p>
+<p>When used in a data statement, functions can be invoked on a string by appending a <nowrap>triple-slash (<ftok>///</ftok>)</nowrap>. Multiple functions can be provided for a single string by separating each function with a <nowrap>single-slash (<ftok>/</ftok>)</nowrap>.</p>
 
 <p>The <fblk>enc</fblk> function selects an encoder for a string without changing the default encoder.</p>
 
@@ -392,7 +392,7 @@ F
 
 <p>The <fkey id="directive-skipto">skipto</fkey> directive advances forward until the given provenance is reached. If this results in a negative change, an error will be emitted.</p>
 
-<p>The <fkey id="directive-warnpc">warnpc</fkey> and <fkey id="directive-warnsite">warnsite</fkey> directive can be used to emit errors if the current program counter or provenance, respectively, is beyond a given address. Warning and relocating the program counter can be performed together with the <fkey id="directive-safeorg">safeorg</fkey> directive.</p>
+<p>The <fkey id="directive-guardpc">guardpc</fkey> and <fkey id="directive-guardsite">guardsite</fkey> directive can be used to emit errors if the current program counter or provenance, respectively, is beyond a given address. Warning and relocating the program counter can be performed together with the <fkey id="directive-safeorg">safeorg</fkey> directive.</p>
 
 <p>The <fkey id="directive-rebank">rebank</fkey> directive can be used to change only the bank of the current program counter. This directive includes special syntax to control paging: prefixing the expression with the <nowrap><ftok>&gt;</ftok></nowrap> token will force <nowrap>bit 15</nowrap> of the address to be set, while the <nowrap><ftok>&lt;</ftok></nowrap> token will force it to be reset.</p>
 
@@ -597,7 +597,6 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 
 <div class="futaba-tip">Tip: Use <fblk>^.size</fblk> at the end of a block to create an accessible size symbol under any circumstances.</div>
 
-
 <h4>Docks</h4>
 
 <p id="dock">Docks are reusable labels representing a growing region that can be optionally protected. Declaring a dock automatically enters it as well. To unmount a dock, use the <fkey id="directive-undock">undock</fkey> directive.</p>
@@ -607,7 +606,7 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 <fkey>dock</fkey> {{IDENTIFIER}} :: {{ARGSIZE}}
 </div>
 
-<p>Attempting to add code or data to a protected dock under normal circumstances will trigger an error. Content may be added to a docked region in one of two ways: using the <fkey>org</fkey> directive with the dock's name as its only operand.</p>
+<p>Attempting to add code or data to a protected dock under normal circumstances will trigger an error. Content may be added to a docked region in one of two ways: using the <fkey>org</fkey> directive with the dock's name as its only operand, or accessing an existing table with a piling.</p>
 
 <div class="futexample">
 <fkey>dock</fkey> Sprites :: $2000 <fcom>; 8kb protected; dock position is 0</fcom>
@@ -646,7 +645,7 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 <fkey>piling</fkey> {{IDENTIFIER}} :: {{argl}}CAPACITY{{argr}}
 </div>
 
-<p>Pilings can then be added to by using the <fkey id="directive-pile">pile</fkey> directive to assemble a single data statement by placing an {{ALLOC}} followed by the statement.</p>
+<p>Pilings can then be added to by using the <fkey id="directive-pile">pile</fkey> directive to assemble a single data statement by placing an {{ALLOC}} followed by the statement. The supplied data statement may have any number of items.</p>
 
 <div class="futexample">
 <fkey>piling</fkey> Health :: $20 <fcom>; 32 bytes capacity; piling position is 0</fcom>
@@ -736,8 +735,12 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 	<li><fkey>if</fkey></li>
 	<li><fkey>else</fkey></li>
 	<li><fkey>endif</fkey></li>
+	<li><fkey>repeat</fkey></li>
+	<li><fkey>endrepeat</fkey></li>
 	<li><fkey>encoder</fkey></li>
 	<li><fkey>skip</fkey></li>
+	<li><fkey>plop</fkey></li>
+	<li><fkey>pile</fkey></li>
 </ul>
 
 <div class="futaba-warn">Allocation blocks use a separate program counter from code. All allocated symbols return the same value for their provenance, program counter, and binary offset.</div>
@@ -823,6 +826,8 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 		</tr>
 	</tbody>
 </table>
+
+<br/>
 
 <div class="futexample">
 <fkey>vector</fkey> NMI
@@ -996,7 +1001,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <fkey>print</fkey> <fvab>!VAR1</fvab> <fcom>; prints <fblk>3</fblk></fcom>
 </div>
 
-<p>The following compound assignments are available for numeric variables: <ftok>+=</ftok>, <ftok>-=</ftok>, <ftok>*=</ftok>, <ftok>/=</ftok>. String variables only support the <ftok>+=</ftok> compound assignment, which appends the operand to the end of the string. No other string concatenation operator is supported. To concatenate string variables to a new variable, use string interpolation; <nowrap>e.g.: <fblk>!C="!A!B"</fblk></nowrap>.</p>
+<p>The following compound assignments are available for numeric variables: <ftok>+=</ftok>, <ftok>-=</ftok>, <ftok>*=</ftok>, <ftok>/=</ftok>, <ftok>&amp;=</ftok>, <ftok>|=</ftok>, <ftok>^=</ftok>. String variables only support the <ftok>+=</ftok> compound assignment, which appends the operand to the end of the string. No other string concatenation operator is supported. To concatenate string variables to a new variable, use string interpolation; <nowrap>e.g.: <fblk>!C="!A!B"</fblk></nowrap>.</p>
 
 <div class="futaba-warn">Note: Using the <ftok>+=</ftok> operator on a string variable when the operand is an expression will interpret the expression as a naked string without parsing it. Conversely, using the <ftok>+=</ftok> operator on a numeric variable with a string will first cast the value to a string then append it.</div>
 
@@ -1150,7 +1155,6 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <fkey>incbin</fkey> {{FILENAME}}[{{argl}}START{{argr}}::] <fcom>; end is implicitly the size of the file</fcom>
 </div>
 
-
 <p>A label can be attached to a data block by including a bracket-enclosed identifier before the file list:</p>
 
 <div class="futsyntax">
@@ -1167,7 +1171,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <h4>fill</h4>
 
-<p>The <fkey id="directive-fill">fill</fkey> directive can be used to fill a span of data with a repeated value using the following syntax:</p>
+<p>The <fkey id="directive-fill">fill</fkey> directive can be used to fill a block of data with a repeated value using the following syntax:</p>
 
 <div class="futsyntax">
 <fkey>fill</fkey> {{argl}}TYPE{{argr}} {{argl}}MODE{{argr}} {{argl}}AMOUNT{{argr}} :: {{argl}}VALUE{{argr}}
@@ -1204,7 +1208,38 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <p>Simple conditional logic can be checked using the <fkey id="directive-if">if</fkey>, <fkey id="directive-else">else</fkey>, and <fkey id="directive-endif">endif</fkey> directives. If-statements evaluate an expression for <a href="#truthiness">truthiness</a>.</p>
 
+<h4>Repeats</h4>
 
+<p>A block of statements can be repeated multiple times by using the <fkey id="directive-repeat">repeat</fkey> and <fkey id="directive-endrepeat">endrepeat</fkey> directives. The <fkey>repeat</fkey> directive opening the block should be supplied an immediately-evaluable expression specifying the number of times the block is to be repeated. This value must be a non-negative number. If this value is not an integer, the assembler will emit a warning.</p>
+
+<div class="futexample">
+<fkey>repeat</fkey> 5
+	<fkey>print</fkey> "Pete and Repeat were in a boat."
+<fkey>endrepeat</fkey>
+
+<fincom>; Pete and Repeat were in a boat.</fincom>
+<fincom>; Pete and Repeat were in a boat.</fincom>
+<fincom>; Pete and Repeat were in a boat.</fincom>
+<fincom>; Pete and Repeat were in a boat.</fincom>
+<fincom>; Pete and Repeat were in a boat.</fincom>
+</div>
+
+<p>Repeat blocks can be used to make rudimentary loops. For example:</p>
+
+<div class="futexample">
+<fvab>!i</fvab> = 0
+
+<fkey>repeat</fkey> 5
+	<fkey>print</fkey> <fvab>!i</fvab>
+	<fvab>!i</fvab> += 2
+<fkey>endrepeat</fkey>
+
+<fincom>; 0</fincom>
+<fincom>; 2</fincom>
+<fincom>; 4</fincom>
+<fincom>; 6</fincom>
+<fincom>; 8</fincom>
+</div>
 
 <h3>Output and Diagnostics</h3>
 
@@ -1214,7 +1249,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <p>The <fkey id="directive-printf">printf</fkey> directive can be used to print a formatted string with the first argument being the format specifier and the remaining arguments being the objects passed to the formatter. This directive uses <a href="https://learn.microsoft.com/en-us/dotnet/fundamentals/runtime-libraries/system-string-format#get-started-with-the-stringformat-method">the .NET string format syntax</a>.</p>
 
-<p>Futaba includes a special format specifier for numbers: <fblk>A</fblk>, which can be used to print a number as a 6-digit hexadecimal string in the form <fblk>$XX:XXXX</fblk>. Futaba also reroutes the <fblk>X</fblk> and <fblk>B</fblk> specifiers on decimal values by truncating the fractional part and converting the value to a 64-bit integer.</p>
+<p>Futaba includes a special format specifier for numbers: <fblk>A</fblk>, which can be used to print a value as a 6-digit hexadecimal string in the format <fblk>$XX:XXXX</fblk>. Futaba also reroutes the <fblk>X</fblk> and <fblk>B</fblk> specifiers on decimal values by truncating the fractional part and converting the value to a 64-bit integer.</p>
 
 <p>All print commands include special shorthands to facilitate printing. These are not reserved words, but they will take priority over symbols with the same name. To work around this, prefix those symbols with a <nowrap>plus sign (<ftok>+</ftok>)</nowrap>, which is effectively a null operation.</p>
 
@@ -1271,9 +1306,8 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <div class="futexample">
 <b>`</b> <fcom>; break on Read/Write/Execute, inserts nothing</fcom>
-<b>`</b> <fcom>; break on Read/Write/Execute, inserts nothing</fcom>
 
-<fkey>breakpoints</fkey> rw+n <fcom>; default breakpoint triggers are Read/Write; inserts NOP</fcom>
+<fkey>breakpoints</fkey> rw+n <fcom>; default breakpoint triggers are Read/Write with NOP inserts</fcom>
 
 <b>`</b> <fcom>; break on Read/Write, inserts NOP</fcom>
 <b>`</b>x <fcom>; break on Execute,    inserts NOP</fcom>
@@ -1332,7 +1366,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <p>Branch instructions can be assembled as brops (<u><b>BR</b></u>anch <u><b>OP</b></u>codes) by using {{ SPLAT }} as their operand. This allows for simpler patches where the type of branch instruction should be changed but the location it branches to should not.</p>
 
-<!--- this is a real example that partially fixes a real bug in alttp --->
+<!--- this is a real example that partially fixes a real bug in alttp! --->
 <div class="futexample">
 <fkey>org</fkey> <addr>$01D4DB</addr>
 	<asmop>BCS</asmop> <ftok>*</ftok> <fcom>; assembles as B0 and skips the next byte</fcom>
@@ -1373,8 +1407,6 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 	<li><asmop>NOP</asmop>, <asmop>XBA</asmop></li>
 </ul>
 
-
-
 <h2 id="cli">Command line interface</h2>
 
 <h3 id="manifests">Manifest files</h3>
@@ -1382,6 +1414,8 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <p>The recommended method of building projects is with a <code>.futaba</code> manifest file. These manifests dictate and control complex settings in a human-readable format, and, after <a href="#quickstart">registering the application</a>, enable double-click assembly for easy building.</p>
 
 <p>Comments may be added to manifest files using a <nowrap>semicolon (<ftok>;</ftok>)</nowrap>; however, they may only appear on their own lines.</p>
+
+<p>A default template can be created with the CLI command <fblk>futaba template &lt;name&gt;</fblk>.</p>
 
 <h4>Options</h4>
 
@@ -1454,7 +1488,6 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 	{%- endfor -%}
 </table>
 
-
 <h4>Template</h4>
 
 <pre id="manifest-template">
@@ -1468,12 +1501,9 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 #SYMBOL3 = %01011
 </pre>
 
-
-
-
 <h2 id="nuget">.NET package</h2>
 
-<p>Futaba's core library is available as a nuget package from nuget.org for .NET projects. It can be found under the name <fblk>Spannerisms.futaba</fblk>.</p>
+<p>Futaba's core library is available as a nuget package from nuget.org for .NET projects. It can be found under the name <fblk>Spannerisms.Futaba</fblk>.</p>
 
 <ul id="nugetapi">The following APIs are exposed:
 	<li><code>Futaba</code> namespace

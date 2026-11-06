@@ -1,6 +1,5 @@
 ﻿namespace Futaba;
 
-// TODO need test cases for when someone (for some reason) uses both incbin and incsrc on the same file
 internal sealed class FileWatcher : IDisposable {
 	private readonly Dictionary<string, IWatchedFile?> _files = [];
 	public string DirectoryPath { get; }
