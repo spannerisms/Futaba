@@ -273,7 +273,7 @@ internal static partial class Igarashi {
 		}
 
 		try {
-			var baseRom = args.GetValue(baseRomOption);
+			var baseRomFile = args.GetValue(baseRomOption);
 			var outputFile = args.GetValue(Arg_OutputRom);
 
 			if (outputFile is null) {
@@ -290,25 +290,25 @@ internal static partial class Igarashi {
 
 			using Assembler assembler = Assembler.CreateAssemblerWithMapper(mapper, entry);
 
-			if (baseRom is not null) {
-				assembler.BaseRom = Helpers.GetFileAsArray(baseRom);
+			byte[]? baseRom = null;
+
+			if (baseRomFile is not null) {
+				baseRom = Helpers.GetFileAsArray(baseRomFile);
 			}
 
+			assembler.SetBaseRom(baseRom);
 			string romSizeStr = args.GetValue(Option_Size) ?? "auto";
 
 			if (romSizeStr.EqualsI("auto")) {
-				int size = assembler.BaseRom?.Length ?? 0;
+				assembler.InitialRomSize = int.Clamp(
+					baseRom?.Length ?? 0,
+					assembler.MinRomSize,
+					assembler.MinRomSize);
 
-				if (size < assembler.MinRomSize) {
-					assembler.InitialRomSize = assembler.MinRomSize;
-				} else if (size > assembler.MaxRomSize) {
-					assembler.InitialRomSize = assembler.MaxRomSize;
-				} else {
-					assembler.InitialRomSize = size;
-				}
 			} else {
 				if (RomHeader.TryGetRomSize(romSizeStr, out int romSizeInt)) {
 					assembler.InitialRomSize = romSizeInt;
+
 				} else {
 					Error($"Invalid ROM size: {romSizeStr}");
 					return Exit_Error;
@@ -334,6 +334,7 @@ internal static partial class Igarashi {
 			}
 
 			return Exit_Good;
+
 		} catch (Exception e) {
 			FatalError(e);
 			return e.HResult;

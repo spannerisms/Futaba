@@ -425,6 +425,7 @@ unsafe partial class Assembler {
 
 					return;
 
+				// TODO should this use different contexts...?
 				case SAFEORG:
 					if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString safeOrgArg)) {
 						IExpressionReturn safewarn = ParseOperand(safeOrgArg, SymbolContext.Provenance);

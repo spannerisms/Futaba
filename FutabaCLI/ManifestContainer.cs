@@ -265,14 +265,13 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 					if (doNullFill) {
 						Helpers.FillRandom((ulong) rngseed1, (ulong) rngseed2, _baseRomData.AsSpan(_fillStart));
 					}
-
 				}
 			}
 		} else if (doNullFill) {
 			_baseRomData?.AsSpan(_fillStart).Clear();
 		}
 
-		Assembler.BaseRom = _baseRomData;
+		Assembler.SetBaseRom(_baseRomData);
 	}
 
 	internal void Configure() {

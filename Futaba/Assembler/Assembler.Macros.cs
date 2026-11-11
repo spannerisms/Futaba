@@ -43,7 +43,7 @@ unsafe partial class Assembler {
 			}
 
 			if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out CharSpan nextArg)) {
-				Error("Missing or invalid macro parameter name");
+				Error("Missing or invalid macro parameter name", $"'{CharSpanHelpers.ClampForMessage(nextArg)}'");
 				return false;
 			}
 
@@ -128,7 +128,7 @@ unsafe partial class Assembler {
 			if ((uint) argI < funcArgsReal.Length) {
 				funcArgsReal[argI] = argN;
 			} else {
-				Error("Parameter in function call not declared in header", $"'{argN.Name}'");
+				Error("Parameter in function call not declared in parameter list", $"'{argN.Name}'");
 			}
 		}
 

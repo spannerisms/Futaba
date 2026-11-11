@@ -12,7 +12,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	private SnesArchitecture _architecture = SnesArchitecture.WDC65816;
 
 	private SnesEncoder _currentEncoder = SnesEncoder.ASCII;
-	private SpannedLookup<SnesEncoder> _encoders = new();
+	private SpannedLookup<SnesEncoder> _encoders = new(8);
 
 	private Dictionary<string, SourceFile> _loadedFiles = new(32);
 	private Dictionary<string, SourceBinary> _loadedBinaries = new(32);
@@ -49,7 +49,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	public string EntryPoint { get; }
 
 	/// <summary>
-	/// Gets or sets the base binary data used to populate the initial buffer.
+	/// Sets the base binary data used to populate the initial buffer.
 	/// If <see langword="null"/>, assembly begins with a zero-filled buffer.
 	/// <para>
 	/// If the size of this array differs from <see cref="InitialRomSize"/>
@@ -57,23 +57,20 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// initialized to zero.
 	/// </para>
 	/// </summary>
-	/// <inheritdoc cref="OverflowAction" path="//remarks|//exception"/>
-	public byte[]? BaseRom {
-		get => _baseRom;
-		set {
-			ThrowIfAssembling();
+	/// <inheritdoc cref="ThrowIfAssembling" path="//remarks|//exception"/>
+	public void SetBaseRom(byte[]? baseRom) {
+		ThrowIfAssembling();
 
-			if (value is null) {
-				_baseRom = null;
+		if (baseRom is null) {
+			_baseRom = null;
+
+		} else {
+			// avoid reallocation when the sizes are identical
+			if (_baseRom is not null && _baseRom.Length == baseRom.Length) {
+				baseRom.CopyTo(_baseRom, 0);
 
 			} else {
-				// avoid reallocation when the sizes are identical
-				if (_baseRom is not null && _baseRom.Length == value.Length) {
-					value.CopyTo(_baseRom, 0);
-
-				} else {
-					_baseRom = [.. value];
-				}
+				_baseRom = [.. baseRom];
 			}
 		}
 	}

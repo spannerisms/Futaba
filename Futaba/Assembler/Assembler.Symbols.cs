@@ -47,13 +47,13 @@ unsafe partial class Assembler {
 	//     simple requests    : 11633
 	//     symbols            : 24554
 	private SpannedLookup<Symbol> _symbols = new(50000);
-	private List<SimpleRequest> _simpleRequests = new(50000);
-	private List<BranchRequest> _branchRequests =  new(50000);
+	private List<SimpleRequest> _simpleRequests = new(20000);
+	private List<BranchRequest> _branchRequests =  new(20000);
 
 	// don't expect these to be as common, so they can go on the normal heap
 	private List<FillRequest> _fillRequests = [];
 	private List<AbsolutePointerRequest> _jumpRequests = [];
-	private SpannedLookup<Variable> _variables = new(50);
+	private SpannedLookup<Variable> _variables = new(64);
 
 	private readonly string[] _nameHierarchy = new string[HierarchySize];
 	private readonly int[] _pcHierarchy = new int[HierarchySize];
