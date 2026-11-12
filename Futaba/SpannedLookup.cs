@@ -6,8 +6,6 @@ internal readonly struct SpannedLookup<T> where T : notnull {
 
 	public int Count => _dict.Count;
 
-	public SpannedLookup() : this(0) { }
-
 	public SpannedLookup(int capacity) {
 		_dict = new(capacity);
 		_alt = _dict.GetAlternateLookup<CharSpan>();

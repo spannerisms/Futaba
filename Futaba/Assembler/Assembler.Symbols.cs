@@ -53,7 +53,7 @@ unsafe partial class Assembler {
 	// don't expect these to be as common, so they can go on the normal heap
 	private List<FillRequest> _fillRequests = [];
 	private List<AbsolutePointerRequest> _jumpRequests = [];
-	private SpannedLookup<Variable> _variables = new(64);
+	private SpannedLookup<Variable> _variables = new(512);
 
 	private readonly string[] _nameHierarchy = new string[HierarchySize];
 	private readonly int[] _pcHierarchy = new int[HierarchySize];

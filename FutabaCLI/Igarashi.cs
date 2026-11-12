@@ -303,7 +303,7 @@ internal static partial class Igarashi {
 				assembler.InitialRomSize = int.Clamp(
 					baseRom?.Length ?? 0,
 					assembler.MinRomSize,
-					assembler.MinRomSize);
+					assembler.MaxRomSize);
 
 			} else {
 				if (RomHeader.TryGetRomSize(romSizeStr, out int romSizeInt)) {
@@ -315,7 +315,7 @@ internal static partial class Igarashi {
 				}
 			}
 
-			assembler.CalculateChecksum = args.GetResult(Option_FixChecksum) is not null;
+			assembler.CalculateChecksum = args.GetValue(Option_FixChecksum);
 			assembler.OverflowAction = RomOverflowAction.Grow;
 
 			bool showTimer = args.GetValue(Option_Timer);

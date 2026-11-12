@@ -987,7 +987,7 @@ unsafe partial class Assembler {
 		if (_baseRom is not null) {
 			int baseromlen = Math.Min(_baseRom.Length, _allocatedLength);
 
-			_baseRom.AsSpan().CopyTo(rom[..baseromlen]);
+			_baseRom.AsSpan(0, baseromlen).CopyTo(rom[..baseromlen]);
 
 			rom = rom[baseromlen..];
 		}

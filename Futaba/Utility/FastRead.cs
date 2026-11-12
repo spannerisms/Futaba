@@ -296,7 +296,6 @@ internal static unsafe class FastRead {
 		char* start = reading;
 
 		dots = CountCharacter(ref start, end, SublabelDelimiter);
-		start += dots;
 
 		int length = GetSublabelRunLength(start, end);
 
