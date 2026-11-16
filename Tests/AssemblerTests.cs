@@ -10,6 +10,7 @@ namespace Tests;
 // need to stress test multiple variables in a single function
 // test db "string" including functions
 // test incsrc "samefile" : incbin "samefile"
+// test raw for invalid char / odd length
 public static class AssemblerTests {
 	private static bool FailsOnly = true;
 	private static bool GroupPassing = false;

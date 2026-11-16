@@ -201,7 +201,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 		get => _errorOut;
 		set {
 			ThrowIfAssembling();
-			_errorsToConsole = ReferenceEquals(value, Console.Error);		
+			_errorsToConsole = ReferenceEquals(value, Console.Error);
 
 			_errorOut = value;
 		}

@@ -451,31 +451,31 @@ unsafe partial class Assembler {
 	}
 
 	private void AssembleBranch(OperandString argstr, byte opcode) {
-		int len = argstr.Length;
+		int length = argstr.Length;
 
-		if (len is 0) {
+		if (length is 0) {
 			MissingOperand();
 			PlaceholderOp(opcode, 1);
 		} else {
-			char c = argstr.GetUnchecked(0);
+			char firstChar = argstr.GetUnchecked(0);
 
 			// check for special characters
-			if (len is 1) {
-				if (c is BROP) {
+			if (length is 1) {
+				if (firstChar is BROP) {
 					WriteOpBrop(opcode);
 					return;
 
-				} else if (c is JNOP) {
+				} else if (firstChar is JNOP) {
 					WriteOpB(opcode, 0x00);
 					return;
 
-				} else if (c is BTYS) {
+				} else if (firstChar is BTYS) {
 					WriteOpB(opcode, 0xFE);
 					return;
 				}
 			}
 
-			if (c is BranchLiteral) {
+			if (firstChar is BranchLiteral) {
 				WriteOpB(opcode, ParseOperandSliced(argstr, 1));
 			} else {
 				WriteOpRel8(opcode, ParseOperand(argstr));

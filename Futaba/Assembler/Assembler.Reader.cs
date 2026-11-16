@@ -549,7 +549,7 @@ unsafe partial class Assembler {
 		do {
 			more = args.GetNextChar('/', out var cmdWhole);
 
-			if (cmdWhole == default) {
+			if (cmdWhole.IsNull) {
 				Error("Missing command name in string instructions");
 				break;
 			}

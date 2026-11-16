@@ -8,7 +8,7 @@ unsafe partial class Assembler {
 	/// </summary>
 	public bool Busy { get; private set; } = false;
 
-	private SourcePointers? _previousState = null;
+	private SourceLink? _previousState = null;
 	private SourceObject _currentSourceObject = SourceFile.Empty;
 	private SourceLine CurrentSourceLine => new(_currentSourceObject, _sourceLine, _commandStart);
 
@@ -31,11 +31,11 @@ unsafe partial class Assembler {
 			// clear file watchers
 			_processedEvent = true;
 
-			foreach (FileWatcher w in _watchedFiles.Values) {
-				if (w.IsEmpty) {
-					w.Enabled = false;
+			foreach (FileWatcher watcher in _watchedFiles.Values) {
+				if (watcher.IsEmpty) {
+					watcher.Enabled = false;
 				} else {
-					w.Clear();
+					watcher.Clear();
 				}
 			}
 
@@ -49,7 +49,7 @@ unsafe partial class Assembler {
 			WarningCount = 0;
 			ErrorLine = null;
 
-			if (!TryGetSource(EntryPoint, out var entryObj)) {
+			if (!TryGetSource(EntryPoint, out var entry)) {
 				return;
 			}
 
@@ -81,8 +81,8 @@ unsafe partial class Assembler {
 
 			_variables.Clear();
 
-			foreach ((string k, Variable v) in _initialVariables) {
-				_variables.Add(k, v.Clone());
+			foreach ((string name, Variable variable) in _initialVariables) {
+				_variables.Add(name, variable.Clone());
 			}
 
 			_copVectorNative = null;
@@ -100,11 +100,11 @@ unsafe partial class Assembler {
 
 			// reset source state
 			_context = ContextMode.Code;
-			TransferSourceControl(entryObj);
-			// This must occur after TransferSourceControl
-			_previousState = null;
+			TransferSourceControl(entry);
+			_previousState = null; // This must occur after TransferSourceControl!
 
 			StartAssembly();
+
 			ResolveAllRequests();
 
 			AdjustInterruptVectors();
@@ -118,10 +118,8 @@ unsafe partial class Assembler {
 		} catch {
 			if (_currentSourceObject == SourceFile.Empty) {
 				ErrorLine = "Unable to determine line.";
-
 			} else {
 				ErrorLine = $"{CurrentSourceLine}";
-
 			}
 
 			throw;
@@ -176,18 +174,18 @@ unsafe partial class Assembler {
 		do {
 			while (_reading < _fileEnd) {
 				// find the next command
-				char c = *_reading;
+				char nextChar = *_reading;
 
 				// these are so common that we'll handle them outside of the switch for efficiency
 				// skip over spaces
-				if (c.IsSkippableSpace) {
+				if (nextChar.IsSkippableSpace) {
 					// very fast whitespace skipping
-					char* rd = _reading; // put in register
-					while ((++rd)->IsSkippableSpace) ;
-					_reading = rd;
+					char* readSkip = _reading; // put in register
+					while ((++readSkip)->IsSkippableSpace) ;
+					_reading = readSkip;
 					continue;
 
-				} else if (c is NewLine) {
+				} else if (nextChar is NewLine) {
 					_reading++;
 					_sourceLine++;
 					continue;
@@ -196,7 +194,7 @@ unsafe partial class Assembler {
 				_commandStart = _reading;
 
 				// everything else is some sort of interesting character!
-				switch (c) {
+				switch (nextChar) {
 					// skip over comments
 					case CommentChar:
 						FastRead.ReadUntilLineEnd(ref _reading, _fileEnd);
@@ -229,7 +227,7 @@ unsafe partial class Assembler {
 
 					case '+':
 					case '-':
-						GenerateRelativeLabel(c);
+						GenerateRelativeLabel(nextChar);
 						continue;
 
 					case '^':
@@ -278,14 +276,14 @@ unsafe partial class Assembler {
 							'a' or 'b' or 'c' or 'd' or 'e' or 'f' or 'g' or 'h' or 'i' or 'j' or 'k' or 'l' or 'm' or
 							'n' or 'o' or 'p' or 'q' or 'r' or 's' or 't' or 'u' or 'v' or 'w' or 'x' or 'y' or 'z' or '_':
 						// no need to do an identifier check, since the first character is absolutely valid
-						OperandString symOpDir = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
+						OperandString nextName = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
 
 						// check for a colon
 						if (*_reading is ':') {
 							_reading++;
 
 							if (DemandSpaceAfterColon()) {
-								Label addLabel = new(symOpDir, Provenance, _pc, _offset);
+								Label addLabel = new(new(nextName), Provenance, _pc, _offset);
 
 								AddOrReplaceSymbol(addLabel);
 								UpdateHierarchy(addLabel.Name, 0);
@@ -305,15 +303,15 @@ unsafe partial class Assembler {
 
 						if (*peeking is '=') {
 							_reading = peeking + 1;
-							CreateAssignedSymbol(symOpDir);
+							CreateAssignedSymbol(nextName);
 							continue;
 						}
 
 						// try treating it as a data statement
-						if (symOpDir.Length is 2 && c is 'd' or 'D') {
+						if (nextName.Length is 2 && nextChar is 'd' or 'D') {
 							// we could technically do a special check for the SPC instruction di here
 							// but no one should ever use that, so who cares if it's a little slower?
-							switch (symOpDir[1]) {
+							switch (nextName[1]) {
 								case 'b' or 'B': DoDataItems(1); continue;
 								case 'w' or 'W': DoDataItems(2); continue;
 								case 'l' or 'L': DoDataItems(3); continue;
@@ -324,29 +322,29 @@ unsafe partial class Assembler {
 						// test for it being an instruction
 						// if it is, assemble it
 						if (_architecture is SnesArchitecture.WDC65816) {
-							OpWdc opco = TestFor65816(symOpDir);
+							OpWdc opType = TestFor65816(nextName);
 
-							if (opco is not OpWdc.NotGood) {
-								Assemble65816(opco);
+							if (opType is not OpWdc.NotGood) {
+								Assemble65816(opType);
 								continue;
 							}
 						} else if (_architecture is SnesArchitecture.SPC700) {
-							OpSPC opco = TestForSPC700(symOpDir);
+							OpSPC opType = TestForSPC700(nextName);
 
-							if (opco is not OpSPC.NotGood) {
-								AssembleSPC700(opco);
+							if (opType is not OpSPC.NotGood) {
+								AssembleSPC700(opType);
 								continue;
 							}
 						} else if (_architecture is SnesArchitecture.SuperFX) {
-							OpSFX opco = TestForSuperFX(symOpDir);
+							OpSFX opType = TestForSuperFX(nextName);
 
-							if (opco is not OpSFX.NotGood) {
-								AssembleSuperFX(opco);
+							if (opType is not OpSFX.NotGood) {
+								AssembleSuperFX(opType);
 								continue;
 							}
 						}
 
-						HandleDirectives(symOpDir);
+						HandleDirectives(nextName);
 						continue;
 
 					default:
@@ -361,13 +359,13 @@ unsafe partial class Assembler {
 
 	private void HandleDirectives(OperandString directive) {
 		// Assume everything else is a directive
-		int dlen = directive.Length;
+		int directiveLength = directive.Length;
 
-		if (dlen <= LongestDirectiveLength) {
-			scoped Span<char> dirword = stackalloc char[dlen];
-			directive.FastLower(dirword);
+		if (directiveLength <= LongestDirectiveLength) {
+			scoped Span<char> directiveLower = stackalloc char[directiveLength];
+			directive.FastLower(directiveLower);
 
-			switch (dirword) {
+			switch (directiveLower) {
 				case PILING:
 					Directive_PILING();
 					return;
@@ -587,7 +585,7 @@ unsafe partial class Assembler {
 					return;
 
 				default:
-					if (HandleMoreDirectives(dirword)) {
+					if (HandleMoreDirectives(directiveLower)) {
 						return; // exit if directive was handled
 					}
 
@@ -713,9 +711,9 @@ unsafe partial class Assembler {
 		}
 
 		if ((_previousState?.Depth ?? 0) >= MaxChain) {
-			string MaxObj = $"The maximum number ({MaxChain}) of nested or chained assembly objects has been hit.";
-			Error(MaxObj);
-			throw new InvalidOperationException(MaxObj);
+			string errorText = $"The maximum number ({MaxChain}) of nested or chained assembly objects has been hit.";
+			Error(errorText);
+			throw new InvalidOperationException(errorText);
 		}
 
 		_previousState = new(_currentSourceObject, _reading, _sourceLine, _scopeChain, _previousState);
@@ -743,9 +741,9 @@ unsafe partial class Assembler {
 		}
 
 		// check the parent for where to resume or if we should end
-		if (_previousState is SourcePointers sp) {
-			_previousState = sp.Parent;
-			(_currentSourceObject, _reading, _sourceLine, _scopeChain) = sp;
+		if (_previousState is SourceLink nextSource) {
+			_previousState = nextSource.Parent;
+			(_currentSourceObject, _reading, _sourceLine, _scopeChain) = nextSource;
 			_fileEnd = _currentSourceObject.SourceEnd;
 			return true;
 
@@ -763,28 +761,28 @@ unsafe partial class Assembler {
 		internal bool HitElse { get; set; } = false;
 	}
 
-	private sealed class RepeatLink(char* start, int loops, int lineStart, ScopeLink? parent) : ScopeLink(parent) {
-		private int _loops = loops;
+	private sealed class RepeatLink(char* start, int loops, int firstLine, ScopeLink? parent) : ScopeLink(parent) {
+		private int _loopz = loops;
 		public char* Start => start;
-		public int LineStart => lineStart;
+		public int FirstLine => firstLine;
 		public bool TickLoops() {
-			return (--_loops) > 0;
+			return (--_loopz) > 0;
 		}
 	}
 
-	private sealed class SourcePointers(SourceObject source, char* current, int line, ScopeLink? scopeStack, SourcePointers? parent) {
-		internal SourcePointers? Parent { get; } = parent;
+	private sealed class SourceLink(SourceObject source, char* current, int line, ScopeLink? scopeStack, SourceLink? parent) {
+		internal SourceLink? Parent { get; } = parent;
 		internal SourceObject Source { get; } = source;
 		internal char* Current { get; } = current;
 		internal int Line { get; } = line;
-		internal ScopeLink? IfStack { get; } = scopeStack;
+		internal ScopeLink? ScopeChain { get; } = scopeStack;
 		internal int Depth { get; } = (parent?.Depth + 1) ?? 0;
 
-		public void Deconstruct(out SourceObject _source, out char* _current, out int _line, out ScopeLink? _ifstack) {
+		public void Deconstruct(out SourceObject _source, out char* _current, out int _line, out ScopeLink? _scopeChain) {
 			_current = Current;
 			_line = Line;
 			_source = Source;
-			_ifstack = IfStack;
+			_scopeChain = ScopeChain;
 		}
 	}
 }

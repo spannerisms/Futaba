@@ -22,6 +22,28 @@ unsafe partial class Assembler {
 	}
 
 	/// <summary>
+	/// Search's this instance's symbols dictionary for a symbol with the given name.
+	/// </summary>
+	/// <param name="name">The name of the symbol to look up.</param>
+	/// <param name="symbol">If the symbol is found, this will contain a refernce to it; otherwise, it will contain <see langword="null"/>.</param>
+	/// <returns><see langword="true"/> if the symbol is found; otherwise <see langword="false"/>.</returns>
+	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
+	public bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? symbol) {
+		return _symbols.TryGetValue(name, out symbol);
+	}
+
+	/// <summary>
+	/// Search's this instance's variables dictionary for a variable with the given name.
+	/// </summary>
+	/// <param name="name">The name of the variable to look up.</param>
+	/// <param name="variable">If the variable is found, this will contain a refernce to it; otherwise, it will contain <see langword="null"/>.</param>
+	/// <returns><see langword="true"/> if the variable is found; otherwise <see langword="false"/>.</returns>
+	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
+	public bool TryGetVariable(string name, [NotNullWhen(true)] out Variable? variable) {
+		return _variables.TryGetValue(name, out variable);
+	}
+
+	/// <summary>
 	/// Returns a new copy of this instance's breakpoint list.
 	/// </summary>
 	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
@@ -65,7 +87,7 @@ unsafe partial class Assembler {
 	private bool _pooling = false;
 	private readonly List<string> _poolHeaders = new(8);
 
-	#endregion Private fields
+	#endregion private fields
 
 	private void CreateSimpleRequest(IExpressionReturn item, int offset, int size) {
 		_simpleRequests.Add(new SimpleRequest(item, offset, size, _time, CurrentSourceLine));
@@ -255,7 +277,7 @@ unsafe partial class Assembler {
 		return getsym;
 	}
 
-	private bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? item) {
+	private bool TryFetchSymbol(string name, [NotNullWhen(true)] out Symbol? item) {
 		if (_symbols.TryGetValue(name, out item) && item.Resolved) {
 			return true;
 		} else {
@@ -346,7 +368,7 @@ unsafe partial class Assembler {
 
 	private void CreateAssignedSymbol(CharSpan symbolName) {
 		if (!ReadRestOfCommand(out OperandString assignmentOperand)) {
-			Error("Missing assignment for symbol");
+			Error(MsgInfo.MissingAssignmentOperand);
 		} else {
 			IExpressionReturn expr = ParseOperand(assignmentOperand);
 
@@ -589,7 +611,7 @@ unsafe partial class Assembler {
 				_reading++;
 
 				if (!ReadRestOfCommand(out OperandString assignmentOperand)) {
-					Error("Missing assignment for symbol");
+					Error(MsgInfo.MissingAssignmentOperand);
 				} else {
 					IExpressionReturn expr = ParseOperand(assignmentOperand);
 
@@ -680,9 +702,11 @@ unsafe partial class Assembler {
 	internal bool TryFullyExpandLabelName(int depth, CharSpan name, [NotNullWhen(true)] out string? fullName) {
 		if (name.Length is 0) {
 			Error(MsgInfo.MissingLabelName);
+
 		} else if (depth is 0) {
 			fullName = new(name);
 			return true;
+
 		} else if (depth <= (_hierarchyDepth + 1)) {
 			// make depth of 1 faster
 			if (depth == 1) {

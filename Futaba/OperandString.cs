@@ -263,7 +263,7 @@ internal unsafe readonly struct OperandString {
 	public override string ToString() => new(_start, 0, Length);
 
 	public static implicit operator CharSpan(OperandString a) => CharSpanHelpers.CreateSpanUnchecked(a._start, a._end);
-	public static implicit operator string(OperandString a) => new(a._start, 0, a.Length);
+	public static explicit operator string(OperandString a) => new(a._start, 0, a.Length);
 
 	public StringSplitter GetEnumerator() => new(_start, _end);
 }

@@ -6,20 +6,20 @@ unsafe partial class Assembler {
 		_reading++;
 
 		if (*_reading is InternalVariableToken) {
-			Error("Internal variables are read-only");
+			Error("Internal variables are read-only.");
 			AbortCommand();
 			return;
 		}
 
-		var vnameRead = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
+		OperandString vnameRead = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
 
 		if (vnameRead.Length < 1) {
-			Error("Variable missing name.");
+			Error(MsgInfo.MissingVariableName);
 			AbortCommand();
 			return;
 		}
 
-		string varName = vnameRead;
+		string varName = new(vnameRead);
 
 		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
@@ -57,7 +57,7 @@ unsafe partial class Assembler {
 		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
 		if (!ReadRestOfCommand(out OperandString theRest)) {
-			Error("Missing operand for assignment");
+			Error(MsgInfo.MissingAssignmentOperand);
 			theVar ??= new(varName);
 			return;
 		}
@@ -91,7 +91,7 @@ unsafe partial class Assembler {
 					break;
 
 				default:
-					Error("Invalid assignment type");
+					Error(MsgInfo.InvalidAssignment);
 					theVar ??= new(varName, string.Empty);
 					break;
 			}
@@ -146,7 +146,7 @@ unsafe partial class Assembler {
 						break;
 
 					default:
-						Error("Invalid assignment type.");
+						Error(MsgInfo.InvalidAssignment);
 						theVar ??= new(varName, 0M);
 						break;
 				}
@@ -159,7 +159,7 @@ unsafe partial class Assembler {
 
 	private bool TryReadVariableName(ref char* start, char* end, out CharSpan name) {
 		if (!FastRead.TryReadIdentifier(ref start, end, out name)) {
-			Error("Missing variable name");
+			Error(MsgInfo.MissingVariableName);
 			return false;
 		} else {
 			return true;
