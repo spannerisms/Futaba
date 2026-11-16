@@ -31,6 +31,7 @@ internal static class MsgInfo {
 	internal const string InvalidFuncArg = "Invalid function argument";
 	internal const string InvalidMacroName = "Missing or invalid macro name";
 
+	internal const string UnresolvedSymbolAssignment = "Symbol assignment must be immediately resolvable.";
 	internal const string NoChipChange = "Cannot change the coprocessor of this type of assemble.";
 
 	internal static string MustBeResolvedNow(string directive) => $"argument to {directive} must be immediately resolvable";

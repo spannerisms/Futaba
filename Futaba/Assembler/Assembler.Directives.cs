@@ -1278,7 +1278,28 @@ unsafe partial class Assembler {
 
 							bool goodName = TryFullyExpandLabelName(depth, chunkName, out string? fullName);
 
-							if (AdvanceOverWhitespace() || !FastRead.IsAllocator(_reading)) {
+							bool atEnd = AdvanceOverWhitespace();
+
+							if (!atEnd && *_reading is '=') {
+								_reading++;
+								int value;
+								if (!ReadRestOfCommand(out OperandString assignmentOperand)) {
+									Error("Missing assignment for symbol");
+									value = 0;
+								} else {
+									IExpressionReturn expr = ParseOperand(assignmentOperand);
+
+									value = expr.ValueInt32;
+									if (!expr.Resolved) {
+										Error_BadResolve(expr, MsgInfo.UnresolvedSymbolAssignment);
+									}
+								}
+
+								if (goodName) {
+									AssignedSymbol addsym = new(fullName!, value);
+									AddOrReplaceSymbol(addsym);
+								}
+							} else if (AdvanceOverWhitespace() || !FastRead.IsAllocator(_reading)) {
 								if (goodName) {
 									AssignedSymbol addsym = new(fullName!, _allocationAddress);
 									AddOrReplaceSymbol(addsym);

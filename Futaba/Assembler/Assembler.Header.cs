@@ -362,7 +362,7 @@ unsafe partial class Assembler {
 			ThrowIfAssembling();
 			field = SnesHelpers.SanitizeString(value, SnesHelpers.MakerCodeLength);
 		}
-	} = "  ";
+	} = "";
 
 	/// <summary>
 	/// Gets or sets the 4 character game code.
@@ -388,7 +388,7 @@ unsafe partial class Assembler {
 			ThrowIfAssembling();
 			field = SnesHelpers.SanitizeString(value, SnesHelpers.GameCodeLength);
 		}
-	} = "    ";
+	} = "";
 
 	/// <summary>
 	/// Gets or sets the special version.

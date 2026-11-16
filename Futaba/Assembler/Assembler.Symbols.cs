@@ -353,7 +353,7 @@ unsafe partial class Assembler {
 			if (expr.Resolved) {
 				AddOrReplaceSymbol(new AssignedSymbol(new string(symbolName), expr.ValueInt32));
 			} else {
-				Error_BadResolve(expr, "Symbol assignment must be immediately resolvable.");
+				Error_BadResolve(expr, MsgInfo.UnresolvedSymbolAssignment);
 			}
 		}
 	}
@@ -582,18 +582,51 @@ unsafe partial class Assembler {
 
 	private void GenerateSublabel() {
 		if (TryReadSublabelName(out string? chunkName, out int depth)) {
-			UpdateHierarchy(chunkName, depth);
+			// we'll skip whitespace after this anyway, so it's fine
+			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-			if (!_pooling) {
-				if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
-					AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
+			if (*_reading is '=') { // assignment
+				_reading++;
+
+				if (!ReadRestOfCommand(out OperandString assignmentOperand)) {
+					Error("Missing assignment for symbol");
+				} else {
+					IExpressionReturn expr = ParseOperand(assignmentOperand);
+
+					if (!expr.Resolved) {
+						Error_BadResolve(expr, MsgInfo.UnresolvedSymbolAssignment);
+					}
+
+					int value = expr.ValueInt32;
+
+					if (!_pooling) {
+						if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
+							AddOrReplaceSymbol(new AssignedSymbol(new string(fullName), value));
+						}
+					} else {
+						foreach (string poolName in _poolHeaders) {
+							_nameHierarchy[0] = poolName;
+
+							if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
+								AddOrReplaceSymbol(new AssignedSymbol(new string(fullName), value));
+							}
+						}
+					}
 				}
-			} else {
-				foreach (string poolName in _poolHeaders) {
-					_nameHierarchy[0] = poolName;
+			} else { // inline
+				UpdateHierarchy(chunkName, depth);
 
+				if (!_pooling) {
 					if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
 						AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
+					}
+				} else {
+					foreach (string poolName in _poolHeaders) {
+						_nameHierarchy[0] = poolName;
+
+						if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
+							AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
+						}
 					}
 				}
 			}
