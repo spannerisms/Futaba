@@ -301,10 +301,10 @@ unsafe partial class Assembler {
 								last = SymbolicToken.HighByte;
 								goto Advance1;
 							} else if (ExprPeek2() is '>') {
-								last = SymbolicToken.ArithmeticRightShift;
+								last = SymbolicToken.LogicalRightShift;
 								goto Advance3;
 							} else {
-								last = SymbolicToken.LogicalRightShift;
+								last = SymbolicToken.ArithmeticRightShift;
 								goto Advance2;
 							}
 
