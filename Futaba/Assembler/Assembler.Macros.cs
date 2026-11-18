@@ -155,11 +155,13 @@ unsafe partial class Assembler {
 				AbortCommand();
 			}
 
+			SourceLine macroLine = CurrentSourceLine;
+
 			if (CaptureBlock(MACRO, ENDMACRO, MACRO) is StringBuilder macroBody) {
 				if (getMacro is not null) {
 					Error("A macro with this name already exists");
 				} else {
-					getMacro = new(new string(macroName), args, macroBody, _macros.Count, CurrentSourceLine);
+					getMacro = new(new string(macroName), args, macroBody, _macros.Count, macroLine);
 				}
 			}
 		}

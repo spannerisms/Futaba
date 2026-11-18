@@ -6,7 +6,7 @@ internal static class Directives {
 	internal const int LongestDirectiveLength = 15;
 
 	internal const char SPLAT = '*';
-	internal const char BadChar = '\xBEBE';
+	internal const char BadChar = '\xEEEE';
 
 	internal const char
 		SublabelDelimiter = '.',
