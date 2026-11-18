@@ -95,6 +95,7 @@ unsafe partial class Assembler {
 			AdjustPC(newpc);
 			_offset = AddressToOffset(_pc);
 			_pcPtr = _romPtr + _offset;
+			_currentSegment = null; // TODO include a segment stack used here?
 		} else {
 			Error("No program counter to pop from stack.");
 		}
@@ -134,7 +135,7 @@ unsafe partial class Assembler {
 		if (TryAdvanceProgramCounter(operandSize + 1)) {
 			_pcPtr[0] = opcode;
 			new Span<byte>(_pcPtr + 1, operandSize).Clear();
-			AdvanceProgramCounter(operandSize);
+			AdvanceProgramCounter(operandSize + 1);
 		}
 	}
 
@@ -884,7 +885,7 @@ unsafe partial class Assembler {
 			foreach (Dock ptest in _segments) {
 				if (ptest != curSeg) {
 					if (ptest.OffsetIsInRegion(offset)) {
-						Error($"Assembly has entered protected region \"{curSeg}\"");
+						Error($"Assembly has entered protected region \"{ptest}\"");
 						_shutUpAboutSegments = true;
 						break;
 					}

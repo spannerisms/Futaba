@@ -730,7 +730,7 @@ unsafe partial class Assembler {
 	private const int MaxRelativeCount = 100;
 	private static string GetRelativeLabelName(char token, int count, int index) => $"{token}{count}.{index}";
 
-	internal bool TryGetPreviusMinusLabel(int minusCount, [NotNullWhen(true)] out Symbol? label) {
+	internal bool TryGetPreviousMinusLabel(int minusCount, [NotNullWhen(true)] out Symbol? label) {
 		if (ValidateRelativeCount('-', minusCount)) {
 			string name = GetRelativeLabelName('-', minusCount, _minuslabels[minusCount]);
 			label = RequestSymbol(name);

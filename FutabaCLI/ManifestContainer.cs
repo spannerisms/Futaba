@@ -246,13 +246,13 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 							Helpers.FillArray(fillarray, _baseRomData!, _fillStart);
 						}
 					}
-				} else if (nullfillGet.Value.EqualsI("string")) {
+				} else if (nullFillType.EqualsI("string")) {
 					if (nullFillValue is null) {
 						ManifestError("'nullfill=string' requires a comma-separated argument.", nullfillGet.Line);
 					} else if (doNullFill) {
 						Helpers.FillArray(System.Text.Encoding.ASCII.GetBytes(nullFillValue), _baseRomData!, _fillStart);
 					}
-				} else if (nullfillGet.Value.EqualsI("random")) {
+				} else if (nullFillType.EqualsI("random")) {
 					long rngseed1, rngseed2;
 
 					if (nullFillValue is null) {
@@ -381,7 +381,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 		if (TryGetArg("romsize", out var romsizestr)) {
 			if (RomHeader.TryGetRomSize(romsizestr.Value, out int romsizeget)) {
-				_sizeChanged = _romSize == romsizeget;
+				_sizeChanged = _romSize != romsizeget;
 				_romSize = romsizeget;
 				_explicitSize = true;
 			} else {
