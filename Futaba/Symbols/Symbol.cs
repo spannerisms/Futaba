@@ -1,7 +1,7 @@
 ﻿namespace Futaba.Symbols;
 
 /// <summary>
-/// Base class for encapsulating information about symbols created during assembly.
+/// Base class for symbols created during assembly.
 /// </summary>
 
 [DebuggerDisplay("{ToString()}")]
@@ -36,7 +36,7 @@ public abstract class Symbol {
 	/// </summary>
 	internal virtual bool Resolved => true;
 
-	internal virtual SnesArchitecture Scope { get; init; }
+	//internal virtual SnesArchitecture Scope { get; init; }
 
 	private protected Symbol(string name) {
 		Name = name;
@@ -51,10 +51,6 @@ public abstract class Symbol {
 		} else {
 			return $"{Name} = UNRESOLVED";
 		}
-	}
-
-	internal ExpressionSymbol CreateExpressionItem(SymbolContext context) {
-		return new ExpressionSymbol(this, context);
 	}
 }
 

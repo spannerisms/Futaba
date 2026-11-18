@@ -527,7 +527,7 @@ unsafe partial class Assembler {
 							IExpressionReturn valR = ParseOperand(rangeR);
 
 							if (valR.Resolved) {
-								binstart = valR.ValueInt32;
+								binend = valR.ValueInt32;
 							} else {
 								rangeGood = false;
 								Error_BadResolve(valR);
@@ -567,16 +567,18 @@ unsafe partial class Assembler {
 
 				continue;
 			} else {
-				if (TryAdvanceProgramCounter(binlen)) {
-					Span<byte> filler = new(_pcPtr, binlen);
+				int slicelen = binend - binstart;
 
-					if (binFile.TryGetSpan(binstart, binend - binstart, out var binSpan)) {
+				if (TryAdvanceProgramCounter(slicelen)) {
+					Span<byte> filler = new(_pcPtr, slicelen);
+
+					if (binFile.TryGetSpan(binstart, slicelen, out var binSpan)) {
 						binSpan.CopyTo(filler);
 					}
 
-					TrackAndStep(binlen);
+					TrackAndStep(slicelen);
 				}
-				binsize += binlen;
+				binsize += slicelen;
 			}
 		} while (moreFiles);
 
@@ -844,7 +846,7 @@ unsafe partial class Assembler {
 				break;
 
 			case ARRANGE:
-				fillModeExpression = ParseOperand(fillModeExpr, SymbolContext.RomAddress);
+				fillModeExpression = ParseOperand(fillModeExpr, SymbolContext.Provenance);
 
 				if (validFill = fillModeExpression.Resolved) {
 					int arrangeVal = fillModeExpression.ValueInt32;
@@ -1076,7 +1078,7 @@ unsafe partial class Assembler {
 					_ /*                           */ => "current"
 				};
 
-				Warning($"Cannot insert {opName} for in {archName} archichecture");
+				Warning($"Cannot insert {opName} in {archName} archichecture");
 				break;
 		}
 	}

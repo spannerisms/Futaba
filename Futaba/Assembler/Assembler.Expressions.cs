@@ -47,7 +47,7 @@ unsafe partial class Assembler {
 				// this is a label
 				if (opreading == opend) {
 					if (TryGetNextPlusLabel(plusCount, out var plusLabel)) {
-						return plusLabel.CreateExpressionItem(context);
+						return new ExpressionSymbol(plusLabel, context);
 					} else {
 						return InvalidExpression.MissingSymbol;
 					}
@@ -84,8 +84,8 @@ unsafe partial class Assembler {
 
 				// this is a label
 				if (opreading == opend) {
-					if (TryGetPreviusMinusLabel(minusCount, out var minLabel)) {
-						return minLabel.CreateExpressionItem(context);
+					if (TryGetPreviousMinusLabel(minusCount, out var minLabel)) {
+						return new ExpressionSymbol(minLabel, context);
 					} else {
 						return InvalidExpression.MissingSymbol;
 					}
@@ -266,10 +266,10 @@ unsafe partial class Assembler {
 							if (rep is '+') {
 								TryGetNextPlusLabel(repcount, out reladd);
 							} else {
-								TryGetPreviusMinusLabel(repcount, out reladd);
+								TryGetPreviousMinusLabel(repcount, out reladd);
 							}
 
-							last = (reladd ?? BadSymbolPlaceHolder.Instance).CreateExpressionItem(context);
+							last = new ExpressionSymbol(reladd ?? BadSymbolPlaceHolder.Instance, context);
 							exprReading++;
 							tokens.Add(last);
 						} else {

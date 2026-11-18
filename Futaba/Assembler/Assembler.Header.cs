@@ -16,26 +16,32 @@ unsafe partial class Assembler {
 	private protected virtual void AdjustInterruptVectors() {
 		byte* vectorTable = _romPtr + AddressToOffset(0x00FFE0);
 
-		if (_copVectorEmulation is not null) {
-			SnesHelpers.WriteW(vectorTable + 0x04, _copVectorEmulation.Value);
+		//
+		// native vectors
+		//
+		if (_copVectorNative is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x04, _copVectorNative.Value);
 		}
 
 		if (_brkVector is not null) {
 			SnesHelpers.WriteW(vectorTable + 0x06, _brkVector.Value);
 		}
 
-		if (_abortVectorEmulation is not null) {
-			SnesHelpers.WriteW(vectorTable + 0x08, _abortVectorEmulation.Value);
+		if (_abortVectorNative is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x08, _abortVectorNative.Value);
 		}
 
-		if (_nmiVectorEmulation is not null) {
-			SnesHelpers.WriteW(vectorTable + 0x0A, _nmiVectorEmulation.Value);
+		if (_nmiVectorNative is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x0A, _nmiVectorNative.Value);
 		}
 
-		if (_irqVectorEmulation is not null) {
-			SnesHelpers.WriteW(vectorTable + 0x0E, _irqVectorEmulation.Value);
+		if (_irqVectorNative is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x0E, _irqVectorNative.Value);
 		}
 
+		//
+		// emulation vectors
+		//
 		if (_copVectorEmulation is not null) {
 			SnesHelpers.WriteW(vectorTable + 0x14, _copVectorEmulation.Value);
 		}
