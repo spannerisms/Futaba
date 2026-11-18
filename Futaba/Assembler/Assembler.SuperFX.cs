@@ -4,6 +4,7 @@ unsafe partial class Assembler {
 	private void AssembleSuperFX(OpSFX instruction) {
 		SizeToken size = GetSizeToken();
 
+		// TODO handle other sizes
 		if (size is SizeToken.Invalid) {
 			AbortCommand();
 			return;
@@ -198,7 +199,7 @@ unsafe partial class Assembler {
 					if (TryGetRegister(leaRn, out var leaReg)) {
 						leaOpcode |= leaReg;
 
-						WriteOpW(leaOpcode, ParseOperand(opstr));
+						WriteOpW(leaOpcode, ParseOperand(leaVal));
 						break;
 					}
 				} else {
@@ -426,7 +427,7 @@ unsafe partial class Assembler {
 			case OpSFX.STW:
 				if (!TryGetIndirectRegister(opstr, out byte stwReg) || stwReg > 11) {
 					StLmWarning();
-					stbReg = 0;
+					stwReg = 0;
 				}
 
 				stwReg |= 0x30;
@@ -446,7 +447,7 @@ unsafe partial class Assembler {
 
 		bool IsIndirect(OperandString argstr, [NotNullWhen(true)] out IExpressionReturn? expr) {
 			if (argstr.First is '(' && argstr.Last is ')') {
-				expr = ParseOperandSliced(opstr, 1, 1);
+				expr = ParseOperandSliced(argstr, 1, 1);
 				return true;
 			} else {
 				expr = null;
@@ -483,34 +484,36 @@ unsafe partial class Assembler {
 								WriteOpB(movewRegD, movewRegS);
 							}
 						}
-					} else if (TryGetRegister(movewDest, out movewRegD)) {
-						if (TryGetIndirectRegister(movewSrc, out movewRegS)) {
-							if (movewRegS > 11) {
-								Error("Source register must be R0-R11.");
-								movewRegS = 11;
-							}
+					}
+				} else if (TryGetRegister(movewDest, out movewRegD)) {
+					if (TryGetIndirectRegister(movewSrc, out movewRegS)) {
+						if (movewRegS > 11) {
+							Error("Source register must be R0-R11.");
+							movewRegS = 11;
+						}
 
-							movewRegD |= 0x40;
+						movewRegD |= 0x40;
 
-							if (movewRegS is 0) { // No TO
-								if (isBnotW) {
-									WriteOpB(0x3D, movewRegD);
-								} else {
-									WriteOpImplied(movewRegD);
-								}
+						if (movewRegS is 0) { // No TO
+							if (isBnotW) {
+								WriteOpB(0x3D, movewRegD);
 							} else {
-								movewRegS |= 0x10; // TO
-								if (isBnotW) {
-									WriteOpSfx3(movewRegS, 0x3D, movewRegD);
-								} else {
-									WriteOpB(movewRegS, movewRegD);
-								}
+								WriteOpImplied(movewRegD);
+							}
+						} else {
+							movewRegS |= 0x10; // TO
+							if (isBnotW) {
+								WriteOpSfx3(movewRegS, 0x3D, movewRegD);
+							} else {
+								WriteOpB(movewRegS, movewRegD);
 							}
 						}
 					}
 				} else {
 					InvalidAddressingMode();
 				}
+			} else {
+				InvalidAddressingMode();
 			}
 		}
 
@@ -520,7 +523,7 @@ unsafe partial class Assembler {
 				_pcPtr[1] = b2;
 				_pcPtr[2] = b3;
 
-				AdvanceProgramCounter(3);
+				TrackAndStep3();
 			}
 		}
 
@@ -1058,6 +1061,6 @@ file sealed class SfxHalf(IExpressionReturn item) : IExpressionReturn {
 	public decimal Value => (item.ValueInt32 & 0xFF) / 2;
 
 	public bool TryToResolve() {
-		return item.TryToResolve();
+		return Resolved = item.TryToResolve();
 	}
 }

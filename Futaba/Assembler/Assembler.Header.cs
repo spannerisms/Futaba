@@ -87,7 +87,7 @@ unsafe partial class Assembler {
 		header[0x28] = SnesHelpers.GetHeaderSizeByte(RamSize);
 
 		// get rom type
-		if (HasCoprocessor) {
+		if (Coprocessor is not Coprocessor.None) {
 			header[0x26] = (byte) ((int) Coprocessor >> 16);
 
 			header[0x26] |= (HasRam, HasBattery) switch {
@@ -282,7 +282,6 @@ unsafe partial class Assembler {
 				<= 32768 => 32768,
 				<= 65536 => 65536,
 				<= 131072 => 131072,
-				<= 262144 => 262144,
 				<= RomHeader.MaxRamSize => RomHeader.MaxRamSize,
 			};
 		}
@@ -320,7 +319,7 @@ unsafe partial class Assembler {
 	/// <summary>
 	/// Returns whether or not this software includes a coprocessor.
 	/// </summary>
-	public bool HasCoprocessor => false;
+	public bool HasCoprocessor => Coprocessor is not Coprocessor.None;
 
 	/// <summary>
 	/// Gets or sets the target language/region of the software.

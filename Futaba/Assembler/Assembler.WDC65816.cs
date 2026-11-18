@@ -941,7 +941,6 @@ unsafe partial class Assembler {
 		void AssembleRepeatable(OperandString argstr, SizeToken argsize, byte opcode) {
 			if (argsize is not SizeToken.Unspecified) {
 				TokensOnImplied();
-				PlaceholderOp(opcode);
 			}
 
 			if (argstr.IsEmpty) {
@@ -1006,7 +1005,7 @@ unsafe partial class Assembler {
 
 			if (len is 0) {
 				MissingOperand();
-				PlaceholderOp(opcode, 1);
+				PlaceholderOp(opcode, 2);
 
 			} else {
 				char c = argstr.GetUnchecked(0);

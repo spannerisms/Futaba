@@ -34,6 +34,7 @@ unsafe partial class Assembler {
 			return true;
 		}
 
+		// TODO block reused param names
 		while (true) {
 			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 

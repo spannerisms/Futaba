@@ -16,12 +16,20 @@ internal abstract class ValidatedTernaryExpression(ExpressionItem itema, Express
 		var (avalue, state) = ItemA.TryEvaluate();
 
 		if (state.IsResolved) {
-			(var bvalue, state) = ItemB.TryEvaluate();
+			var (bvalue, bstate) = ItemB.TryEvaluate();
 
-			if (state.IsResolved) {
-				(var cvalue, state) = ItemC.TryEvaluate();
+			if (bstate > state) {
+				state = bstate;
+			}
 
-				if (state.IsResolved) {
+			if (bstate.IsResolved) {
+				var (cvalue, cstate) = ItemC.TryEvaluate();
+
+				if (cstate > state) {
+					state = cstate;
+				}
+
+				if (cstate.IsResolved) {
 					if (Validate(avalue, bvalue, cvalue)) {
 						return (Equate(avalue, bvalue, cvalue), _state = state);
 					} else {

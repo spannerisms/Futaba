@@ -136,7 +136,7 @@ public sealed class Region {
 			"p" or "europe" or "eu" or "uk" or "united kingdom" or "britain" => Europe,
 			"w" or "scandinavia" => Scandinavia,
 			"f" or "french" or "france" => EuropeFrench,
-			"d" or "holland" or "dutch" => Dutch,
+			"h" or "holland" or "dutch" => Dutch,
 			"s" or "spanish" => Spanish,
 			"d" or "german" or "deutch" => German,
 			"i" or "italian" => Italian,

@@ -35,6 +35,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	public bool ManifestGood { get; private set; } = false;
 	public bool Incremental { get; private set; }
 
+	// TODO use a different container for this (since they're written to and that breaks tracking)
 	private LoadedItem<StreamWriter>? StdOut {
 		get;
 		set {
@@ -217,7 +218,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 					}
 				} else if (nullFillType.EqualsI("zero")) {
 					if (nullFillValue is not null) {
-						ManifestWarning("Ignoring 'nullfill' value' while type is 'zero'.", nullfillGet.Line);
+						ManifestWarning("Ignoring 'nullfill' value while type is 'zero'.", nullfillGet.Line);
 					}
 
 					_baseRomData.AsSpan(_fillStart).Clear();
@@ -300,12 +301,12 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			outputGet = Path.ChangeExtension(_fileName, Igarashi.RomExtension);
 		}
 
-		string entryPoint = fileEntry.Value;
+		string entryPoint = GetFileName(fileEntry.Value);
 
 		if (RomHeader.TryGetMapperMode(mapMode.Value, out var modeEnum)) {
 			if (Assembler is null
 				|| Assembler.Mapper != modeEnum
-				|| Path.GetFullPath(entryPoint) != Assembler.EntryPoint) {
+				|| entryPoint != Assembler.EntryPoint) {
 
 				Igarashi.Notice("Creating assembler...");
 				Assembler = Assembler.CreateAssemblerWithMapper(modeEnum, entryPoint);
@@ -320,7 +321,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		Assembler.ClearInitialSymbols();
 		Assembler.ClearInitialVariables();
 
-		OutputPath = Path.GetFullPath(outputGet);
+		// needs relative path
+		OutputPath = GetFileName(outputGet);
 
 		if (OutputStream is null || OutputStream.Reload(OutputPath)) {
 			OutputStream?.Dispose();
@@ -580,7 +582,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	internal bool TryGetFileInfo(string key, [NotNullWhen(true)] out FileInfo? value, out int line) {
 		if (_manifestArguments.TryGetValue(key, out var info)) {
 			line = info.Line;
-			value = new(info.Value);
+			value = new(GetFileName(info.Value));
 			return true;
 		} else {
 			line = 0;
@@ -967,7 +969,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		Invalid,
 	}
 
-	internal string? TryGetFileName(string path) {
+	internal string GetFileName(string path) {
 		if (Path.IsPathFullyQualified(path)) {
 			return path;
 
@@ -1007,7 +1009,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		string path = argGet.Value;
 
 		try {
-			var fullPath = TryGetFileName(path);
+			var fullPath = GetFileName(path);
 
 			if (fullPath is not null) {
 				ref WatchedBinary? fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_loadedBinaries, fullPath!, out _);

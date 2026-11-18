@@ -1000,7 +1000,7 @@ internal static partial class Igarashi {
 
 				case 'Q':
 					o = int.Parse(w[x++..++x], System.Globalization.NumberStyles.HexNumber);
-					m.Append(new string(w[x++], o));
+					m.Append(w[x++], o);
 					break;
 			}
 		}

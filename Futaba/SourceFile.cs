@@ -30,7 +30,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 		Handle = handle;
 		ShortName = Path.GetFileName(path);
 		FileName = Path.GetFullPath(path);
-		DirectoryName = Path.GetDirectoryName(path);
+		DirectoryName = Path.GetDirectoryName(FileName);
 	}
 
 	public CharSpan AsSpan() {
@@ -77,6 +77,8 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 
 					var fstream = new FileStream(newHandle, FileAccess.Read);
 					var ftext = new StreamReader(fstream);
+
+					fstream.Position = 0;
 
 					int length = (int) fstream.Length;
 

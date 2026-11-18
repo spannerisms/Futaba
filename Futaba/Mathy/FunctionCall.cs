@@ -47,6 +47,7 @@ internal static class FunctionCall {
 		[HashString.Name] = HashString.Create,
 		[GetStringLength.Name] = GetStringLength.Create,
 		[CompareStrings.Name] = CompareStrings.Create,
+		[ItemExists.Name] = ItemExists.Create,
 
 		[Rand.Name] = Rand.Create,
 
@@ -74,7 +75,7 @@ internal static class FunctionCall {
 		public const string Name = "read";
 		private const int MaxBytes = 8;
 
-		public override ExpressionItem Clone() => new GetFileFunc(assembler, itemName, itemSize, itemOffset);
+		public override ExpressionItem Clone() => new GetFileFunc(assembler, itemName, itemOffset, itemSize);
 
 		private ExpressionState _state = ExpressionState.Unresolved;
 		public override ExpressionState State => _state;
@@ -951,10 +952,11 @@ internal static class FunctionCall {
 		}
 
 		public override ExpressionItem Clone() => new ObSel(ItemA.Clone(), ItemB.Clone(), ItemC.Clone());
+
 		protected override decimal Equate(decimal a, decimal b, decimal c) {
 			int ai = (a.AsInt() >> 14) & 0x07;
 			int bi = (b.AsInt() << 3) & 0x18;
-			int ci = (b.AsInt() << 5) & 0xE0;
+			int ci = (c.AsInt() << 5) & 0xE0;
 
 			return ai | bi | ci;
 		}
@@ -964,7 +966,7 @@ internal static class FunctionCall {
 		public const string Name = "hash";
 		public static string FunctionName => Name;
 		public static int Arity => 1;
-
+		public override ExpressionItem Clone() => new HashString(item.Clone());
 		public static HashString? Create(Assembler assembler, List<ExpressionItem> args) {
 			if (IFunctionFactory<HashString>.TestForBadArity(args, assembler)) {
 				return new HashString(args[0]);

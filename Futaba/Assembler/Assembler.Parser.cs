@@ -376,6 +376,7 @@ unsafe partial class Assembler {
 
 				case UNDOCK:
 					_currentSegment = null;
+					FinishCommand();
 					return;
 
 				case POOL:
@@ -463,7 +464,7 @@ unsafe partial class Assembler {
 					return;
 
 				case SKIPTO:
-					if (DemandSpaceWithError() && TryReadRestAsExpression(SKIPTO, SymbolContext.RomAddress, out IExpressionReturn skiptoExpr)) {
+					if (DemandSpaceWithError() && TryReadRestAsExpression(SKIPTO, SymbolContext.Provenance, out IExpressionReturn skiptoExpr)) {
 						int skiptoValue = skiptoExpr.ValueInt32;
 
 						if (skiptoValue > 0) {
@@ -617,27 +618,38 @@ unsafe partial class Assembler {
 
 			case WARN:
 				if (TryGetPrintContents(out contents)) {
-					Console.ForegroundColor = ConsoleColor.DarkYellow;
+					if (_errorsToConsole) {
+						Console.ForegroundColor = ConsoleColor.DarkYellow;
+					}
 
 					ErrorOut.Write(CurrentSourceLine);
 					ErrorOut.Write(WarningText);
 					ErrorOut.Write(contents ?? "Unspecified warning");
 
-					Console.ResetColor();
+					if (_errorsToConsole) {
+						Console.ResetColor();
+					}
+
 					ErrorOut.WriteLine();
+
 					IncrementWarnings();
 				}
 				return true;
 
 			case ERROR:
 				if (TryGetPrintContents(out contents)) {
-					Console.ForegroundColor = ConsoleColor.Red;
+					if (_errorsToConsole) {
+						Console.ForegroundColor = ConsoleColor.Red;
+					}
 
 					ErrorOut.Write(CurrentSourceLine);
 					ErrorOut.Write(ErrorText);
 					ErrorOut.Write(contents ?? "Unspecified error");
 
-					Console.ResetColor();
+					if (_errorsToConsole) {
+						Console.ResetColor();
+					}
+
 					ErrorOut.WriteLine();
 
 					IncrementErrors();

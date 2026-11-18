@@ -398,7 +398,7 @@ unsafe partial class Assembler {
 					break;
 				}
 
-			} else if (IsActualKeyWord(blockLine, endBlock)) {
+			} else if (IsActualKeyWord(blockLine, startBlock)) {
 				blockDepth++;
 			}
 
@@ -627,7 +627,7 @@ unsafe partial class Assembler {
 					switch (dir) {
 						case 'c' or 'C':
 							i++;
-							dir = cmdWhole[i + 1];
+							dir = cmdWhole[i];
 
 							bool alignedLeft;
 							switch (dir) {
@@ -660,7 +660,8 @@ unsafe partial class Assembler {
 								return;
 							}
 
-							if (strlen < lenArg) {
+							// too short
+							if (strlen > lenArg) {
 								// padding commands dont resize
 								if (!isPad) {
 									manipBuilder.Length = lenArg;
@@ -730,24 +731,22 @@ unsafe partial class Assembler {
 
 					bool TryGetPadder(out char padChar) {
 						char qcheck = cmdWhole[i++];
-						if (qcheck is '"') {
-							qcheck = cmdWhole[i++];
 
-							if (qcheck is '"') {
-								padChar = BadChar;
+						if (qcheck is CharDelim) {
+							padChar = cmdWhole[i++];
+
+							if (padChar is CharDelim) {
+								padChar = ' ';
 								Warning("Bad padding char");
 								return false;
 
-							} else if (qcheck is EscapeChar) {
+							} else if (padChar is EscapeChar) {
 								padChar = GetEscapedCharacter(cmdWhole[i++]);
-
-							} else {
-								padChar = cmdWhole[i++];
 							}
 
 							qcheck = cmdWhole[i++];
 
-							if (qcheck is not '"') {
+							if (qcheck is not CharDelim) {
 								Warning("Bad padding char");
 								return false;
 							}

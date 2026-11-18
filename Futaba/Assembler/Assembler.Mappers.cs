@@ -206,7 +206,7 @@ public sealed class UnmappedAssembler : Assembler {
 	private protected override void RecalculateChecksum() { }
 
 	private protected override bool JumpTargetMakesSense(int address, int destination) {
-		return ((address ^ destination) & SnesHelpers.BankMask) is not 0;
+		return ((address ^ destination) & SnesHelpers.BankMask) is 0;
 	}
 }
 

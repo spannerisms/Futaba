@@ -35,8 +35,8 @@ internal static class MsgInfo {
 	internal const string InvalidAssignment = "Invalid assignment type";
 
 	internal const string UnresolvedSymbolAssignment = "Symbol assignment must be immediately resolvable.";
-	internal const string NoChipChange = "Cannot change the coprocessor of this type of assemble.";
+	internal const string NoChipChange = "Cannot change the coprocessor of this type of assembler.";
 
-	internal static string MustBeResolvedNow(string directive) => $"argument to {directive} must be immediately resolvable";
+	internal static string MustBeResolvedNow(string directive) => $"Argument to {directive} must be immediately resolvable";
 	internal static string VariableNotFound(CharSpan name) => $"Variable not found: {name}";
 }

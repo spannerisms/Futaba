@@ -12,7 +12,7 @@ namespace Futaba.Snes;
 /// </para>
 /// </summary>
 public static class RomHeader {
-	internal const int MaxRamSize = 524288;
+	internal const int MaxRamSize = 262144;
 
 	/// <summary>
 	/// The SNES system bus address of the first byte of the extended header.
@@ -94,7 +94,7 @@ public static class RomHeader {
 	}
 
 	private static readonly Dictionary<string, int> RomSizeLookup = new(StringComparer.OrdinalIgnoreCase) {
-		{ "32k", 0x0001_0000 },
+		{ "32k", 0x0000_8000 },
 		{ "32kb", 0x0001_0000 },
 
 		{ "64k", 0x0001_0000 },
@@ -305,6 +305,18 @@ public static class RomHeader {
 		static ushort SumChunk(byte* ptr, int sumCount) {
 			ushort retsum = 0;
 
+			if (Vector512.IsHardwareAccelerated) {
+				for (; sumCount >= Vector512<byte>.Count; sumCount -= Vector512<byte>.Count) {
+					var chunk = Vector512.Load(ptr);
+
+					var (chunk1, chunk2) = Vector512.Widen(chunk);
+					retsum += Vector512.Sum(chunk1);
+					retsum += Vector512.Sum(chunk2);
+
+					ptr += Vector512<byte>.Count;
+				}
+			}
+
 			if (Vector256.IsHardwareAccelerated) {
 				for (; sumCount >= Vector256<byte>.Count; sumCount -= Vector256<byte>.Count) {
 					var chunk = Vector256.Load(ptr);
@@ -326,18 +338,6 @@ public static class RomHeader {
 					retsum += Vector128.Sum(chunk2);
 
 					ptr += Vector128<byte>.Count;
-				}
-			}
-
-			if (Vector64.IsHardwareAccelerated) {
-				for (; sumCount >= Vector64<byte>.Count; sumCount -= Vector64<byte>.Count) {
-					var chunk = Vector64.Load(ptr);
-
-					var (chunk1, chunk2) = Vector64.Widen(chunk);
-					retsum += Vector64.Sum(chunk1);
-					retsum += Vector64.Sum(chunk2);
-
-					ptr += Vector64<byte>.Count;
 				}
 			}
 

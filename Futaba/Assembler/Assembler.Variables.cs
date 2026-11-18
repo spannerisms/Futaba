@@ -63,7 +63,12 @@ unsafe partial class Assembler {
 		}
 
 		if (theVar is not null && theVar.VarType is VariableType.String && assignmentType is '+') {
-			theVar.Append(theRest);
+			if (theRest is ['"', .. OperandString operand, '"']) {
+				string opcon = ExplodeStringContents(operand);
+				theVar.Append(opcon);
+			} else {
+				theVar.Append(theRest);
+			}
 
 		} else if (theRest is ['"', .. OperandString operand, '"']) {
 			string opcon = ExplodeStringContents(operand);
@@ -390,10 +395,10 @@ unsafe partial class Assembler {
 				int nomstart = i;
 				int adv = nomstart;
 
-				// first char is definitely an 
+				// first char is definitely valid
 				while (++adv < sublen && subsub[adv].IsIdentifierCharacter) ;
 
-				i = adv;
+				i = adv - 1;
 				return subsub[nomstart..adv];
 			}
 		}

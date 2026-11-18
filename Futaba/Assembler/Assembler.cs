@@ -32,7 +32,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 
 	private byte[]? _baseRom = null;
 
-	private UInt128 _randomSeed = new(0x426562656C6F766, 0x573636865657365);
+	private UInt128 _randomSeed = new(0x426562656C6F7665, 0x573636865657365);
 	internal readonly XoRandom _random = new(0);
 
 	// need to use private fields for these

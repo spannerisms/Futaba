@@ -59,8 +59,9 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 					//Console.WriteLine($"Loading {FullName}");
 
 					var fstream = new FileStream(newHandle, FileAccess.Read);
-
 					int length = (int) fstream.Length;
+
+					fstream.Position = 0;
 
 					if (_allocBlock == default) {
 						_allocBlock = NativeMemory.AllocNice<byte>(length);

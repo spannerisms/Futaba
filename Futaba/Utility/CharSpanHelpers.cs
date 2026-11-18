@@ -33,7 +33,7 @@ internal static unsafe class CharSpanHelpers {
 		internal bool BeginsWithIgnoreCaseAndSpaceOrEnd(string test, out bool byItself) {
 			int len = test.Length;
 
-			if (len == test.Length) {
+			if (len == charspan.Length) {
 				if (MemoryExtensions.Equals(charspan, test, StringComparison.OrdinalIgnoreCase)) {
 					byItself = true;
 					return true;

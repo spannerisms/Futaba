@@ -116,7 +116,7 @@ internal static class SnesHelpers {
 		length = Math.Min(text.Length, length);
 
 		for (int i = 0; i < length; i++) {
-			*pointer = (byte) text[i];
+			*pointer++ = (byte) text[i];
 		}
 	}
 
@@ -270,17 +270,17 @@ internal static class SnesHelpers {
 	private static bool IsMirroredWram(int addr) => (addr ^ 0x7E_0000) < 0x2000;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static bool IsWram(int addr) => (addr & 0xFE_0000) >= 0x7E_0000;
+	private static bool IsWram(int addr) => (addr & 0xFE_0000) == 0x7E_0000;
 
 	internal static int GetAllocationSize(int desired) {
 		return desired switch {
 			< 0 => 0,
-			< 0x0002_0000 => 0x0002_0000,
-			< 0x0004_0000 => 0x0004_0000,
-			< 0x0008_0000 => 0x0008_0000,
-			< 0x0010_0000 => 0x0010_0000,
-			< 0x0020_0000 => 0x0020_0000,
-			< 0x0040_0000 => 0x0040_0000,
+			<= 0x0002_0000 => 0x0002_0000,
+			<= 0x0004_0000 => 0x0004_0000,
+			<= 0x0008_0000 => 0x0008_0000,
+			<= 0x0010_0000 => 0x0010_0000,
+			<= 0x0020_0000 => 0x0020_0000,
+			<= 0x0040_0000 => 0x0040_0000,
 			<= 0x0080_0000 => 0x0080_0000,
 			_ => 0,
 		};

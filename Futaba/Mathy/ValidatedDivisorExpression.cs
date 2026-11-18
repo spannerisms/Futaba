@@ -16,10 +16,15 @@ internal abstract class ValidatedDivisorExpression(ExpressionItem left, Expressi
 		if (state.IsResolved) {
 			if (rvalue.IsFalse()) {
 				state = ExpressionState.DivideByZero;
-			} else {
-				(var lvalue, state) = Left.TryEvaluate();
 
-				if (state.IsResolved) {
+			} else {
+				var (lvalue, lstate) = Left.TryEvaluate();
+
+				if (lstate > state) {
+					state = lstate;
+				}
+
+				if (lstate.IsResolved) {
 					return (Equate(lvalue, rvalue), _state = state);
 				}
 			}
