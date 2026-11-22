@@ -47,6 +47,7 @@ internal sealed class FileWatcher : IDisposable {
 		}
 
 		Strobe(e.OldFullPath, e);
+		Strobe(e.FullPath, e);
 	}
 
 	private void OnAnyChange(object sender, FileSystemEventArgs e) {

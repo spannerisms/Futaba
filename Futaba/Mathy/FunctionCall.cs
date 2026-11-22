@@ -44,6 +44,8 @@ internal static class FunctionCall {
 
 		[Bcd.Name] = Bcd.Create,
 		[BitN.Name] = BitN.Create,
+		[Words.Name] = Words.Create,
+		[Longs.Name] = Longs.Create,
 		[HashString.Name] = HashString.Create,
 		[GetStringLength.Name] = GetStringLength.Create,
 		[CompareStrings.Name] = CompareStrings.Create,
@@ -575,6 +577,44 @@ internal static class FunctionCall {
 
 		protected override decimal Equate(decimal a) {
 			return 1 << a.AsInt();
+		}
+	}
+
+	private sealed class Words(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Words> {
+		public const string Name = "words";
+		public static string FunctionName => Name;
+
+		public static Words? Create(Assembler assembler, List<ExpressionItem> args) {
+			if (IFunctionFactory<Words>.TestForBadArity(args, assembler)) {
+				return new Words(args[0]);
+			} else {
+				return null;
+			}
+		}
+
+		public override ExpressionItem Clone() => new Words(Item.Clone());
+
+		protected override decimal Equate(decimal a) {
+			return 2 * a;
+		}
+	}
+
+	private sealed class Longs(ExpressionItem item) : UnaryExpression(item), IFunctionFactory<Longs> {
+		public const string Name = "longs";
+		public static string FunctionName => Name;
+
+		public static Longs? Create(Assembler assembler, List<ExpressionItem> args) {
+			if (IFunctionFactory<Longs>.TestForBadArity(args, assembler)) {
+				return new Longs(args[0]);
+			} else {
+				return null;
+			}
+		}
+
+		public override ExpressionItem Clone() => new Longs(Item.Clone());
+
+		protected override decimal Equate(decimal a) {
+			return 3 * a;
 		}
 	}
 

@@ -3,7 +3,7 @@
 
 # Futaba
 
-Futaba is an open-source, low-level assembler specifically targetting the Super Famicom and Super Nintendo Entertainment System.
+Futaba is an open-source, low-level assembler specifically targeting the Super Famicom and Super Nintendo Entertainment System.
 
 ## Download
 

@@ -1,10 +1,9 @@
 ﻿namespace Futaba;
 
 /// <summary>
-/// Base class that mapped assemblers inherit from.
+/// Base class for mapped assemblers to inherit from.
 /// </summary>
 public unsafe abstract partial class Assembler : IDisposable {
-
 	/// <inheritdoc cref="FutabaApp.Version"/>
 	public static Version Version => FutabaApp.Version;
 
@@ -101,7 +100,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	} = RomOverflowAction.Error;
 
 	/// <summary>
-	/// Get or set the warning level for missing tokens.
+	/// Gets or sets the warning level for missing tokens.
 	/// </summary>
 	/// <inheritdoc cref="OverflowAction" path="//remarks|//exception"/>
 	public MissingTokenSeverity MissingTokenSeverity {
@@ -113,7 +112,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	} = MissingTokenSeverity.Ambiguous;
 
 	/// <summary>
-	/// Returns whether or not any breaking errors occured during assembly.
+	/// Returns whether any breaking errors occurred during assembly.
 	/// </summary>
 	/// <remarks>
 	/// If this returns <see langword="true"/>,

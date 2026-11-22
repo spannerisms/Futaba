@@ -4,6 +4,8 @@ global using Futaba;
 global using Futaba.Snes;
 global using Futaba.Symbols;
 
+// TODO add --var name=value,name=value custom parsing with Option<dict>???  AllowMultipleArgumentsPerToken 
+
 // System.CommandLine has its own Symbol type
 global using FutabaSymbol = Futaba.Symbols.Symbol;
 

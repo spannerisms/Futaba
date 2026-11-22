@@ -80,7 +80,7 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 
 					fstream.Position = 0;
 
-					int length = (int) fstream.Length;
+					int length = (int) fstream.Length; // this should be good enough to handle encoding
 
 					int bufferLen = length + (BufferPadding * 2);
 

@@ -143,6 +143,9 @@ internal static unsafe class AsciiHelpers {
 	static AsciiHelpers() {
 		// validate the ulong masks
 #if DEBUG
+		const string LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+		const string UNDERSCORE = "_";
+		const string DIGITS = "0123456789";
 		ValidateMask(LettersMask, '@', LETTERS + UNDERSCORE);
 		ValidateMask(WhiteSpaceMask, '\0', " \t\r");
 		ValidateMask(NumbersMask, '\0', DIGITS);

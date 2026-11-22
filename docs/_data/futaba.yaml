@@ -181,12 +181,6 @@ functions:
   - name: "bgsc"
     args: [ "a", "v", "h" ]
     desc: "Returns a value for the PPU registers <asmvar>BG[1/2/3/4]SC</asmvar> that places the tilemap at VRAM address %1 and treats %2 and %3 as boolean values for vertical and horizontal mirroring, respectively"
-  - name: "rtn"
-    args: [ "a" ]
-    desc: "Returns <fblk>%1&minus;1</fblk>; useful for self-documenting stack return addresses"
-  - name: "argof"
-    args: [ "a" ]
-    desc: "Returns <fblk>%1+1</fblk>; useful for self-documenting operand references"
   - name: "rebank"
     args: [ "a", "b" ]
     desc: "Returns a 24-bit address where the bank byte of %1 has been replaced with %2"
@@ -217,6 +211,18 @@ functions:
   - name: "bitn"
     args: [ "n" ]
     desc: "Returns bit %1: <fblk>1&lt;&lt;%1</fblk>"
+  - name: "rtn"
+    args: [ "a" ]
+    desc: "Returns <fblk>%1&minus;1</fblk>; useful for self-documenting stack return addresses"
+  - name: "argof"
+    args: [ "a" ]
+    desc: "Returns <fblk>%1+1</fblk>; useful for self-documenting operand references"
+  - name: "words"
+    args: [ "n" ]
+    desc: "Returns 2&times;%1 for self-documenting word counts"
+  - name: "longs"
+    args: [ "n" ]
+    desc: "Returns 2&times;%1 for self-documenting word counts"
   - name: "hash"
     args: [ "s" ]
     desc: "Returns a hash on string %1; this hash is guaranteed to be deterministic across releases"
