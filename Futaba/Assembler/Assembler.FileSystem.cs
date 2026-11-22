@@ -50,24 +50,20 @@ partial class Assembler {
 			}
 
 			if (fileRef.Error is not null) {
-				SourceLine eline = _currentSourceObject == SourceFile.Empty
+				SourceLine errorLine = _currentSourceObject == SourceFile.Empty
 					? default
 					: CurrentSourceLine;
 
-				Error("Problem loading file", fileRef.Error, eline);
+				Error("Problem loading file", fileRef.Error, errorLine);
 
 				// we still want to watch this path for changes
-				if (Incremental) {
-					GetWatcher(Path.GetDirectoryName(fullPath))?.WatchFile(path);
-				}
+				GetWatcher(Path.GetDirectoryName(fullPath))?.WatchFile(fullPath);
 
 				file = null;
 				return false;
 			}
 
-			if (Incremental) {
-				GetWatcher(fileRef.DirectoryName)?.WatchFile(fileRef);
-			}
+			GetWatcher(fileRef.DirectoryName)?.WatchFile(fileRef);
 
 			fileRef.WasUsed = true;
 
@@ -90,12 +86,11 @@ partial class Assembler {
 
 	internal bool TryGetFileName(string path, [NotNullWhen(true)] out string? filePath) {
 		if (Path.IsPathFullyQualified(path)) {
-			filePath = path;
+			filePath = Path.GetFullPath(path);
 			return true;
 
 		} else if (_currentSourceObject.DirectoryName is string dir) {
-			// fully qualify it
-			filePath = Path.Join(dir, path);
+			filePath = Path.GetFullPath(Path.Join(dir, path));
 			return true;
 
 		} else {

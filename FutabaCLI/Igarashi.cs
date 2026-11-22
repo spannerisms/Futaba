@@ -4,6 +4,8 @@ global using Futaba;
 global using Futaba.Snes;
 global using Futaba.Symbols;
 
+// TODO add --var name=value,name=value custom parsing with Option<dict>???  AllowMultipleArgumentsPerToken 
+
 // System.CommandLine has its own Symbol type
 global using FutabaSymbol = Futaba.Symbols.Symbol;
 
@@ -273,7 +275,7 @@ internal static partial class Igarashi {
 		}
 
 		try {
-			var baseRom = args.GetValue(baseRomOption);
+			var baseRomFile = args.GetValue(baseRomOption);
 			var outputFile = args.GetValue(Arg_OutputRom);
 
 			if (outputFile is null) {
@@ -290,32 +292,32 @@ internal static partial class Igarashi {
 
 			using Assembler assembler = Assembler.CreateAssemblerWithMapper(mapper, entry);
 
-			if (baseRom is not null) {
-				assembler.BaseRom = Helpers.GetFileAsArray(baseRom);
+			byte[]? baseRom = null;
+
+			if (baseRomFile is not null) {
+				baseRom = Helpers.GetFileAsArray(baseRomFile);
 			}
 
+			assembler.SetBaseRom(baseRom);
 			string romSizeStr = args.GetValue(Option_Size) ?? "auto";
 
 			if (romSizeStr.EqualsI("auto")) {
-				int size = assembler.BaseRom?.Length ?? 0;
+				assembler.InitialRomSize = int.Clamp(
+					baseRom?.Length ?? 0,
+					assembler.MinRomSize,
+					assembler.MaxRomSize);
 
-				if (size < assembler.MinRomSize) {
-					assembler.InitialRomSize = assembler.MinRomSize;
-				} else if (size > assembler.MaxRomSize) {
-					assembler.InitialRomSize = assembler.MaxRomSize;
-				} else {
-					assembler.InitialRomSize = size;
-				}
 			} else {
 				if (RomHeader.TryGetRomSize(romSizeStr, out int romSizeInt)) {
 					assembler.InitialRomSize = romSizeInt;
+
 				} else {
 					Error($"Invalid ROM size: {romSizeStr}");
 					return Exit_Error;
 				}
 			}
 
-			assembler.CalculateChecksum = args.GetResult(Option_FixChecksum) is not null;
+			assembler.CalculateChecksum = args.GetValue(Option_FixChecksum);
 			assembler.OverflowAction = RomOverflowAction.Grow;
 
 			bool showTimer = args.GetValue(Option_Timer);
@@ -334,6 +336,7 @@ internal static partial class Igarashi {
 			}
 
 			return Exit_Good;
+
 		} catch (Exception e) {
 			FatalError(e);
 			return e.HResult;
@@ -999,7 +1002,7 @@ internal static partial class Igarashi {
 
 				case 'Q':
 					o = int.Parse(w[x++..++x], System.Globalization.NumberStyles.HexNumber);
-					m.Append(new string(w[x++], o));
+					m.Append(w[x++], o);
 					break;
 			}
 		}

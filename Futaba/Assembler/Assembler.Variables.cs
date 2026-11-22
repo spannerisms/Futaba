@@ -6,20 +6,20 @@ unsafe partial class Assembler {
 		_reading++;
 
 		if (*_reading is InternalVariableToken) {
-			Error("Internal variables are read-only");
+			Error("Internal variables are read-only.");
 			AbortCommand();
 			return;
 		}
 
-		var vnameRead = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
+		OperandString vnameRead = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
 
 		if (vnameRead.Length < 1) {
-			Error("Variable missing name.");
+			Error(MsgInfo.MissingVariableName);
 			AbortCommand();
 			return;
 		}
 
-		string varName = vnameRead;
+		string varName = new(vnameRead);
 
 		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
@@ -57,13 +57,18 @@ unsafe partial class Assembler {
 		FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
 		if (!ReadRestOfCommand(out OperandString theRest)) {
-			Error("Missing operand for assignment");
+			Error(MsgInfo.MissingAssignmentOperand);
 			theVar ??= new(varName);
 			return;
 		}
 
 		if (theVar is not null && theVar.VarType is VariableType.String && assignmentType is '+') {
-			theVar.Append(theRest);
+			if (theRest is ['"', .. OperandString operand, '"']) {
+				string opcon = ExplodeStringContents(operand);
+				theVar.Append(opcon);
+			} else {
+				theVar.Append(theRest);
+			}
 
 		} else if (theRest is ['"', .. OperandString operand, '"']) {
 			string opcon = ExplodeStringContents(operand);
@@ -91,7 +96,7 @@ unsafe partial class Assembler {
 					break;
 
 				default:
-					Error("Invalid assignment type");
+					Error(MsgInfo.InvalidAssignment);
 					theVar ??= new(varName, string.Empty);
 					break;
 			}
@@ -146,7 +151,7 @@ unsafe partial class Assembler {
 						break;
 
 					default:
-						Error("Invalid assignment type.");
+						Error(MsgInfo.InvalidAssignment);
 						theVar ??= new(varName, 0M);
 						break;
 				}
@@ -159,7 +164,7 @@ unsafe partial class Assembler {
 
 	private bool TryReadVariableName(ref char* start, char* end, out CharSpan name) {
 		if (!FastRead.TryReadIdentifier(ref start, end, out name)) {
-			Error("Missing variable name");
+			Error(MsgInfo.MissingVariableName);
 			return false;
 		} else {
 			return true;
@@ -281,7 +286,7 @@ unsafe partial class Assembler {
 				case "rand": /*          */ return _random.NextUInt64();
 				case "pi": /*            */ return 3.14159265358979323846264M;
 				case "e": /*             */ return 2.71828182845904523536028M;
-				case "rad": /*           */ return 0.01745329251994329576923M;
+				case "rad": /*           */ return MathHelpers.Rad;
 				case "name": /*          */ return 0x03FF;
 				case "line": /*          */ return _sourceLine;
 				case "version": /*       */ return FutabaApp.VersionDecimal;
@@ -295,7 +300,7 @@ unsafe partial class Assembler {
 			}
 		}
 
-		Error("Invalid internal variable name");
+		Error("Invalid internal variable name", $"'{CharSpanHelpers.ClampForMessage(name)}'");
 
 		return MathHelpers.NaN;
 	}
@@ -390,10 +395,10 @@ unsafe partial class Assembler {
 				int nomstart = i;
 				int adv = nomstart;
 
-				// first char is definitely an 
+				// first char is definitely valid
 				while (++adv < sublen && subsub[adv].IsIdentifierCharacter) ;
 
-				i = adv;
+				i = adv - 1;
 				return subsub[nomstart..adv];
 			}
 		}

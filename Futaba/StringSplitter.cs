@@ -9,6 +9,7 @@ internal enum StringSplitResult {
 	Invalid = 1 << 8,
 }
 
+// TODO StringSplitResult on other methods
 internal unsafe struct StringSplitter {
 	private readonly char* _start;
 	private readonly char* _end;
@@ -140,15 +141,11 @@ internal unsafe struct StringSplitter {
 							res |= StringSplitResult.HasContent;
 						}
 
-
 						if (read < theend) {
 							return res | StringSplitResult.MoreContent;
 						}
 
 						return res;
-						
-					} else {
-						break;
 					}
 				}
 			}

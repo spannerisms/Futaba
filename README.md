@@ -3,7 +3,7 @@
 
 # Futaba
 
-Futaba is an open-source, low-level assembler specifically targetting the Super Famicom and Super Nintendo Entertainment System.
+Futaba is an open-source, low-level assembler specifically targeting the Super Famicom and Super Nintendo Entertainment System.
 
 ## Download
 
@@ -17,7 +17,7 @@ For extensive documentation of syntax or the command line interface, please see 
 
 ### For developers
 
-Generally, you should make one `Assembler` object per assembly target. The assembler types are optimized for repeated builds of the same file; instantiating a new assembler puts items on the large object heap, which can effect significant performance issues if this induces a collection. Note that the `Assembler` type is an `IDisposable`, as it tracks resources in unmanaged memory.
+Generally, you should make one `Assembler` object per assembly target. The assembler types are optimized for repeated builds of the same file; instantiating a new instance for every assembly will consume significantly more memory. Note that the `Assembler` type is an `IDisposable`, as it tracks resources in unmanaged memory.
 
 ```csharp
 using Assembler assembler = new LoromAssembler("main.asm");

@@ -148,6 +148,7 @@ unsafe partial class Assembler {
 			// special SPLAT
 			if (next.OnlyCharIs(SPLAT)) {
 				Skip(size);
+
 			} else if (next.TestIfVariable()) {
 				if (TryGetVariable(next.AsSpan(1), out var vari)) {
 					switch (vari.VarType) {
@@ -181,7 +182,6 @@ unsafe partial class Assembler {
 				TrackAndStep(len);
 			}
 		}
-
 	}
 
 	private bool TryGetAllocatedDataStatement(string directiveName, out int size) {
@@ -230,7 +230,7 @@ unsafe partial class Assembler {
 			return;
 		}
 
-		if (!TryGetSymbol(pileName, out var pileObj)) {
+		if (!TryFetchSymbol(pileName, out var pileObj)) {
 			Error($"Cannot find piling: {pileName}");
 			AbortCommand();
 			return;
@@ -527,7 +527,7 @@ unsafe partial class Assembler {
 							IExpressionReturn valR = ParseOperand(rangeR);
 
 							if (valR.Resolved) {
-								binstart = valR.ValueInt32;
+								binend = valR.ValueInt32;
 							} else {
 								rangeGood = false;
 								Error_BadResolve(valR);
@@ -567,18 +567,21 @@ unsafe partial class Assembler {
 
 				continue;
 			} else {
-				if (TryAdvanceProgramCounter(binlen)) {
-					Span<byte> filler = new(_pcPtr, binlen);
+				int slicelen = binend - binstart;
 
-					if (binFile.TryGetSpan(binstart, binend - binstart, out var binSpan)) {
+				if (TryAdvanceProgramCounter(slicelen)) {
+					Span<byte> filler = new(_pcPtr, slicelen);
+
+					if (binFile.TryGetSpan(binstart, slicelen, out var binSpan)) {
 						binSpan.CopyTo(filler);
 					}
 
-					TrackAndStep(binlen);
+					TrackAndStep(slicelen);
 				}
-				binsize += binlen;
+				binsize += slicelen;
 			}
 		} while (moreFiles);
+
 		if (labelName is not null) {
 			DataBlockLabel binlabel = new(labelName, binsite, binaddress, labelOffset, binsize);
 			AddOrReplaceSymbol(binlabel);
@@ -590,17 +593,17 @@ unsafe partial class Assembler {
 	private void Directive_LANG() {
 		if (!DemandSpaceWithError()) return;
 
-		var langname = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
+		var langName = FastRead.ReadAlphaNumeric(ref _reading, _fileEnd);
 
-		if (langname.IsEmpty) {
+		if (langName.IsEmpty) {
 			Error("Missing architecture name.");
 			AbortCommand();
 		} else {
-			if (langname.Length < 12) {
-				Span<char> langlower = stackalloc char[langname.Length];
-				langname.FastLower(langlower);
+			if (langName.Length < 12) {
+				Span<char> langLower = stackalloc char[langName.Length];
+				langName.FastLower(langLower);
 
-				switch (langlower) {
+				switch (langLower) {
 					case "wdc":
 					case "65816":
 					case "wdc65816":
@@ -639,25 +642,25 @@ unsafe partial class Assembler {
 
 			if (TryAdvanceProgramCounter(len)) {
 				if (good) {
-					byte* writeTo = _pcPtr;
-					char* rawread = arg.Start;
+					byte* writing = _pcPtr;
+					char* reading = arg.Start;
 
-					for (int i = 0; i < len; i++, writeTo++) {
-						int m = rawread->GetHexValue();
-						rawread++;
-						m <<= 4;
-						m |= rawread->GetHexValue();
-						rawread++;
+					for (int i = 0; i < len; i++, writing++) {
+						int value = reading->GetHexValue();
+						reading++;
+						value <<= 4;
+						value |= reading->GetHexValue();
+						reading++;
 
-						if ((uint) m > 255) {
-							Error("Invalid raw string");
+						if ((uint) value > 255) {
+							Error($"Invalid raw string at character {(i * 2)-1}: {reading[-2]}{reading[-1]}");
 							break;
 						}
 
-						*writeTo = (byte) m;
+						*writing = (byte) value;
 					}
 				} else {
-					Error("Invalid raw string");
+					Error("Invalid raw string: length is not divisible by 2.");
 				}
 
 				TrackAndStep(len);
@@ -843,7 +846,7 @@ unsafe partial class Assembler {
 				break;
 
 			case ARRANGE:
-				fillModeExpression = ParseOperand(fillModeExpr, SymbolContext.RomAddress);
+				fillModeExpression = ParseOperand(fillModeExpr, SymbolContext.Provenance);
 
 				if (validFill = fillModeExpression.Resolved) {
 					int arrangeVal = fillModeExpression.ValueInt32;
@@ -930,6 +933,7 @@ unsafe partial class Assembler {
 
 		if (targ.Length is 0) {
 			triggers = _defaultBpTriggers;
+
 		} else {
 			triggers = BreakpointTriggers.None;
 
@@ -1009,7 +1013,7 @@ unsafe partial class Assembler {
 
 			bpcheck.FastLower(bplow);
 
-			switch (bpcheck) {
+			switch (bplow) {
 				case "off":
 					_bpControl = BreakpointsControl.Off;
 					FinishCommand();
@@ -1074,7 +1078,7 @@ unsafe partial class Assembler {
 					_ /*                           */ => "current"
 				};
 
-				Warning($"Cannot insert {opName} for in {archName} archichecture");
+				Warning($"Cannot insert {opName} in {archName} archichecture");
 				break;
 		}
 	}
@@ -1277,7 +1281,28 @@ unsafe partial class Assembler {
 
 							bool goodName = TryFullyExpandLabelName(depth, chunkName, out string? fullName);
 
-							if (AdvanceOverWhitespace() || !FastRead.IsAllocator(_reading)) {
+							bool atEnd = AdvanceOverWhitespace();
+
+							if (!atEnd && *_reading is '=') {
+								_reading++;
+								int value;
+								if (!ReadRestOfCommand(out OperandString assignmentOperand)) {
+									Error(MsgInfo.MissingAssignmentOperand);
+									value = 0;
+								} else {
+									IExpressionReturn expr = ParseOperand(assignmentOperand);
+
+									value = expr.ValueInt32;
+									if (!expr.Resolved) {
+										Error_BadResolve(expr, MsgInfo.UnresolvedSymbolAssignment);
+									}
+								}
+
+								if (goodName) {
+									AssignedSymbol addsym = new(fullName!, value);
+									AddOrReplaceSymbol(addsym);
+								}
+							} else if (AdvanceOverWhitespace() || !FastRead.IsAllocator(_reading)) {
 								if (goodName) {
 									AssignedSymbol addsym = new(fullName!, _allocationAddress);
 									AddOrReplaceSymbol(addsym);
@@ -1828,7 +1853,7 @@ unsafe partial class Assembler {
 
 			if (chain.TickLoops()) {
 				_reading = chain.Start;
-				_sourceLine = chain.LineStart;
+				_sourceLine = chain.FirstLine;
 			} else {
 				_scopeChain = chain.Parent;
 			}

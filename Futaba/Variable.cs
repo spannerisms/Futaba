@@ -11,7 +11,7 @@ internal enum VariableType {
 /// </summary>
 public sealed class Variable : IFormattable {
 	/// <summary>
-	/// Gets the underyling .NET type this instance currently represents.
+	/// Gets the underlying .NET type this instance currently represents.
 	/// </summary>
 	public Type ItemType => VarType switch {
 		VariableType.String => typeof(string),
@@ -130,7 +130,7 @@ public sealed class Variable : IFormattable {
 
 	/// <inheritdoc cref="TryCreate(string, decimal, out Variable?, out string?)"/>
 	public static bool TryCreate(string name, int value, [NotNullWhen(true)] out Variable? variable, [NotNullWhen(false)] out string? error) {
-		return TryCreate(name, value, out variable, out error);
+		return TryCreate(name, (decimal) value, out variable, out error);
 	}
 
 	/// <summary>
@@ -139,7 +139,7 @@ public sealed class Variable : IFormattable {
 	/// <param name="name">The name of the variable to create.</param>
 	/// <param name="value">The value to assign the variable.</param>
 	/// <param name="variable">If this method returns successfully, this will contain the created variable.</param>
-	/// <param name="error">If this method does not return successfull, this will contain an error message describing the failure.</param>
+	/// <param name="error">If this method does not return successfully, this will contain an error message describing the failure.</param>
 	/// <returns><see langword="true"/> if the variable was successfully created; otherwise, <see langword="false"/>.</returns>
 	public static bool TryCreate(string name, decimal value, [NotNullWhen(true)] out Variable? variable, [NotNullWhen(false)] out string? error) {
 		if (ValidateName(name, out error)) {

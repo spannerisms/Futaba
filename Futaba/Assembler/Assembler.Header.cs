@@ -16,26 +16,32 @@ unsafe partial class Assembler {
 	private protected virtual void AdjustInterruptVectors() {
 		byte* vectorTable = _romPtr + AddressToOffset(0x00FFE0);
 
-		if (_copVectorEmulation is not null) {
-			SnesHelpers.WriteW(vectorTable + 0x04, _copVectorEmulation.Value);
+		//
+		// native vectors
+		//
+		if (_copVectorNative is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x04, _copVectorNative.Value);
 		}
 
 		if (_brkVector is not null) {
 			SnesHelpers.WriteW(vectorTable + 0x06, _brkVector.Value);
 		}
 
-		if (_abortVectorEmulation is not null) {
-			SnesHelpers.WriteW(vectorTable + 0x08, _abortVectorEmulation.Value);
+		if (_abortVectorNative is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x08, _abortVectorNative.Value);
 		}
 
-		if (_nmiVectorEmulation is not null) {
-			SnesHelpers.WriteW(vectorTable + 0x0A, _nmiVectorEmulation.Value);
+		if (_nmiVectorNative is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x0A, _nmiVectorNative.Value);
 		}
 
-		if (_irqVectorEmulation is not null) {
-			SnesHelpers.WriteW(vectorTable + 0x0E, _irqVectorEmulation.Value);
+		if (_irqVectorNative is not null) {
+			SnesHelpers.WriteW(vectorTable + 0x0E, _irqVectorNative.Value);
 		}
 
+		//
+		// emulation vectors
+		//
 		if (_copVectorEmulation is not null) {
 			SnesHelpers.WriteW(vectorTable + 0x14, _copVectorEmulation.Value);
 		}
@@ -81,7 +87,7 @@ unsafe partial class Assembler {
 		header[0x28] = SnesHelpers.GetHeaderSizeByte(RamSize);
 
 		// get rom type
-		if (HasCoprocessor) {
+		if (Coprocessor is not Coprocessor.None) {
 			header[0x26] = (byte) ((int) Coprocessor >> 16);
 
 			header[0x26] |= (HasRam, HasBattery) switch {
@@ -276,7 +282,6 @@ unsafe partial class Assembler {
 				<= 32768 => 32768,
 				<= 65536 => 65536,
 				<= 131072 => 131072,
-				<= 262144 => 262144,
 				<= RomHeader.MaxRamSize => RomHeader.MaxRamSize,
 			};
 		}
@@ -314,7 +319,7 @@ unsafe partial class Assembler {
 	/// <summary>
 	/// Returns whether or not this software includes a coprocessor.
 	/// </summary>
-	public bool HasCoprocessor => false;
+	public bool HasCoprocessor => Coprocessor is not Coprocessor.None;
 
 	/// <summary>
 	/// Gets or sets the target language/region of the software.
@@ -362,7 +367,7 @@ unsafe partial class Assembler {
 			ThrowIfAssembling();
 			field = SnesHelpers.SanitizeString(value, SnesHelpers.MakerCodeLength);
 		}
-	} = "  ";
+	} = "";
 
 	/// <summary>
 	/// Gets or sets the 4 character game code.
@@ -388,7 +393,7 @@ unsafe partial class Assembler {
 			ThrowIfAssembling();
 			field = SnesHelpers.SanitizeString(value, SnesHelpers.GameCodeLength);
 		}
-	} = "    ";
+	} = "";
 
 	/// <summary>
 	/// Gets or sets the special version.

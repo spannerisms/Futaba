@@ -1,10 +1,9 @@
 ﻿namespace Futaba;
 
 /// <summary>
-/// Base class that mapped assemblers inherit from.
+/// Base class for mapped assemblers to inherit from.
 /// </summary>
 public unsafe abstract partial class Assembler : IDisposable {
-
 	/// <inheritdoc cref="FutabaApp.Version"/>
 	public static Version Version => FutabaApp.Version;
 
@@ -12,7 +11,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	private SnesArchitecture _architecture = SnesArchitecture.WDC65816;
 
 	private SnesEncoder _currentEncoder = SnesEncoder.ASCII;
-	private SpannedLookup<SnesEncoder> _encoders = new();
+	private SpannedLookup<SnesEncoder> _encoders = new(8);
 
 	private Dictionary<string, SourceFile> _loadedFiles = new(32);
 	private Dictionary<string, SourceBinary> _loadedBinaries = new(32);
@@ -32,7 +31,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 
 	private byte[]? _baseRom = null;
 
-	private UInt128 _randomSeed = new(0x426562656C6F766, 0x573636865657365);
+	private UInt128 _randomSeed = new(0x426562656C6F7665, 0x573636865657365);
 	internal readonly XoRandom _random = new(0);
 
 	// need to use private fields for these
@@ -49,7 +48,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	public string EntryPoint { get; }
 
 	/// <summary>
-	/// Gets or sets the base binary data used to populate the initial buffer.
+	/// Sets the base binary data used to populate the initial buffer.
 	/// If <see langword="null"/>, assembly begins with a zero-filled buffer.
 	/// <para>
 	/// If the size of this array differs from <see cref="InitialRomSize"/>
@@ -57,23 +56,20 @@ public unsafe abstract partial class Assembler : IDisposable {
 	/// initialized to zero.
 	/// </para>
 	/// </summary>
-	/// <inheritdoc cref="OverflowAction" path="//remarks|//exception"/>
-	public byte[]? BaseRom {
-		get => _baseRom;
-		set {
-			ThrowIfAssembling();
+	/// <inheritdoc cref="ThrowIfAssembling" path="//remarks|//exception"/>
+	public void SetBaseRom(byte[]? baseRom) {
+		ThrowIfAssembling();
 
-			if (value is null) {
-				_baseRom = null;
+		if (baseRom is null) {
+			_baseRom = null;
+
+		} else {
+			// avoid reallocation when the sizes are identical
+			if (_baseRom is not null && _baseRom.Length == baseRom.Length) {
+				baseRom.CopyTo(_baseRom, 0);
 
 			} else {
-				// avoid reallocation when the sizes are identical
-				if (_baseRom is not null && _baseRom.Length == value.Length) {
-					value.CopyTo(_baseRom, 0);
-
-				} else {
-					_baseRom = [.. value];
-				}
+				_baseRom = [.. baseRom];
 			}
 		}
 	}
@@ -104,7 +100,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	} = RomOverflowAction.Error;
 
 	/// <summary>
-	/// Get or set the warning level for missing tokens.
+	/// Gets or sets the warning level for missing tokens.
 	/// </summary>
 	/// <inheritdoc cref="OverflowAction" path="//remarks|//exception"/>
 	public MissingTokenSeverity MissingTokenSeverity {
@@ -116,7 +112,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 	} = MissingTokenSeverity.Ambiguous;
 
 	/// <summary>
-	/// Returns whether or not any breaking errors occured during assembly.
+	/// Returns whether any breaking errors occurred during assembly.
 	/// </summary>
 	/// <remarks>
 	/// If this returns <see langword="true"/>,
@@ -204,7 +200,7 @@ public unsafe abstract partial class Assembler : IDisposable {
 		get => _errorOut;
 		set {
 			ThrowIfAssembling();
-			_errorsToConsole = ReferenceEquals(value, Console.Error);		
+			_errorsToConsole = ReferenceEquals(value, Console.Error);
 
 			_errorOut = value;
 		}

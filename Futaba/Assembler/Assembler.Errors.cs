@@ -25,7 +25,7 @@ partial class Assembler {
 		[DoesNotReturn]
 		[StackTraceHidden]
 		static void TooManyErrors() {
-			throw new InvalidOperationException("Too many errors occured. Assembly has been aborted.");
+			throw new InvalidOperationException("Too many errors occurred. Assembly has been aborted.");
 		}
 	}
 

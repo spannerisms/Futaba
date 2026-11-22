@@ -22,6 +22,28 @@ unsafe partial class Assembler {
 	}
 
 	/// <summary>
+	/// Search's this instance's symbols dictionary for a symbol with the given name.
+	/// </summary>
+	/// <param name="name">The name of the symbol to look up.</param>
+	/// <param name="symbol">If the symbol is found, this will contain a refernce to it; otherwise, it will contain <see langword="null"/>.</param>
+	/// <returns><see langword="true"/> if the symbol is found; otherwise <see langword="false"/>.</returns>
+	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
+	public bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? symbol) {
+		return _symbols.TryGetValue(name, out symbol);
+	}
+
+	/// <summary>
+	/// Search's this instance's variables dictionary for a variable with the given name.
+	/// </summary>
+	/// <param name="name">The name of the variable to look up.</param>
+	/// <param name="variable">If the variable is found, this will contain a refernce to it; otherwise, it will contain <see langword="null"/>.</param>
+	/// <returns><see langword="true"/> if the variable is found; otherwise <see langword="false"/>.</returns>
+	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
+	public bool TryGetVariable(string name, [NotNullWhen(true)] out Variable? variable) {
+		return _variables.TryGetValue(name, out variable);
+	}
+
+	/// <summary>
 	/// Returns a new copy of this instance's breakpoint list.
 	/// </summary>
 	/// <inheritdoc cref="ThrowIfAssembling()" path="//remarks|//exception"/>
@@ -37,19 +59,23 @@ unsafe partial class Assembler {
 	private SpannedLookup<UserFunction> _functions = new(128);
 
 	private Dictionary<string, Symbol> _initialSymbols = [];
-
 	private Dictionary<string, Variable> _initialVariables = [];
 
 	// coax all of these collections onto the large object heap to help reduce GC pressure
 	// TODO more case testing to find the best values here to prevent reallocations when extra large
+	// jpdasm:
+	//     branch requests    : 11731
+	//     jump requests      : 3447
+	//     simple requests    : 11633
+	//     symbols            : 24554
 	private SpannedLookup<Symbol> _symbols = new(50000);
-	private List<SimpleRequest> _simpleRequests = new(50000);
-	private List<BranchRequest> _branchRequests =  new(50000);
+	private List<SimpleRequest> _simpleRequests = new(20000);
+	private List<BranchRequest> _branchRequests =  new(20000);
 
 	// don't expect these to be as common, so they can go on the normal heap
 	private List<FillRequest> _fillRequests = [];
 	private List<AbsolutePointerRequest> _jumpRequests = [];
-	private SpannedLookup<Variable> _variables = new(50);
+	private SpannedLookup<Variable> _variables = new(512);
 
 	private readonly string[] _nameHierarchy = new string[HierarchySize];
 	private readonly int[] _pcHierarchy = new int[HierarchySize];
@@ -61,7 +87,7 @@ unsafe partial class Assembler {
 	private bool _pooling = false;
 	private readonly List<string> _poolHeaders = new(8);
 
-	#endregion Private fields
+	#endregion private fields
 
 	private void CreateSimpleRequest(IExpressionReturn item, int offset, int size) {
 		_simpleRequests.Add(new SimpleRequest(item, offset, size, _time, CurrentSourceLine));
@@ -251,7 +277,7 @@ unsafe partial class Assembler {
 		return getsym;
 	}
 
-	private bool TryGetSymbol(string name, [NotNullWhen(true)] out Symbol? item) {
+	private bool TryFetchSymbol(string name, [NotNullWhen(true)] out Symbol? item) {
 		if (_symbols.TryGetValue(name, out item) && item.Resolved) {
 			return true;
 		} else {
@@ -342,14 +368,14 @@ unsafe partial class Assembler {
 
 	private void CreateAssignedSymbol(CharSpan symbolName) {
 		if (!ReadRestOfCommand(out OperandString assignmentOperand)) {
-			Error("Missing assignment for symbol");
+			Error(MsgInfo.MissingAssignmentOperand);
 		} else {
 			IExpressionReturn expr = ParseOperand(assignmentOperand);
 
 			if (expr.Resolved) {
 				AddOrReplaceSymbol(new AssignedSymbol(new string(symbolName), expr.ValueInt32));
 			} else {
-				Error_BadResolve(expr, "Symbol assignment must be immediately resolvable.");
+				Error_BadResolve(expr, MsgInfo.UnresolvedSymbolAssignment);
 			}
 		}
 	}
@@ -534,8 +560,8 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryReadTopLevelName([NotNullWhen(true)] out string? fullName) {
-		if (FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString symbolName)) {
-			fullName = symbolName;
+		if (FastRead.TryReadIdentifier(ref _reading, _fileEnd, out CharSpan symbolName)) {
+			fullName = new(symbolName);
 			return true;
 		} else {
 			fullName = null;
@@ -578,18 +604,51 @@ unsafe partial class Assembler {
 
 	private void GenerateSublabel() {
 		if (TryReadSublabelName(out string? chunkName, out int depth)) {
-			UpdateHierarchy(chunkName, depth);
+			// we'll skip whitespace after this anyway, so it's fine
+			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-			if (!_pooling) {
-				if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
-					AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
+			if (*_reading is '=') { // assignment
+				_reading++;
+
+				if (!ReadRestOfCommand(out OperandString assignmentOperand)) {
+					Error(MsgInfo.MissingAssignmentOperand);
+				} else {
+					IExpressionReturn expr = ParseOperand(assignmentOperand);
+
+					if (!expr.Resolved) {
+						Error_BadResolve(expr, MsgInfo.UnresolvedSymbolAssignment);
+					}
+
+					int value = expr.ValueInt32;
+
+					if (!_pooling) {
+						if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
+							AddOrReplaceSymbol(new AssignedSymbol(new string(fullName), value));
+						}
+					} else {
+						foreach (string poolName in _poolHeaders) {
+							_nameHierarchy[0] = poolName;
+
+							if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
+								AddOrReplaceSymbol(new AssignedSymbol(new string(fullName), value));
+							}
+						}
+					}
 				}
-			} else {
-				foreach (string poolName in _poolHeaders) {
-					_nameHierarchy[0] = poolName;
+			} else { // inline
+				UpdateHierarchy(chunkName, depth);
 
+				if (!_pooling) {
 					if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
 						AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
+					}
+				} else {
+					foreach (string poolName in _poolHeaders) {
+						_nameHierarchy[0] = poolName;
+
+						if (TryFullyExpandLabelName(depth, chunkName, out string? fullName)) {
+							AddOrReplaceSymbol(new Label(fullName, Provenance, _pc, _offset));
+						}
 					}
 				}
 			}
@@ -643,9 +702,11 @@ unsafe partial class Assembler {
 	internal bool TryFullyExpandLabelName(int depth, CharSpan name, [NotNullWhen(true)] out string? fullName) {
 		if (name.Length is 0) {
 			Error(MsgInfo.MissingLabelName);
+
 		} else if (depth is 0) {
 			fullName = new(name);
 			return true;
+
 		} else if (depth <= (_hierarchyDepth + 1)) {
 			// make depth of 1 faster
 			if (depth == 1) {
@@ -669,7 +730,7 @@ unsafe partial class Assembler {
 	private const int MaxRelativeCount = 100;
 	private static string GetRelativeLabelName(char token, int count, int index) => $"{token}{count}.{index}";
 
-	internal bool TryGetPreviusMinusLabel(int minusCount, [NotNullWhen(true)] out Symbol? label) {
+	internal bool TryGetPreviousMinusLabel(int minusCount, [NotNullWhen(true)] out Symbol? label) {
 		if (ValidateRelativeCount('-', minusCount)) {
 			string name = GetRelativeLabelName('-', minusCount, _minuslabels[minusCount]);
 			label = RequestSymbol(name);

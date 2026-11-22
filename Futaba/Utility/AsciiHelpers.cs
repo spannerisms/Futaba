@@ -74,7 +74,11 @@ internal static unsafe class AsciiHelpers {
 		internal bool IsNiceBoundary {
 			[DebuggerStepThrough]
 			//[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			get => c is ' ' or '\t' or '\r' or CommentChar or BadChar or NewLine;
+			//get => c is ' ' or '\t' or '\r' or NewLine or CommentChar or BadChar;
+			// TODO watch this issue
+#pragma warning disable IDE0078 // Use pattern matching - https://github.com/dotnet/runtime/issues/107801
+			get => c == ' ' || c == '\t' || c == '\r' || c == CommentChar || c == NewLine || c == BadChar;
+#pragma warning restore IDE0078 // Use pattern matching
 		}
 
 		internal bool IsLetterOrUnderscore {
@@ -107,12 +111,12 @@ internal static unsafe class AsciiHelpers {
 			return (c | LowercaseCharMask) == (c1 | LowercaseCharMask);
 		}
 	}
-	private const string LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-	private const string DIGITS = "0123456789";
-	private const string UNDERSCORE = "_";
-	private const string ALPHANUMERIC = LETTERS + UNDERSCORE + DIGITS;
 
-	internal static readonly SearchValues<char> IdentifierSearch = SearchValues.Create(ALPHANUMERIC);
+	//private const string LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	//private const string DIGITS = "0123456789";
+	//private const string UNDERSCORE = "_";
+	//private const string ALPHANUMERIC = LETTERS + UNDERSCORE + DIGITS;
+	//internal static readonly SearchValues<char> IdentifierSearch = SearchValues.Create(ALPHANUMERIC);
 
 	//                                            =    ~}|{zyxwvutsrqponmlkjihgfedcba`_^]\[ZYXWVUTSRQPONMLKJIHGFEDCBA@"
 	internal const ulong LettersMask /*        */ = 0b0000011111111111111111111111111010000111111111111111111111111110;
@@ -139,6 +143,9 @@ internal static unsafe class AsciiHelpers {
 	static AsciiHelpers() {
 		// validate the ulong masks
 #if DEBUG
+		const string LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+		const string UNDERSCORE = "_";
+		const string DIGITS = "0123456789";
 		ValidateMask(LettersMask, '@', LETTERS + UNDERSCORE);
 		ValidateMask(WhiteSpaceMask, '\0', " \t\r");
 		ValidateMask(NumbersMask, '\0', DIGITS);
@@ -169,13 +176,12 @@ internal static unsafe class AsciiHelpers {
 		SubLabelSafe.SetLetters(true);
 
 		IdentifierCharacters.SetNumbers(true);
-		LetterOrUnderscore.SetNumbers(true);
 		SubLabelSafe.SetNumbers(true);
 
 		IdentifierCharacters['_'] = true;
 		LetterOrUnderscore['_'] = true;
-
 		SubLabelSafe['_'] = true;
+
 		SubLabelSafe['.'] = true;
 
 		InsertHex(ref HexValue);
@@ -243,13 +249,13 @@ internal static unsafe class AsciiHelpers {
 	private const ulong UppercaseMask = unchecked((ulong) ~0x0020_0020_0020_0020);
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal static uint MergeChars(char c1, char c2) {
-		return FixEndianness(c1 | ((uint) c2 << 16));
+	private static uint MergeChars(char c1, char c2) {
+		return c1 | ((uint) c2 << 16);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal static ulong MergeChars(char c1, char c2, char c3, char c4) {
-		return FixEndianness(c1 | ((ulong) c2 << 16) | ((ulong) c3 << 32) | ((ulong) c4 << 48));
+	private static ulong MergeChars(char c1, char c2, char c3, char c4) {
+		return c1 | ((ulong) c2 << 16) | ((ulong) c3 << 32) | ((ulong) c4 << 48);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -269,12 +275,12 @@ internal static unsafe class AsciiHelpers {
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static bool FastTest(ulong cptr, char c1, char c2, char c3, char c4) {
-		return cptr == MergeChars(c1, c2, c3, c4);
+		return cptr == FixEndianness(MergeChars(c1, c2, c3, c4));
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static bool FastTest(uint cptr, char c1, char c2) {
-		return cptr == MergeChars(c1, c2);
+		return cptr == FixEndianness(MergeChars(c1, c2));
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]

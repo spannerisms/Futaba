@@ -95,6 +95,7 @@ unsafe partial class Assembler {
 			AdjustPC(newpc);
 			_offset = AddressToOffset(_pc);
 			_pcPtr = _romPtr + _offset;
+			_currentSegment = null; // TODO include a segment stack used here?
 		} else {
 			Error("No program counter to pop from stack.");
 		}
@@ -134,7 +135,7 @@ unsafe partial class Assembler {
 		if (TryAdvanceProgramCounter(operandSize + 1)) {
 			_pcPtr[0] = opcode;
 			new Span<byte>(_pcPtr + 1, operandSize).Clear();
-			AdvanceProgramCounter(operandSize);
+			AdvanceProgramCounter(operandSize + 1);
 		}
 	}
 
@@ -451,31 +452,31 @@ unsafe partial class Assembler {
 	}
 
 	private void AssembleBranch(OperandString argstr, byte opcode) {
-		int len = argstr.Length;
+		int length = argstr.Length;
 
-		if (len is 0) {
+		if (length is 0) {
 			MissingOperand();
 			PlaceholderOp(opcode, 1);
 		} else {
-			char c = argstr.GetUnchecked(0);
+			char firstChar = argstr.GetUnchecked(0);
 
 			// check for special characters
-			if (len is 1) {
-				if (c is BROP) {
+			if (length is 1) {
+				if (firstChar is BROP) {
 					WriteOpBrop(opcode);
 					return;
 
-				} else if (c is JNOP) {
+				} else if (firstChar is JNOP) {
 					WriteOpB(opcode, 0x00);
 					return;
 
-				} else if (c is BTYS) {
+				} else if (firstChar is BTYS) {
 					WriteOpB(opcode, 0xFE);
 					return;
 				}
 			}
 
-			if (c is BranchLiteral) {
+			if (firstChar is BranchLiteral) {
 				WriteOpB(opcode, ParseOperandSliced(argstr, 1));
 			} else {
 				WriteOpRel8(opcode, ParseOperand(argstr));
@@ -884,7 +885,7 @@ unsafe partial class Assembler {
 			foreach (Dock ptest in _segments) {
 				if (ptest != curSeg) {
 					if (ptest.OffsetIsInRegion(offset)) {
-						Error($"Assembly has entered protected region \"{curSeg}\"");
+						Error($"Assembly has entered protected region \"{ptest}\"");
 						_shutUpAboutSegments = true;
 						break;
 					}
@@ -987,7 +988,7 @@ unsafe partial class Assembler {
 		if (_baseRom is not null) {
 			int baseromlen = Math.Min(_baseRom.Length, _allocatedLength);
 
-			_baseRom.AsSpan().CopyTo(rom[..baseromlen]);
+			_baseRom.AsSpan(0, baseromlen).CopyTo(rom[..baseromlen]);
 
 			rom = rom[baseromlen..];
 		}

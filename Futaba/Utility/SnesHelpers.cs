@@ -93,13 +93,13 @@ internal static class SnesHelpers {
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal static bool FitsIn8(int v) {
-		return v is >= sbyte.MinValue and <= byte.MaxValue;
+	internal static bool FitsIn8(int value) {
+		return value is >= sbyte.MinValue and <= byte.MaxValue;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal static bool FitsIn16(int v) {
-		return v is >= short.MinValue and <= ushort.MaxValue;
+	internal static bool FitsIn16(int value) {
+		return value is >= short.MinValue and <= ushort.MaxValue;
 	}
 
 	internal static string BranchDistanceError(int distance, int size) {
@@ -110,13 +110,13 @@ internal static class SnesHelpers {
 		}
 	}
 
-	internal static unsafe void InsertHeaderString(string str, byte* ptr, int len) {
-		new Span<byte>(ptr, len).Fill((byte) ' ');
+	internal static unsafe void InsertHeaderString(string text, byte* pointer, int length) {
+		new Span<byte>(pointer, length).Fill((byte) ' ');
 
-		len = Math.Min(str.Length, len);
+		length = Math.Min(text.Length, length);
 
-		for (int i = 0; i < len; i++) {
-			*ptr = (byte) str[i];
+		for (int i = 0; i < length; i++) {
+			*pointer++ = (byte) text[i];
 		}
 	}
 
@@ -270,17 +270,17 @@ internal static class SnesHelpers {
 	private static bool IsMirroredWram(int addr) => (addr ^ 0x7E_0000) < 0x2000;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static bool IsWram(int addr) => (addr & 0xFE_0000) >= 0x7E_0000;
+	private static bool IsWram(int addr) => (addr & 0xFE_0000) == 0x7E_0000;
 
 	internal static int GetAllocationSize(int desired) {
 		return desired switch {
 			< 0 => 0,
-			< 0x0002_0000 => 0x0002_0000,
-			< 0x0004_0000 => 0x0004_0000,
-			< 0x0008_0000 => 0x0008_0000,
-			< 0x0010_0000 => 0x0010_0000,
-			< 0x0020_0000 => 0x0020_0000,
-			< 0x0040_0000 => 0x0040_0000,
+			<= 0x0002_0000 => 0x0002_0000,
+			<= 0x0004_0000 => 0x0004_0000,
+			<= 0x0008_0000 => 0x0008_0000,
+			<= 0x0010_0000 => 0x0010_0000,
+			<= 0x0020_0000 => 0x0020_0000,
+			<= 0x0040_0000 => 0x0040_0000,
 			<= 0x0080_0000 => 0x0080_0000,
 			_ => 0,
 		};

@@ -47,6 +47,7 @@ internal sealed class FileWatcher : IDisposable {
 		}
 
 		Strobe(e.OldFullPath, e);
+		Strobe(e.FullPath, e);
 	}
 
 	private void OnAnyChange(object sender, FileSystemEventArgs e) {
@@ -72,6 +73,10 @@ internal sealed class FileWatcher : IDisposable {
 		}
 
 		ref var add = ref CollectionsMarshal.GetValueRefOrAddDefault(_files, name, out _);
+	}
+
+	~FileWatcher() {
+		Dispose(false);
 	}
 
 	private void Dispose(bool disposing) {

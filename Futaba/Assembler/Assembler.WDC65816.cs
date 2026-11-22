@@ -941,7 +941,6 @@ unsafe partial class Assembler {
 		void AssembleRepeatable(OperandString argstr, SizeToken argsize, byte opcode) {
 			if (argsize is not SizeToken.Unspecified) {
 				TokensOnImplied();
-				PlaceholderOp(opcode);
 			}
 
 			if (argstr.IsEmpty) {
@@ -1006,7 +1005,7 @@ unsafe partial class Assembler {
 
 			if (len is 0) {
 				MissingOperand();
-				PlaceholderOp(opcode, 1);
+				PlaceholderOp(opcode, 2);
 
 			} else {
 				char c = argstr.GetUnchecked(0);
@@ -1316,12 +1315,10 @@ unsafe partial class Assembler {
 
 		return OpWdc.NotGood;
 
-		//[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		OpWdc SelectC1(char c1, OpWdc op1) {
 			return c == c1 ? op1 : OpWdc.NotGood;
 		}
 
-		//[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		OpWdc SelectC2(char c1, OpWdc op1, char c2, OpWdc op2) {
 			if (c == c1) return op1;
 			if (c == c2) return op2;
@@ -1329,7 +1326,6 @@ unsafe partial class Assembler {
 			return OpWdc.NotGood;
 		}
 
-		//[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		OpWdc SelectC3(char c1, OpWdc op1, char c2, OpWdc op2, char c3, OpWdc op3) {
 			if (c == c1) return op1;
 			if (c == c2) return op2;

@@ -1,12 +1,13 @@
 ﻿namespace Futaba;
 
+/// <summary>
+/// Contains both a Dictionary&lt;string, T&gt; and an alternate lookup that allows ReadOnlySpan&lt;char&gt;.
+/// </summary>
 internal readonly struct SpannedLookup<T> where T : notnull {
 	private readonly Dictionary<string, T> _dict;
 	private readonly Dictionary<string, T>.AlternateLookup<CharSpan> _alt;
 
 	public int Count => _dict.Count;
-
-	public SpannedLookup() : this(0) { }
 
 	public SpannedLookup(int capacity) {
 		_dict = new(capacity);
@@ -21,16 +22,6 @@ internal readonly struct SpannedLookup<T> where T : notnull {
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public ref T? GetRefOrDefault(CharSpan name) {
 		return ref CollectionsMarshal.GetValueRefOrAddDefault(_alt, name, out _);
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public bool ContainsKey(string name) {
-		return _dict.ContainsKey(name);
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public bool ContainsKey(CharSpan name) {
-		return _alt.ContainsKey(name);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]

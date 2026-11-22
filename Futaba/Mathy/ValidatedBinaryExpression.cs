@@ -15,9 +15,13 @@ internal abstract class ValidatedBinaryExpression(ExpressionItem left, Expressio
 		var (rvalue, state) = Right.TryEvaluate();
 
 		if (state.IsResolved) {
-			(var lvalue, state) = Left.TryEvaluate();
+			var (lvalue, lstate) = Left.TryEvaluate();
 
-			if (state.IsResolved) {
+			if (lstate > state) {
+				state = lstate;
+			}
+
+			if (lstate.IsResolved) {
 				if (Validate(lvalue, rvalue)) {
 					return (Equate(lvalue, rvalue), _state = state);
 				} else {

@@ -34,6 +34,7 @@ unsafe partial class Assembler {
 			return true;
 		}
 
+		// TODO block reused param names
 		while (true) {
 			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
@@ -42,14 +43,14 @@ unsafe partial class Assembler {
 				return false;
 			}
 
-			if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString nextArg)) {
-				Error("Missing or invalid macro parameter name");
+			if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out CharSpan nextArg)) {
+				Error("Missing or invalid macro parameter name", $"'{CharSpanHelpers.ClampForMessage(nextArg)}'");
 				return false;
 			}
 
 			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-			args.Add(nextArg);
+			args.Add(new string(nextArg));
 
 			if (*_reading is ',') {
 				_reading++;
@@ -128,7 +129,7 @@ unsafe partial class Assembler {
 			if ((uint) argI < funcArgsReal.Length) {
 				funcArgsReal[argI] = argN;
 			} else {
-				Error("Parameter in function call not declared in header", $"'{argN.Name}'");
+				Error("Parameter in function call not declared in parameter list", $"'{argN.Name}'");
 			}
 		}
 
@@ -155,11 +156,13 @@ unsafe partial class Assembler {
 				AbortCommand();
 			}
 
+			SourceLine macroLine = CurrentSourceLine;
+
 			if (CaptureBlock(MACRO, ENDMACRO, MACRO) is StringBuilder macroBody) {
 				if (getMacro is not null) {
 					Error("A macro with this name already exists");
 				} else {
-					getMacro = new(new string(macroName), args, macroBody, _macros.Count, CurrentSourceLine);
+					getMacro = new(new string(macroName), args, macroBody, _macros.Count, macroLine);
 				}
 			}
 		}
@@ -168,8 +171,9 @@ unsafe partial class Assembler {
 	private void InvokeMacro() {
 		_reading++;
 
-		if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out OperandString macroname)) {
+		if (!FastRead.TryReadIdentifier(ref _reading, _fileEnd, out CharSpan macroname)) {
 			Error(MsgInfo.InvalidMacroName);
+
 		} else if (_macros.TryGetValue(macroname, out var macrocalled)) {
 			if (ReadOutCommaItemsWithParen(out var macroargs)) {
 				if (macrocalled.TryGetInvoker(CurrentSourceLine, macroargs, out var macrovoke, out var errors)) {

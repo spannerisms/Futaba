@@ -74,13 +74,17 @@ internal static unsafe class FastRead {
 			if (c is '"') {
 				start = read;
 				return true;
+
 			} else if (c is EscapeChar) {
-				read++;
+				if (++read == end) {
+					break;
+				}
+
 				c = *read;
 			}
 
 			// this should be checked even if we hit a \
-			if (*read is NewLine or BadChar) {
+			if (c is NewLine or BadChar) {
 				break;
 			}
 		}
@@ -98,13 +102,17 @@ internal static unsafe class FastRead {
 			if (c is CharDelim) {
 				start = read;
 				return true;
+
 			} else if (c is EscapeChar) {
-				read++;
+				if (++read == end) {
+					break;
+				}
+
 				c = *read;
 			}
 
 			// this should be checked even if we hit a \
-			if (*read is NewLine or BadChar) {
+			if (c is NewLine or BadChar) {
 				break;
 			}
 		}
@@ -126,12 +134,15 @@ internal static unsafe class FastRead {
 				return true;
 
 			} else if (c is EscapeChar) {
-				read++;
+				if (++read == end) {
+					break;
+				}
+
 				c = *read;
 			}
 
 			// this should be checked even if we hit a \
-			if (*read is NewLine or BadChar) {
+			if (c is NewLine or BadChar) {
 				break;
 			}
 		}
@@ -151,7 +162,6 @@ internal static unsafe class FastRead {
 
 	internal static bool TestIfCommandEndingToken(char* ptr) {
 		char c = *ptr;
-
 		return (c is CommandSeparator && ColonIsSeparator(ptr)) || c is CommentChar or NewLine or BadChar;
 	}
 
@@ -270,23 +280,6 @@ internal static unsafe class FastRead {
 		return true;
 	}
 
-	internal static bool TryReadIdentifier(scoped ref char* reading, char* end, out OperandString name) {
-		char* wordstart = reading;
-
-		if (!wordstart->IsLetterOrUnderscore) {
-			name = default;
-			return false;
-		}
-
-		int length = GetAlphaNumericRunLength(wordstart, end);
-
-		name = new(wordstart, length);
-
-		reading += length;
-
-		return true;
-	}
-
 	internal static CharSpan ReadSublabelChunk(scoped ref char* reading, char* end) {
 		char* wordstart = reading;
 
@@ -302,9 +295,7 @@ internal static unsafe class FastRead {
 	internal static bool TryReadSublabel(scoped ref char* reading, char* end, out CharSpan chunk, out int dots) {
 		char* start = reading;
 
-		dots = CountCharacter(start, end, SublabelDelimiter);
-
-		start += dots;
+		dots = CountCharacter(ref start, end, SublabelDelimiter);
 
 		int length = GetSublabelRunLength(start, end);
 
@@ -334,7 +325,7 @@ internal static unsafe class FastRead {
 	internal static int CountCharacter(char* start, char* end, char test) {
 		char* read = start;
 
-		while (*read == test) {
+		while (read < end && *read == test) {
 			read++;
 		}
 
@@ -346,7 +337,7 @@ internal static unsafe class FastRead {
 		char* read = start;
 		char* rstart = read;
 
-		while (*read == test) {
+		while (read < end && *read == test) {
 			read++;
 		}
 
@@ -389,8 +380,8 @@ internal static unsafe class FastRead {
 				continue;
 			}
 
-			if (decdig is ('_' - '0')) continue;
-			if (decdig is ('.' - '0')) goto DecimalFractions;
+			if (decdig == ('_' - '0')) continue;
+			if (decdig == ('.' - '0')) goto DecimalFractions;
 
 			break;
 		}
@@ -415,7 +406,7 @@ internal static unsafe class FastRead {
 				continue;
 			}
 
-			if (decdig is ('_' - '0')) continue;
+			if (decdig == ('_' - '0')) continue;
 
 			break;
 		}
@@ -450,7 +441,8 @@ internal static unsafe class FastRead {
 		char* readit = reading;
 
 		for (; readit < end; readit++) {
-			int hexdig = readit->GetHexValue();
+			char c = *readit;
+			int hexdig = c.GetHexValue();
 
 			if (hexdig >= 0) {
 				hexval <<= 4;
@@ -458,7 +450,7 @@ internal static unsafe class FastRead {
 				continue;
 			}
 
-			if (*readit is '_') continue;
+			if (c == '_') continue;
 
 			break;
 		}

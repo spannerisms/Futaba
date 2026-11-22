@@ -10,6 +10,7 @@ internal static class MsgInfo {
 	internal const string InvalidAddressingMode = "Invalid addressing mode";
 
 	internal const string MissingLabelName = "Missing label name";
+	internal const string MissingVariableName = "Missing variable name";
 	internal const string BadLabelName = "Missing or invalid label name";
 	internal const string MissingSublabel = "Missing sublabel name";
 	internal const string MissingSizeToken = "Missing size token.";
@@ -21,6 +22,7 @@ internal static class MsgInfo {
 	internal const string InvalidBin = "Invalid binary literal";
 
 	internal const string MissingDirectiveArgument = "Missing arguments to directive";
+	internal const string MissingAssignmentOperand = "Missing operand of assignment";
 	internal const string UnclosedIf = "Unclosed if statement block";
 	internal const string UnclosedRepeat = "Unclosed repeat statement block";
 	internal const string UnclosedString = "Unclosed string";
@@ -30,9 +32,11 @@ internal static class MsgInfo {
 
 	internal const string InvalidFuncArg = "Invalid function argument";
 	internal const string InvalidMacroName = "Missing or invalid macro name";
+	internal const string InvalidAssignment = "Invalid assignment type";
 
-	internal const string NoChipChange = "Cannot change the coprocessor of this type of assemble.";
+	internal const string UnresolvedSymbolAssignment = "Symbol assignment must be immediately resolvable.";
+	internal const string NoChipChange = "Cannot change the coprocessor of this type of assembler.";
 
-	internal static string MustBeResolvedNow(string directive) => $"argument to {directive} must be immediately resolvable";
+	internal static string MustBeResolvedNow(string directive) => $"Argument to {directive} must be immediately resolvable";
 	internal static string VariableNotFound(CharSpan name) => $"Variable not found: {name}";
 }

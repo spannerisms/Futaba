@@ -136,22 +136,6 @@ internal class SymbolicToken(TokenType type, TokenRule rule, bool forceUnary, bo
 		}
 	}
 
-	public static readonly SymbolicToken LogicalRightShift = new SingletonLogicalRightShift();
-	private sealed class SingletonLogicalRightShift()
-		: SymbolicToken(type: TokenType.LogicalRightShift, rule: TokenRule.Shifts, forceUnary: true, infix: true) {
-
-		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
-			return new ExprLogicalRightShift(left, right);
-		}
-
-		private sealed class ExprLogicalRightShift(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
-			public override ExpressionItem Clone() => new ExprLogicalRightShift(Left.Clone(), Right.Clone());
-			protected override decimal Equate(decimal a, decimal b) {
-				return a.AsLong() >> b.AsInt();
-			}
-		}
-	}
-
 	public static readonly SymbolicToken ArithmeticRightShift = new SingletonArithmeticRightShift();
 	private sealed class SingletonArithmeticRightShift()
 		: SymbolicToken(type: TokenType.ArithmeticRightShift, rule: TokenRule.Shifts, forceUnary: true, infix: true) {
@@ -162,6 +146,22 @@ internal class SymbolicToken(TokenType type, TokenRule rule, bool forceUnary, bo
 
 		private sealed class ExprArithmeticRightShift(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
 			public override ExpressionItem Clone() => new ExprArithmeticRightShift(Left.Clone(), Right.Clone());
+			protected override decimal Equate(decimal a, decimal b) {
+				return a.AsLong() >> b.AsInt();
+			}
+		}
+	}
+
+	public static readonly SymbolicToken LogicalRightShift = new SingletonLogicalRightShift();
+	private sealed class SingletonLogicalRightShift()
+		: SymbolicToken(type: TokenType.LogicalRightShift, rule: TokenRule.Shifts, forceUnary: true, infix: true) {
+
+		public override ExpressionItem CreateExpressionItem(ExpressionItem left, ExpressionItem right) {
+			return new ExprLogicalRightShift(left, right);
+		}
+
+		private sealed class ExprLogicalRightShift(ExpressionItem left, ExpressionItem right) : BinaryExpression(left, right) {
+			public override ExpressionItem Clone() => new ExprLogicalRightShift(Left.Clone(), Right.Clone());
 			protected override decimal Equate(decimal a, decimal b) {
 				return a.AsLong() >>> b.AsInt();
 			}

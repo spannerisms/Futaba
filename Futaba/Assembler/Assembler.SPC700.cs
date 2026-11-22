@@ -223,7 +223,7 @@ unsafe partial class Assembler {
 						if (targD is SPC700Target.Y) {
 							WriteOpB(0xFE, 0x00);
 						} else {
-							WriteOpBB(0x6E, ParseOperand(strD), 0x00);
+							WriteOpBB(0x6E, valD, 0x00);
 						}
 						break;
 
@@ -750,7 +750,6 @@ unsafe partial class Assembler {
 					PlaceholderOp(opcode, 2);
 				} else {
 					char c = strBranch.GetUnchecked(0);
-					val = ParseOperand(strTest);
 
 					if (branchLen is 1) {
 						if (c is BROP) {
@@ -760,7 +759,7 @@ unsafe partial class Assembler {
 							WriteOpBB(opcode, val, 0x00);
 							return;
 						} else if (c is BTYS) {
-							WriteOpBB(opcode, val, 0xFE);
+							WriteOpBB(opcode, val, 0xFD);
 							return;
 						}
 					}
@@ -819,7 +818,7 @@ unsafe partial class Assembler {
 					break;
 
 				case SPC700Target.XIndirect:
-					if (destination is SPC700Target.YIndirect) {
+					if (source is SPC700Target.YIndirect) {
 						WriteNoToken((byte) (opbase | 0x19));
 						return;
 					}

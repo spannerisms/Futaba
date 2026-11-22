@@ -13,6 +13,7 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 	public WatcherChangeTypes Change { get; set; }
 	public bool WasUsed { get; set; } = false;
 	private bool _disposed = false;
+	private bool _allocated = false;
 
 	private SourceBinary(string path, SafeFileHandle? handle) {
 		Handle = handle;
@@ -59,8 +60,9 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 					//Console.WriteLine($"Loading {FullName}");
 
 					var fstream = new FileStream(newHandle, FileAccess.Read);
-
 					int length = (int) fstream.Length;
+
+					fstream.Position = 0;
 
 					if (_allocBlock == default) {
 						_allocBlock = NativeMemory.AllocNice<byte>(length);
@@ -70,6 +72,8 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 						_allocBlock = NativeMemory.ReAllocNice(_allocBlock, length);
 						Length = length;
 					}
+
+					_allocated = true;
 
 					fstream.ReadExactly(new Span<byte>(_allocBlock, length));
 
@@ -88,12 +92,24 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 		NativeMemory.AlignedFree(_allocBlock);
 
 		_allocBlock = default;
+		_allocated = false;
 
 		Length = 0;
 	}
 
 	public bool TryGetSpan(int start, int length, out Span<byte> span) {
-		if (_disposed || (uint) length > Length || (uint) start >= Length || (start + length) > Length || _allocBlock == default) {
+		if (_disposed || !_allocated) {
+			span = default;
+			return false;
+		}
+
+		// edge case fix
+		if (start is 0 && length is 0 && Length is 0) {
+			span = new(_allocBlock, 0);
+			return true;
+		}
+
+		if ((uint) length > Length || (uint) start >= Length || ((long) start + length) > Length) {
 			span = default;
 			return false;
 		}
@@ -118,6 +134,7 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 		if (_disposed) return;
 
 		_disposed = true;
+		_allocated = false;
 
 		if (disposing) {
 			Handle?.Dispose();

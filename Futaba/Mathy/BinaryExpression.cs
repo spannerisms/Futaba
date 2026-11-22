@@ -14,9 +14,13 @@ internal abstract class BinaryExpression(ExpressionItem left, ExpressionItem rig
 		var (lvalue, state) = Left.TryEvaluate();
 
 		if (state.IsResolved) {
-			(var rvalue, state) = Right.TryEvaluate();
+			var (rvalue, rstate) = Right.TryEvaluate();
 
-			if (state.IsResolved) {
+			if (rstate > state) {
+				state = rstate;
+			}
+
+			if (rstate.IsResolved) {
 				return (Equate(lvalue, rvalue), _state = state);
 			}
 		}

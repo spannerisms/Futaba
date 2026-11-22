@@ -107,7 +107,7 @@ internal unsafe sealed class MacroCall {
 		}
 
 		public override string ToString() {
-			return $"{_callSite.Source}: [Macro \"{_macroType._name}\" (@{_macroType._declarationSite})] ";
+			return $"{_callSite.Source}>[Macro \"{_macroType._name}\" (@{_macroType._declarationSite})]";
 		}
 
 		protected override void DisposeResources() { }

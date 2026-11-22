@@ -8,7 +8,6 @@ internal sealed class ExpressionSymbol(Symbol item, SymbolContext context) : Exp
 	public TokenType Type => TokenType.Symbol;
 	public TokenRule Rule => TokenRule.Primary;
 
-
 	public bool ForcesUnary => false;
 	public bool IsInfix => false;
 	public bool Resolved => Item.Resolved;

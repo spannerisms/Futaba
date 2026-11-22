@@ -32,6 +32,7 @@ internal static class MathHelpers {
 	internal const decimal DecimalTrue = 1M;
 	internal const decimal DecimalFalse = 0M;
 	internal const decimal NaN = -0M;
+	internal const decimal Rad = 0.01745329251994329576923M;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static decimal GetTruth(bool pred) {
