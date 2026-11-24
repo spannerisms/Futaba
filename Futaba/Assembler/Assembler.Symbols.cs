@@ -194,7 +194,7 @@ unsafe partial class Assembler {
 
 		foreach (FillRequest freq in _fillRequests) {
 			if (freq.TryToResolve()) {
-				FullfillBlockFillRequest(freq.Offset, freq.Size, freq.WordSize, freq.Value, freq.Time);
+				FulfillBlockFillRequest(freq.Offset, freq.Size, freq.WordSize, freq.Value, freq.Time);
 			} else {
 				Error_BadResolve(freq.Item, CouldntDoIt, freq.SourceLine);
 			}

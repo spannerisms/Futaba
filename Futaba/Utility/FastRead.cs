@@ -263,6 +263,18 @@ internal static unsafe class FastRead {
 		return false;
 	}
 
+	internal static bool TryReadAlphanumeric(scoped ref char* reading, char* end, out CharSpan name) {
+		char* wordstart = reading;
+
+		int length = GetAlphaNumericRunLength(wordstart, end);
+
+		name = new(wordstart, length);
+
+		reading += length;
+
+		return true;
+	}
+
 	internal static bool TryReadIdentifier(scoped ref char* reading, char* end, out CharSpan name) {
 		char* wordstart = reading;
 

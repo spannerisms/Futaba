@@ -65,13 +65,11 @@ unsafe partial class Assembler {
 	private bool _shutUpAboutAddresses = false;
 	private bool _shutUpAboutSegments = false;
 
-
 	// FF_0* adds coverage for anything completely out of bounds
 	private const int BankGuardMask_Off = unchecked((int) 0xFF_00_0000);
 	private const int BankGuardMask_Half = unchecked((int) 0xFF_FF_8000);
 	private const int BankGuardMask_Full = unchecked((int) 0xFF_FF_0000);
 	private int _bankGuardMask = BankGuardMask_Half;
-
 
 	private List<Dock> _segments = [];
 	private Dock? _currentSegment = null;
@@ -236,7 +234,7 @@ unsafe partial class Assembler {
 		}
 	}
 
-	private void FullfillBlockFillRequest(int offset, int blocksize, int wordsize, int val, uint time) {
+	private void FulfillBlockFillRequest(int offset, int blocksize, int wordsize, int val, uint time) {
 		if (blocksize < 1) {
 			return;
 		}

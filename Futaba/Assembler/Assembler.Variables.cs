@@ -163,7 +163,7 @@ unsafe partial class Assembler {
 	}
 
 	private bool TryReadVariableName(ref char* start, char* end, out CharSpan name) {
-		if (!FastRead.TryReadIdentifier(ref start, end, out name)) {
+		if (!FastRead.TryReadAlphanumeric(ref start, end, out name)) {
 			Error(MsgInfo.MissingVariableName);
 			return false;
 		} else {
