@@ -40,7 +40,7 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 <p id="release_disclaimer">Futaba is currently in the public beta stage. Not every feature has been fully implemented or tested, but its source is available for review and contribution. Bugs definitely exist and no guarantees are yet made. Once the core library has reached a stable state, we will enter a year-long preview stage during which syntax and naming may be adjusted, and features might be removed or modified. After the preview stage all of these aforementioned components will be locked and permanent. Until the full release, guarantees about determinism across release should not be considered valid. Expect potentially breaking changes.</p>
 
 <ul>Currently untested/broken/unimplemented features:
-	<li>MMC banking is not implemented (avoid the SA-1 assembler for now)</li>
+	<li>MMC banking is not fully tested and maybe have edge cases</li>
 	<li>ExLorom and ExHirom not fully tested</li>
 	<li>Not all coprocessors are properly implemented</li>
 	<li>SuperFX not fully tested</li>
@@ -691,7 +691,6 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 
 <p>The <fkey id="directive-allocate">allocate</fkey> directive can be used to create blocks of allocated address space using the following syntaxes:</p>
 
-
 <div class="futsyntax">
 <fkey>allocate</fkey> {{ ADDRESS }}
 <fkey>allocate</fkey> {{ ADDRESS }} :: {{ ARGSIZE }}
@@ -839,6 +838,25 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <flbl>IRQ:</flbl>
 	<asmop>REP</asmop> <immval>#$30</immval>
 <farg>...</farg>
+</div>
+
+<h4>MMC banking control</h4>
+
+<p>The configuration of the MMC banking registers can be controlled using the <fkey id="directive-mmc">mmc</fkey> directive to specify the flags of each region, separated by commas. Use <ftok>L</ftok> to enable lorom mirroring and <ftok>H</ftok> to map exclusively to hirom (set or reset bit 7). Follow this identifier with a value from 0 to 7 for the 1MB bank to project. For example, the default values of these registers on boot is <nowrap><fkey>mmc</fkey> H0, H1, H2, H3</nowrap>.</p>
+
+<p>A banking register can be kept in its current state by using {{ SPLAT }} to skip its entry.</p>
+
+<div class="futexample">
+<fincom>; Sets the following configuration:</fincom>
+<fincom>; Banks Cx select image 1 and mirror to Banks 00-1F</fincom>
+<fincom>; Banks Dx select image 2 and mirror to Banks 20-3F</fincom>
+<fincom>; Banks Ex select image 4 while Banks 80-3F select image 2</fincom>
+<fincom>; Banks Fx select image 0 while Banks A0-BF select image 3</fincom>
+<fkey>mmc</fkey> L1, L2, H4, H0
+
+<fincom>; Makes Cx select image 0 and mirror to lorom</fincom>
+<fincom>; Dx, Ex, Fx unchanged</fincom>
+<fkey>mmc</fkey> L0, *, *, *
 </div>
 
 <h3 id="math">Expressions</h3>

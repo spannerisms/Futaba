@@ -14,11 +14,14 @@ unsafe partial class Assembler {
 	private int? _irqVectorEmulation = null;
 
 	private protected virtual void AdjustInterruptVectors() {
+		// use universal method since we don't care about mapping in headers
+		// if MMC wants more advanced control, they have to do it manually
 		byte* vectorTable = _romPtr + AddressToOffset(0x00FFE0);
 
 		//
 		// native vectors
 		//
+
 		if (_copVectorNative is not null) {
 			SnesHelpers.WriteW(vectorTable + 0x04, _copVectorNative.Value);
 		}
@@ -42,6 +45,7 @@ unsafe partial class Assembler {
 		//
 		// emulation vectors
 		//
+
 		if (_copVectorEmulation is not null) {
 			SnesHelpers.WriteW(vectorTable + 0x14, _copVectorEmulation.Value);
 		}

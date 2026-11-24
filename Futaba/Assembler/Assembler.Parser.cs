@@ -58,6 +58,11 @@ unsafe partial class Assembler {
 
 			_random.Reseed(_randomSeed);
 
+			_offset = 0;
+			_site = 0;
+			_pc = OffsetToAddress(0);
+
+			// this takes care of _time and pointers
 			ResetRomBuffer();
 
 			// Initial pass of header sets properties that the user can overwrite
@@ -66,9 +71,9 @@ unsafe partial class Assembler {
 			}
 
 			_architecture = SnesArchitecture.WDC65816;
-			_bankGuardMask = BankGuardMask_Half;
-
 			_bpControl = BreakpointsControl.Off;
+
+			_bankGuardMask = BankGuardMask_Half;
 			_inProvenance = false;
 			_nextAllocBlockStart = -1;
 

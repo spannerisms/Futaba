@@ -9,6 +9,8 @@ internal static class MsgInfo {
 
 	internal const string InvalidAddressingMode = "Invalid addressing mode";
 
+	internal const string NotRomAddress = "Address does not map to ROM";
+
 	internal const string MissingLabelName = "Missing label name";
 	internal const string MissingVariableName = "Missing variable name";
 	internal const string BadLabelName = "Missing or invalid label name";

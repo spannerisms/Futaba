@@ -95,7 +95,7 @@ public static class RomHeader {
 
 	private static readonly Dictionary<string, int> RomSizeLookup = new(StringComparer.OrdinalIgnoreCase) {
 		{ "32k", 0x0000_8000 },
-		{ "32kb", 0x0001_0000 },
+		{ "32kb", 0x0000_8000 },
 
 		{ "64k", 0x0001_0000 },
 		{ "64kb", 0x0001_0000 },
@@ -231,7 +231,7 @@ public static class RomHeader {
 	/// Tests the given value for being a valid range size.
 	/// </summary>
 	/// <remarks>
-	/// Valid RAM sizes are in the inclusive range [0, 524288].
+	/// Valid RAM sizes are in the inclusive range [0, 262144].
 	/// </remarks>
 	/// <param name="size">The integer value to test</param>
 	/// <returns><see langword="true"/> if <paramref name="size"/> is within the range of RAM sizes; otherwise <see langword="false"/></returns>

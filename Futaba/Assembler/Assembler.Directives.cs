@@ -314,18 +314,23 @@ unsafe partial class Assembler {
 			return;
 		}
 
-		IExpressionReturn plopAddress = ParseOperand(plopAddressArg);
+		IExpressionReturn ploperand = ParseOperand(plopAddressArg);
 
-		if (!plopAddress.Resolved) {
+		if (!ploperand.Resolved) {
 			Error(MsgInfo.MustBeResolvedNow(PLOP));
 			AbortCommand();
 			return;
 		}
 
+		int plopAddress = ploperand.ValueInt32;
+
+		if (!DemandRomAddress(plopAddress)) return;
+
 		if (TryGetAllocatedDataStatement(PLOP, out int size)) {
-			int plopOffset = AddressToOffset(plopAddress.ValueInt32);
+			int plopOffset = GetOffsetFromAddress(plopAddress);
 
 			bool more;
+
 			do {
 				more = ReadToNextComma(out var next);
 
@@ -477,31 +482,26 @@ unsafe partial class Assembler {
 
 						StringSplitResult resL = splitter.GetNextDoubleChar(':', out OperandString rangeL);
 
-						if (resL.HasFlag(StringSplitResult.Invalid)) {
+						if (resL is StringSplitResult.Invalid) {
 							Error(MsgInfo.InvalidFileRange);
 							continue;
 						}
 
-						if (!resL.HasFlag(StringSplitResult.Found)) {
+						if (resL is StringSplitResult.ReachedEnd) {
 							Error(MsgInfo.MissingAllocator);
 							continue;
 						}
 
-						if (resL.HasFlag(StringSplitResult.MoreContent)) {
-							StringSplitResult resR = splitter.GetNextDoubleChar(':', out rangeR);
+						StringSplitResult resR = splitter.GetNextDoubleChar(':', out rangeR);
 
-							if (resR.HasFlag(StringSplitResult.Invalid)) {
-								Error(MsgInfo.InvalidFileRange);
-								continue;
-							}
+						if (resL is StringSplitResult.Invalid) {
+							Error(MsgInfo.InvalidFileRange);
+							continue;
+						}
 
-							if (resR.HasFlag(StringSplitResult.MoreContent)) {
-								Error("Too many allocators");
-								continue;
-							}
-
-						} else {
-							rangeR = default;
+						if (resL is not StringSplitResult.ReachedEnd) {
+							Error("Too many allocators");
+							continue;
 						}
 
 						bool rangeGood = true;
@@ -1865,7 +1865,7 @@ unsafe partial class Assembler {
 	}
 
 	private protected virtual void Directive_MMC() {
-		Error("MMC rebanking is not enabled for this mapper mode.");
+		Error("MMC rebanking is not supported by this mapper mode.");
 	}
 
 	private void Directive_BANKGUARD() {

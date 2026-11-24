@@ -62,6 +62,7 @@ public sealed class Dock : Symbol {
 		State = capacity < 1 ? DockState.Unprotected : DockState.Protected;
 	}
 
+	// TODO change this to step pc instead offset to address?
 	internal void Advance(int step, Func<int, int> mapper) {
 		_binaryoffset += step;
 		_address += step;

@@ -35,7 +35,7 @@ unsafe partial class Assembler {
 	/// <summary>
 	/// Returns false and aborts if no space
 	/// </summary>
-	private bool DemandSpaceWithError() {
+	private protected bool DemandSpaceWithError() {
 		if (_reading->IsSkippableSpace) {
 			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 			return true;
@@ -51,7 +51,7 @@ unsafe partial class Assembler {
 		}
 	}
 
-	private void AbortCommand() {
+	private protected void AbortCommand() {
 		char* read = _reading;
 		char* theend = _fileEnd;
 
@@ -80,6 +80,17 @@ unsafe partial class Assembler {
 
 		_reading = read;
 	}
+
+	private bool DemandRomAddress(int address) {
+		if (!AddressIsRom(address)) {
+			Error(MsgInfo.NotRomAddress);
+			AbortCommand();
+			return false;
+		}
+
+		return true;
+	}
+
 
 	private bool TestIsQuotedStringAndExplode(CharSpan arg, [NotNullWhen(true)] out string? exploded) {
 		if (arg is ['"', .. CharSpan contents, '"']) {
@@ -224,7 +235,7 @@ unsafe partial class Assembler {
 	}
 
 	/// <inheritdoc cref="RestOfCommand(out char*, out char*)"/>
-	private bool ReadRestOfCommand(out CharSpan operand) {
+	private protected bool ReadRestOfCommand(out CharSpan operand) {
 		if (RestOfCommand(out char* opstart, out char* opend)) {
 			operand = CharSpanHelpers.CreateSpan(opstart, opend);
 			return true;
@@ -235,7 +246,7 @@ unsafe partial class Assembler {
 	}
 
 	/// <inheritdoc cref="RestOfCommand(out char*, out char*)"/>
-	private bool ReadRestOfCommand(out OperandString operand) {
+	private protected bool ReadRestOfCommand(out OperandString operand) {
 		if (RestOfCommand(out char* opstart, out char* opend)) {
 			operand = new(opstart, opend);
 			return true;
@@ -334,7 +345,7 @@ unsafe partial class Assembler {
 	}
 
 	/// <returns><see langword="true"/> if theres another comma</returns>
-	private bool ReadToNextComma(out OperandString stuff) {
+	private protected bool ReadToNextComma(out OperandString stuff) {
 		char* theend = _fileEnd;
 
 		FastRead.SkipInlineWhitespace(ref _reading, theend);
@@ -544,13 +555,15 @@ unsafe partial class Assembler {
 
 		StringSplitter args = new(read, theend);
 
-		bool more;
+		StringSplitResult more;
 
 		do {
 			more = args.GetNextChar('/', out var cmdWhole);
 
-			if (cmdWhole.IsNull) {
-				Error("Missing command name in string instructions");
+			if (cmdWhole.IsEmpty) {
+				if (!args.AtEnd) {
+					Error("Missing command name in string instructions");
+				}
 				break;
 			}
 
@@ -785,7 +798,7 @@ unsafe partial class Assembler {
 
 			Error($"Missing or invalid string argument: {cmd}");
 
-		} while (more);
+		} while (more is StringSplitResult.MoreContent);
 
 		strparsed = manipBuilder.ToString();
 		return true;

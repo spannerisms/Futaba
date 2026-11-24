@@ -22,21 +22,21 @@ internal unsafe readonly struct OperandString {
 	/// Returns the character at the given index
 	/// or <see cref="BadChar"/> if the index is not valid.
 	/// </summary>
-	public readonly char this[int i] {
+	public readonly char this[int index] {
 		get {
-			if ((uint) i >= (uint) Length) {
+			if ((uint) index >= (uint) Length) {
 				return BadChar;
 			} else {
-				return _start[i];
+				return _start[index];
 			}
 		}
 	}
 
 	/// <inheritdoc cref="this[int]"/>
-	public readonly char this[Index i] {
+	public readonly char this[Index index] {
 		get {
 			int len = Length;
-			int offset = i.GetOffset(len);
+			int offset = index.GetOffset(len);
 
 			if ((uint) offset >= (uint) len) {
 				return BadChar;
@@ -100,14 +100,28 @@ internal unsafe readonly struct OperandString {
 		return new(start, end);
 	}
 
+	public bool IsEmptyOrWhiteSpace() {
+		if (IsEmpty) {
+			return true;
+		}
+
+		for (char* read = _start; read < _end; read++) {
+			if (!read->IsSkippableSpace) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	public bool SplitByComma(out OperandString left, out OperandString right) {
 		var splitter = new StringSplitter(_start, _end);
 
 		// we want more commas for the second operand
-		if (splitter.GetNextComma(out left)) {
+		if (splitter.GetNextComma(out left) is StringSplitResult.MoreContent) {
 			// now the opposite
 			// if there's more commas, that's bad
-			return !splitter.GetNextComma(out right);
+			return splitter.GetNextComma(out right) is StringSplitResult.ReachedEnd;
 		} else {
 			right = default;
 			return false;
@@ -252,7 +266,7 @@ internal unsafe readonly struct OperandString {
 	}
 
 	public bool TestIfVariable() {
-		return _start[0] is '!' && FastRead.IsVariableName(AsSpan(1));
+		return *_start is '!' && FastRead.IsVariableName(AsSpan(1));
 	}
 
 	public void Deconstruct(out char* start, out char* end) {
@@ -265,5 +279,5 @@ internal unsafe readonly struct OperandString {
 	public static implicit operator CharSpan(OperandString a) => CharSpanHelpers.CreateSpanUnchecked(a._start, a._end);
 	public static explicit operator string(OperandString a) => new(a._start, 0, a.Length);
 
-	public StringSplitter GetEnumerator() => new(_start, _end);
+	public StringSplitter GetEnumerator() => new(this);
 }

@@ -79,6 +79,9 @@ partial class Assembler {
 	/// <param name="offset">The binary offset to convert.</param>
 	public abstract int OffsetToAddress(int offset);
 
+	private protected abstract int GetOffsetFromAddress(int address);
+	private protected abstract int GetAddressFromOffset(int offset);
+
 	private protected abstract void StepPC(int step);
 
 	private protected void StepPCLorom(int step) {
@@ -175,14 +178,12 @@ public sealed class UnmappedAssembler : Assembler {
 	private protected override byte MapperCode => 0x00;
 
 	/// <inheritdoc/>
-	public override int OffsetToAddress(int offset) {
-		return offset;
-	}
+	public override int OffsetToAddress(int offset) => offset;
+	private protected override int GetAddressFromOffset(int offset) => offset;
 
 	/// <inheritdoc/>
-	public override int AddressToOffset(int address) {
-		return address;
-	}
+	public override int AddressToOffset(int address) => address;
+	private protected override int GetOffsetFromAddress(int address) => address;
 
 	/// <inheritdoc/>
 	public override bool AddressIsRom(int address) {
@@ -237,12 +238,14 @@ public sealed class LoromAssembler : Assembler {
 	}
 
 	/// <inheritdoc/>
-	public override int OffsetToAddress(int offset) {
+	public override int OffsetToAddress(int offset) => SnesHelpers.OffsetToLorom(offset);
+	private protected override int GetAddressFromOffset(int offset) {
 		return SnesHelpers.OffsetToLorom(offset);
 	}
 
 	/// <inheritdoc/>
-	public override int AddressToOffset(int address) {
+	public override int AddressToOffset(int address) => SnesHelpers.LoromToOffset(address);
+	private protected override int GetOffsetFromAddress(int address) {
 		return SnesHelpers.LoromToOffset(address);
 	}
 
@@ -268,7 +271,7 @@ public sealed class HiromAssembler : Assembler {
 	private protected override byte MapperCode => 0x21;
 
 	/// <inheritdoc/>
-	public override int MinRomSize => SnesHelpers.BankSize;
+	public override int MinRomSize => SnesHelpers.BankSize * 2;
 
 	/// <inheritdoc/>
 	public override int MaxRomSize => SnesHelpers.MaxRegularSize;
@@ -278,13 +281,15 @@ public sealed class HiromAssembler : Assembler {
 	}
 
 	/// <inheritdoc/>
-	public override int OffsetToAddress(int offset) {
-		return offset | 0xC0_0000;
+	public override int AddressToOffset(int address) => SnesHelpers.HiromToOffset(address);
+	private protected override int GetOffsetFromAddress(int address) {
+		return SnesHelpers.HiromToOffset(address);
 	}
 
 	/// <inheritdoc/>
-	public override int AddressToOffset(int address) {
-		return address & 0x3F_FFFF;
+	public override int OffsetToAddress(int offset) => SnesHelpers.OffsetToHirom(offset);
+	private protected override int GetAddressFromOffset(int offset) {
+		return SnesHelpers.OffsetToHirom(offset);
 	}
 
 	private protected override bool JumpTargetMakesSense(int address, int destination) {
@@ -315,13 +320,15 @@ public sealed class ExLoromAssembler : Assembler {
 	public override int MaxRomSize => SnesHelpers.MaxExSize;
 
 	/// <inheritdoc/>
-	public override int OffsetToAddress(int offset) {
+	public override int OffsetToAddress(int offset) => GetAddressFromOffset(offset);
+	private protected override int GetAddressFromOffset(int offset) {
 		// TODO - this is probably wrong
 		return SnesHelpers.OffsetToLorom(offset) ^ 0x80_0000;
 	}
 
 	/// <inheritdoc/>
-	public override int AddressToOffset(int address) {
+	public override int AddressToOffset(int address) => GetOffsetFromAddress(address);
+	private protected override int GetOffsetFromAddress(int address) {
 		return SnesHelpers.LoromToOffset(address) ^ 0x40_0000;
 	}
 
@@ -358,13 +365,15 @@ public sealed class ExHiromAssembler : Assembler {
 	public override int MaxRomSize => SnesHelpers.MaxExSize;
 
 	/// <inheritdoc/>
-	public override int OffsetToAddress(int offset) {
-		// TODO
+	public override int OffsetToAddress(int offset) => GetAddressFromOffset(offset);
+	private protected override int GetAddressFromOffset(int offset) {
+		// TODO verify
 		return offset ^ 0x80_0000;
 	}
 
 	/// <inheritdoc/>
-	public override int AddressToOffset(int address) {
+	public override int AddressToOffset(int address) => GetOffsetFromAddress(address);
+	private protected override int GetOffsetFromAddress(int address) {
 		return (address & 0x7F_FFFF) ^ 0x40_0000;
 	}
 
@@ -439,7 +448,68 @@ public sealed class Sa1Assembler : Assembler {
 	}
 
 	private protected override void Directive_MMC() {
-		throw new NotImplementedException();
+		if (!DemandSpaceWithError()) return;
+
+		if (!ReadRestOfCommand(out OperandString operand)) {
+			return;
+		}
+
+		StringSplitter mmcops = new(operand);
+
+		int bankSet = -1;
+
+		StringSplitResult more;
+
+		do {
+			if (++bankSet > 3) {
+				Error("Too many items in mmc directive.");
+				AbortCommand();
+				return;
+			}
+
+			more = mmcops.GetNextComma(out var next);
+
+			if (next.OnlyChar is '*') continue;
+
+			// get first and last char, because only those matter
+			if (next is [char lorom, .. var middle, char region]) {
+				if (middle.IsEmptyOrWhiteSpace()) {
+					if (lorom.CiIs('L') || lorom.CiIs('H')) {
+						region -= '0';
+
+						if (region < 8) {
+							byte bankRegion = (byte) region;
+							bool isLorom = lorom.CiIs('L');
+
+							switch (bankSet) {
+								case 0:
+									_CxBank = bankRegion;
+									_CxLorom = isLorom;
+									continue;
+
+								case 1:
+									_DxBank = bankRegion;
+									_DxLorom = isLorom;
+									continue;
+
+								case 2:
+									_ExBank = bankRegion;
+									_ExLorom = isLorom;
+									continue;
+
+								case 3:
+									_FxBank = bankRegion;
+									_FxLorom = isLorom;
+									continue;
+							}
+						}
+					}
+				}
+			}
+
+			Error("Invalid mmc banking instruction", (string) next);
+
+		} while (more is StringSplitResult.MoreContent);
 	}
 
 	private protected override bool JumpTargetMakesSense(int address, int destination) {
@@ -447,16 +517,143 @@ public sealed class Sa1Assembler : Assembler {
 	}
 
 	/// <inheritdoc/>
-	public override int AddressToOffset(int address) {
-		return SnesHelpers.LoromToOffset(address);
+	public override int OffsetToAddress(int offset) {
+		return SnesHelpers.OffsetToSa1(offset);
+	}
+
+	private protected override int GetAddressFromOffset(int offset) {
+		int bank = offset >>> SnesHelpers.MmcBankShift;
+		int bankOffset = offset & SnesHelpers.MmcBankingMask;
+
+		if (_CxBank == bank) {
+			if (_CxLorom) {
+				return SnesHelpers.OffsetToLorom(bankOffset);
+			} else {
+				return SnesHelpers.OffsetToHirom(bankOffset);
+			}
+		}
+
+		if (_DxBank == bank) {
+			if (_DxLorom) {
+				return SnesHelpers.OffsetToLorom(bankOffset) | 0x20_0000;
+			} else {
+				return SnesHelpers.OffsetToHirom(bankOffset) | 0x10_0000;
+			}
+		}
+
+		if (_ExBank == bank) {
+			if (_ExLorom) {
+				return SnesHelpers.OffsetToLorom(bankOffset) | 0x80_0000;
+			} else {
+				return SnesHelpers.OffsetToHirom(bankOffset) | 0x20_0000;
+			}
+		}
+
+		if (_FxBank == bank) {
+			if (_FxLorom) {
+				return SnesHelpers.OffsetToLorom(bankOffset) | 0xA0_0000;
+			} else {
+				return SnesHelpers.OffsetToHirom(bankOffset) | 0x30_0000;
+			}
+		}
+
+		return OffsetToAddress(offset);
 	}
 
 	/// <inheritdoc/>
-	public override int OffsetToAddress(int offset) {
-		return SnesHelpers.OffsetToLorom(offset);
+	public override int AddressToOffset(int address) {
+		return SnesHelpers.Sa1ToOffset(address);
 	}
 
+	private protected override int GetOffsetFromAddress(int address) {
+		if (address < 0) {
+			return -1;
+		}
+
+		//
+		// Lorom area
+		//
+
+		if (address < 0x20_0000) {
+			if (_CxLorom) {
+				return AddressToLoromBankedOffset(address, _CxBank);
+
+			} else {
+				return SnesHelpers.Sa1ToOffset(address);
+			}
+		}
+
+		if (address < 0x40_0000) {
+			if (_DxLorom) {
+				return AddressToLoromBankedOffset(address, _DxBank);
+
+			} else {
+				return SnesHelpers.Sa1ToOffset(address);
+			}
+		}
+
+		if (address < 0xA0_0000) {
+			if (_ExLorom) {
+				return AddressToLoromBankedOffset(address, _ExBank);
+
+			} else {
+				return SnesHelpers.Sa1ToOffset(address);
+			}
+		}
+
+		if (address < 0xC0_0000) {
+			if (_FxLorom) {
+				return AddressToLoromBankedOffset(address, _FxBank);
+
+			} else {
+				return SnesHelpers.Sa1ToOffset(address);
+			}
+		}
+
+		//
+		// Hirom area
+		//
+
+		if (address is >= 0xC0_0000) {
+			int subBank = address & SnesHelpers.MmcBankingMask;
+
+			if (address < 0xD0_0000) {
+				return subBank | (_CxBank << SnesHelpers.MmcBankShift);
+
+			} else if (address < 0xE0_0000) {
+				return subBank | (_DxBank << SnesHelpers.MmcBankShift);
+
+			} else if (address < 0xF0_0000) {
+				return subBank | (_ExBank << SnesHelpers.MmcBankShift);
+
+			} else {
+				return subBank | (_FxBank << SnesHelpers.MmcBankShift);
+			}
+		}
+
+		//
+		// everything else
+		//
+
+		return -1;
+	}
+
+	private static int AddressToLoromBankedOffset(int address, byte bank) {
+		address = ((address & 0x1F_0000) >> 1) | (address & 0x7FFF);
+
+		return address | (bank << SnesHelpers.MmcBankShift);
+	}
+
+	// TODO need to hijack and rewrite _offset and _pcPtr when doing a region bank cross
 	private protected override void StepPC(int step) {
+		int pc = _pc;
+
+		if (pc >= 0xC0_0000) {
+			StepPCHirom(step);
+			return;
+		}
+
+		// TODO incomplete
 		StepPCLorom(step);
 	}
 

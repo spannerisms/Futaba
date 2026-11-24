@@ -487,7 +487,7 @@ unsafe partial class Assembler {
 
 		if (length > 0) {
 			int endOffset = _offset + length;
-			Label endSeg = new($"{segmentName}.end", Provenance + length, OffsetToAddress(endOffset), endOffset);
+			Label endSeg = new($"{segmentName}.end", Provenance + length, GetAddressFromOffset(endOffset), endOffset);
 			AddOrReplaceSymbol(endSeg);
 			_currentSegment = addSegment;
 			_segments.Add(addSegment);

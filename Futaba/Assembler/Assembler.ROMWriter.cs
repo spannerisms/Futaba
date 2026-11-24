@@ -43,7 +43,7 @@ unsafe partial class Assembler {
 	/// <summary>
 	/// Current write ordinal.
 	/// </summary>
-	private uint _time = 0;
+	private uint _time;
 	private const int TimeSize = sizeof(uint);
 
 	/// <summary>
@@ -76,7 +76,7 @@ unsafe partial class Assembler {
 	private List<Dock> _segments = [];
 	private Dock? _currentSegment = null;
 
-	private Stack<int> _pcStack = new(64);
+	private Stack<(int PC, int Offset)> _pcStack = new(64);
 	private Stack<int?> _provStack = new(64);
 
 	private void AdjustPC(int newpc) {
@@ -87,13 +87,13 @@ unsafe partial class Assembler {
 	}
 
 	private void PushPC() {
-		_pcStack.Push(_pc);
+		_pcStack.Push((_pc, _offset));
 	}
 
 	private void PullPC() {
-		if (_pcStack.TryPop(out int newpc)) {
-			AdjustPC(newpc);
-			_offset = AddressToOffset(_pc);
+		if (_pcStack.TryPop(out var newpc)) {
+			AdjustPC(newpc.PC);
+			_offset = newpc.Offset;
 			_pcPtr = _romPtr + _offset;
 			_currentSegment = null; // TODO include a segment stack used here?
 		} else {
@@ -835,20 +835,20 @@ unsafe partial class Assembler {
 
 		} else {
 			addr = oper.ValueInt32;
-			offset = AddressToOffset(addr);
+			offset = GetOffsetFromAddress(addr);
 			_currentSegment = null;
 		}
 
-		if (TestOffsetBounds(offset)) {
-			if (AddressIsRom(addr)) {
+		if (AddressIsRom(addr)) {
+			if (TestOffsetBounds(offset)) {
 				AdjustPC(addr);
 				_offset = offset;
 				_pcPtr = _romPtr + offset;
 
 				TestProtectedSegments(offset);
-			} else {
-				Error("Not a ROM address.");
 			}
+		} else {
+			Error(MsgInfo.NotRomAddress);
 		}
 	}
 
@@ -869,7 +869,7 @@ unsafe partial class Assembler {
 		Dock? curSeg = _currentSegment;
 
 		if (curSeg is not null) {
-			curSeg.Advance(step, OffsetToAddress);
+			curSeg.Advance(step, GetAddressFromOffset);
 
 			if (!_shutUpAboutSegments && curSeg.State is DockState.Overflowed) {
 				Error($"Assembly of segment \"{curSeg}\" has escaped its protected region.");

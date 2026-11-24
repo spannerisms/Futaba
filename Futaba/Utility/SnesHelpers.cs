@@ -14,6 +14,10 @@ internal static class SnesHelpers {
 	internal const int MirroredBankMask = 0x7F_FFFF;
 	internal const int HalfBankMask = 0x7FFF;
 
+	internal const int MmcBankingSize = 0x10_0000;
+	internal const int MmcBankingMask = 0xF_FFFF;
+	internal const int MmcBankShift = 20;
+
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static int LoromToOffset(int address) => address & 0x7FFF | (address & 0x7F0000) >> 1;
 
@@ -25,6 +29,52 @@ internal static class SnesHelpers {
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static int OffsetToHirom(int offset) => offset | 0xC0_0000;
+
+	internal static int Sa1ToOffset(int address) {
+		if ((uint) address > 0xFF_FFFF) {
+			return -1;
+		}
+
+		if (address is >= 0x00_0000 and < 0x40_0000) {
+			if ((address & 0x8000) is not 0) {
+				return LoromToOffset(address);
+			} else {
+				return -1;
+			}
+		}
+
+		if (address is >= 0x80_0000 and < 0xC0_0000) {
+			if ((address & 0x8000) is not 0) {
+				return LoromToOffset(address & 0x7F_FFFF) + MmcBankingSize;
+			} else {
+				return -1;
+			}
+		}
+
+		if (address is >= 0xC0_0000) {
+			return address & ~0xC0_0000;
+		}
+
+		return -1;
+	}
+
+	internal static int OffsetToSa1(int offset) {
+		if ((uint) offset >= MaxMmcSize) {
+			return -1;
+		}
+
+		if (offset < (MmcBankingSize * 2)) {
+			return OffsetToLorom(offset);
+		}
+
+		if (offset < (MmcBankingSize * 4)) {
+			return OffsetToLorom(offset & 0x1F_FFFF) + (MmcBankingSize * 2);
+		}
+
+		return offset + 0xC0_0000;
+	}
+
+
 
 	[DebuggerStepThrough]
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
