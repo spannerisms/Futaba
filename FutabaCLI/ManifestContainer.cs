@@ -1,13 +1,13 @@
 ﻿using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 
 namespace FutabaCLI;
 
-internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
+internal sealed class ManifestContainer : ManifestFile {
 	private static readonly Random s_random = new();
 
-	private readonly Dictionary<string, BinaryWatcher> _watchedFiles = [];
-	private readonly Dictionary<string, WatchedBinary> _loadedBinaries = [];
-	private readonly string _fileName = manifest.FullName;
+	private readonly Dictionary<string, ManifestWatcher> _watchedFiles = [];
+	private readonly Dictionary<string, ManifestBinary> _loadedBinaries = [];
 
 	private byte[]? _baseRomData = null;
 
@@ -16,8 +16,6 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private bool _explicitSize = false;
 	private bool _sizeChanged = false;
 
-	private DateTime _lastUpdated = DateTime.MinValue;
-
 	private bool _assemblerNeedsUpdating = true;
 	private bool _assemblerIsSeeded = false;
 	private bool _firedChange;
@@ -25,6 +23,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	private readonly Dictionary<string, ArgInfo> _manifestArguments = [];
 	private readonly Dictionary<string, Variable> _variables = [];
 	private readonly Dictionary<string, FutabaSymbol> _symbols = [];
+
+	private string _manifestContents = string.Empty;
 
 	private FileSystemEventHandler? _filesChanged;
 	public event FileSystemEventHandler? SourceChange {
@@ -54,7 +54,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	} = null;
 
-	private WatchedBinary? BaseRomFile {
+	private ManifestBinary? BaseRomFile {
 		get;
 		set {
 			if (ReferenceEquals(field, value)) return;
@@ -63,7 +63,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	} = null;
 
-	private WatchedBinary? DiffRomFile {
+	private ManifestBinary? DiffRomFile {
 		get;
 		set {
 			if (ReferenceEquals(field, value)) return;
@@ -75,7 +75,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	public string OutputPath {
 		get;
 		private set;
-	} = Path.ChangeExtension(manifest.FullName, Igarashi.RomExtension);
+	}
 
 	private LoadedItem<Stream>? OutputStream {
 		get;
@@ -102,6 +102,28 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	}
 
+	private readonly ManifestWatcher? _myWatcher;
+	private ManifestContainer(string path, SafeFileHandle? handle) : base(path, handle) {
+		OutputPath = Path.ChangeExtension(FileName, Igarashi.RomExtension);
+
+		_myWatcher = GetWatcher(DirectoryName);
+
+		if (_myWatcher is not null) {
+			_myWatcher?.WatchFile(this);
+			_myWatcher?.Enabled = true;
+		}
+	}
+
+	public static ManifestContainer TryCreate(FileInfo file) {
+		SafeFileHandle? handle = TryOpenHandle(file.FullName, out string? error);
+
+		ManifestContainer ret = new(file.FullName, handle) {
+			Error = error
+		};
+
+		return ret;
+	}
+
 	public Assembler GetAssembler() {
 		if (Assembler is null) {
 			throw new InvalidOperationException("Assembler is null.");
@@ -126,8 +148,11 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			DiffRomFile = null;
 		}
 
-		if (TryGetBinaryFile("base", out var baseRomFile, out bool needsReload)) {
+		bool needsReload = false;
+
+		if (TryGetBinaryFile("base", out var baseRomFile, out HandleRevalidation result)) {
 			BaseRomFile = baseRomFile;
+			needsReload = result is not HandleRevalidation.Unchanged;
 		} else {
 			needsReload = BaseRomFile is not null;
 			BaseRomFile = null;
@@ -298,7 +323,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 
 		if (!TryGetString("output", out var outputGet)) {
-			outputGet = Path.ChangeExtension(_fileName, Igarashi.RomExtension);
+			outputGet = Path.ChangeExtension(FileName, Igarashi.RomExtension);
 		}
 
 		string entryPoint = GetFileName(fileEntry.Value);
@@ -310,6 +335,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 				Igarashi.Notice("Creating assembler...");
 				Assembler = Assembler.CreateAssemblerWithMapper(modeEnum, entryPoint);
+				Assembler.SourceChange += SomethingChanged;
 			}
 		} else {
 			ManifestError($"Invalid mapper mode: {mapMode.Value}", mapMode.Line);
@@ -528,12 +554,6 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		Assembler.ErrorOut = ErrOut?.Item ?? Console.Error;
 		Incremental = Assembler.Incremental = GetBoolOrDefault("incremental", false, out _);
 
-		if (Incremental) {
-			Assembler.SourceChange += SomethingChanged;
-		} else {
-			Assembler.SourceChange -= SomethingChanged;
-		}
-
 		_assemblerNeedsUpdating = false;
 	}
 
@@ -595,16 +615,67 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		return _manifestArguments.TryGetValue(key, out value);
 	}
 
-	internal void ParseManifest() {
-		var update = File.GetLastWriteTimeUtc(_fileName);
+	public override HandleRevalidation Refresh() {
+		if (!RevalidateHandle(out var newHandle)) {
+			newHandle?.Dispose();
+			Handle?.Dispose();
+			Handle = null;
 
-		if (update == _lastUpdated) {
+		} else {
+			bool reload;
+
+			if (!ReferenceEquals(newHandle, Handle)) {
+				reload = true;
+				Handle?.Dispose();
+				Handle = newHandle;
+
+			} else {
+				reload = LastLoaded != File.GetLastWriteTimeUtc(newHandle);
+			}
+
+			Change = default;
+
+			if (reload) {
+				LastLoaded = File.GetLastWriteTimeUtc(Handle);
+
+				try {
+					var fstream = new FileStream(Handle, FileAccess.Read);
+					var reader = new StreamReader(fstream);
+
+					fstream.Position = 0;
+					_manifestContents = reader.ReadToEnd();
+
+					if (reader.EndOfStream) {
+						Error = null;
+						return HandleRevalidation.Good;
+					}
+
+					ManifestErrorNoLine("Problem parsing manifest file.");
+					return HandleRevalidation.Bad;
+
+				} catch (Exception e) {
+					Error = e.Message;
+				}
+			} else {
+				Error = null;
+				return HandleRevalidation.Unchanged;
+			}
+		}
+
+		if (Error is not null) {
+			ManifestErrorNoLine(Error);
+		}
+
+		_manifestContents = string.Empty;
+		return HandleRevalidation.Bad;
+	}
+
+	internal void ParseManifest() {
+		if (Refresh() is HandleRevalidation.Unchanged) {
 			return;
 		}
 
-		var oldWatchers = _watchedFiles;
-
-		foreach (var watcher in oldWatchers.Values) {
+		foreach (var watcher in _watchedFiles.Values) {
 			if (watcher.IsEmpty) {
 				watcher.Enabled = false;
 			} else {
@@ -612,7 +683,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			}
 		}
 
-		_lastUpdated = update;
+		_myWatcher?.WatchFile(this);
+
 		_assemblerNeedsUpdating = true;
 		char[]? buffer = null;
 
@@ -623,33 +695,15 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 			var ManifestWordsSpan = ManifestOption.ManifestKeywords.GetAlternateLookup<ReadOnlySpan<char>>();
 
-			// TODO switch to a handle
-			using var reader = new StreamReader(_fileName, ManifestFileStreamOptions);
-
 			Igarashi.Notice("Parsing manifest file...");
 
-			int len = (int) reader.BaseStream.Length;
-
-			buffer = ArrayPool<char>.Shared.Rent(len * 4); // safe upper bound: UTF-8, never decodes to more chars than input bytes
-
-			reader.BaseStream.Position = 0;
-
-			int didRead = reader.ReadBlock(buffer);
-
-			if (!reader.EndOfStream) {
-				ManifestErrorNoLine("Problem parsing manifest file.");
-				return;
-			}
-
 			ManifestGood = true;
-
-			ReadOnlySpan<char> fileBuffer = buffer.AsSpan(0, didRead);
 
 			int lineNum = 0; // 0 to start at 1 because it increments at the beginning of the loop for simplicity
 
 			Dictionary<string, ManifestOption>.AlternateLookup<ReadOnlySpan<char>>? cmdset = null;
 
-			foreach (var lineElement in fileBuffer.EnumerateLines()) {
+			foreach (var lineElement in _manifestContents.EnumerateLines()) {
 				var line = lineElement.TrimEnd();
 
 				lineNum++;
@@ -828,21 +882,21 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	}
 
 	void ManifestError(string err, int lineNumber) {
-		Igarashi.Error($"Manifest error in {_fileName}:{lineNumber}: {err}");
+		Igarashi.Error($"Manifest error in {FileName}:{lineNumber}: {err}");
 		ManifestGood = false;
 	}
 
 	void ManifestErrorNoLine(string err) {
-		Igarashi.Error($"Manifest error in {_fileName}: {err}");
+		Igarashi.Error($"Manifest error in {FileName}: {err}");
 		ManifestGood = false;
 	}
 
 	void ManifestWarning(string err, int lineNumber) {
-		Igarashi.Warning($"Manifest warning in {_fileName}:{lineNumber}: {err}");
+		Igarashi.Warning($"Manifest warning in {FileName}:{lineNumber}: {err}");
 	}
 
 	void ManifestWarningNoLine(string err) {
-		Igarashi.Warning($"Manifest warning in {_fileName}: {err}");
+		Igarashi.Warning($"Manifest warning in {FileName}: {err}");
 	}
 
 	static readonly Dictionary<string, MissingTokenSeverity> MissingTokenLookup = new(StringComparer.OrdinalIgnoreCase) {
@@ -874,12 +928,6 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		{ "srtc", Coprocessor.SRTC },
 		{ "custom", Coprocessor.Custom },
 		{ "other", Coprocessor.Other },
-	};
-
-	private static readonly FileStreamOptions ManifestFileStreamOptions = new() {
-		Mode = FileMode.Open,
-		Access = FileAccess.Read,
-		Share = FileShare.Read
 	};
 
 	private record LoadedItem<T> : IDisposable {
@@ -944,7 +992,19 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		}
 	}
 
-	public void Dispose() {
+	protected override void Subdispose(bool disposing) {
+		if (disposing) {
+			foreach(var v in _watchedFiles.Values) {
+				v?.Dispose();
+			}
+
+			foreach(var v in _loadedBinaries.Values) {
+				v?.Dispose();
+			}
+		}
+
+
+
 		// No field disposal necessary, because the property setter handles that.
 		StdOut = null;
 		ErrOut = null;
@@ -973,8 +1033,8 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		if (Path.IsPathFullyQualified(path)) {
 			return path;
 
-		} else if (manifest?.Directory is DirectoryInfo dir) {
-			return Path.Join(dir.FullName, path);
+		} else if (DirectoryName is not null) {
+			return Path.GetFullPath(Path.Join(DirectoryName, path));
 
 		} else {
 			throw new InvalidOperationException("Unable to find current directory.");
@@ -982,7 +1042,7 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 	}
 
 	[return: NotNullIfNotNull(nameof(directoryName))]
-	private BinaryWatcher? GetWatcher(string? directoryName) {
+	private ManifestWatcher? GetWatcher(string? directoryName) {
 		if (directoryName is null) {
 			return null;
 		}
@@ -999,10 +1059,10 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 		return watcher;
 	}
 
-	private bool TryGetBinaryFile(string key, [NotNullWhen(true)] out WatchedBinary? file, out bool needsReload) {
+	private bool TryGetBinaryFile(string key, [NotNullWhen(true)] out ManifestBinary? file, out HandleRevalidation result) {
 		if (!TryGetArg(key, out var argGet)) {
 			file = null;
-			needsReload = false;
+			result = HandleRevalidation.Bad;
 			return false;
 		}
 
@@ -1012,21 +1072,20 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 			var fullPath = GetFileName(path);
 
 			if (fullPath is not null) {
-				ref WatchedBinary? fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_loadedBinaries, fullPath!, out _);
+				ref ManifestBinary? fileRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_loadedBinaries, fullPath!, out _);
 
 				if (fileRef is not null) {
-					needsReload = fileRef.Refresh();
+					result = fileRef.Refresh();
 
 				} else {
-					fileRef = WatchedBinary.TryCreate(fullPath);
-					needsReload = true;
+					fileRef = ManifestBinary.TryCreate(fullPath, out result);
 				}
 
 				if (fileRef.Error is not null) {
 					ManifestError($"Problem loading file: {fileRef.Error}", argGet.Line);
 
 					// we still want to watch this path for changes
-					GetWatcher(Path.GetDirectoryName(fullPath))?.WatchFile(path);
+					GetWatcher(Path.GetDirectoryName(fullPath))?.WatchFile(fullPath);
 
 					file = null;
 					return false;
@@ -1039,13 +1098,13 @@ internal sealed class ManifestContainer(FileInfo manifest) : IDisposable {
 
 			} else {
 				file = null;
-				needsReload = false;
+				result = HandleRevalidation.Bad;
 				return false;
 			}
 		} catch (Exception e) {
 			ManifestError($"Problem loading file: '{path}' - {e.Message}", argGet.Line);
 			file = null;
-			needsReload = false;
+			result = HandleRevalidation.Bad;
 			return false;
 		}
 	}

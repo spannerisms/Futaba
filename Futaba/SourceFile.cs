@@ -54,6 +54,9 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 	public void Refresh() {
 		if (!IWatchedFile.RevalidateHandle(this, out var newHandle, out var error)) {
 			Error = error;
+			newHandle?.Dispose();
+			Handle?.Dispose();
+			Handle = null;
 
 		} else {
 			bool reload;

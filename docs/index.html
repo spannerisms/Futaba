@@ -20,9 +20,9 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 
 <h1>Futaba</h1>
 
-<img id="logo" src="assets/futabalogo.png" />
+<img id="logo" src="assets/futabalogo.png" alt="Futaba logo" />
 
-<p>Futaba is a low-level assembler specifically targetting the Super Famicom (SFC) and Super Nintendo Entertainment System (SNES). Futaba is an open-source project with its source code hosted <a href="https://github.com/spannerisms/futaba">on&nbsp;GitHub</a>.</p>
+<p>Futaba is a low-level assembler specifically targeting the Super Famicom (SFC) and Super Nintendo Entertainment System (SNES). Futaba is an open-source project with its source code hosted <a href="https://github.com/spannerisms/futaba">on&nbsp;GitHub</a>.</p>
 
 <p>Futaba is a single-pass assembler, prioritizing fast assembly and a smaller memory footprint. One of this project's goals is also to move away from the archaic and <nowrap>C-flavored</nowrap> syntax prevalent in other assemblers. Currently, Futaba also aims to be as low-level as possible. Higher level program flow such as <code>while</code> statements are left out in favor of encouraging source generators.</p>
 
@@ -37,10 +37,10 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 	<li>TBD &ndash; release</li>
 </ol>
 
-<p id="release_disclaimer">Futaba is currently in the public beta stage. Not every feature has been fully implemented or tested, but its source is available for review and contribution. Bugs definitely exist and no guarantees are yet made. Once the core library has reached a stable state, we will enter a year-long preview stage during which syntax and naming may be adjusted, and features might be removed or modified. After the preview stage all of these aforementioned components will be locked and permanent. Until the full release, guarantees about determinism across release should not be considered valid. Expect potentially breaking changes.</p>
+<p id="release_disclaimer">Futaba is currently in the public beta stage. Not every feature has been fully implemented or tested, but its source is available for review and contribution. Bugs definitely exist and no guarantees are yet made. Once the core library has reached a stable state, we will enter a year-long preview stage during which syntax and naming may be adjusted, and features might be removed or modified. After the preview stage all of these aforementioned components will be locked and permanent. Until the full release, guarantees about determinism across releases should not be considered valid. Expect potentially breaking changes.</p>
 
 <ul>Currently untested/broken/unimplemented features:
-	<li>MMC banking is not fully tested and maybe have edge cases</li>
+	<li>MMC banking is not fully tested and may have edge cases</li>
 	<li>ExLorom and ExHirom not fully tested</li>
 	<li>Not all coprocessors are properly implemented</li>
 	<li>SuperFX not fully tested</li>
@@ -51,7 +51,7 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 
 <!---Future text
 
-<p id="release_disclaimer">Futaba is currently in a preview stage. This stage is scheduled to end on TIMEITENDS. During this time, syntax for various directives, etc. may change in response to feedback. After this preview stages, Futaba will enter full release, and syntax will no longer change. Until the full release, guarantees about determinism across release should not be considered valid.</p>--->
+<p id="release_disclaimer">Futaba is currently in a preview stage. This stage is scheduled to end on TIMEITENDS. During this time, syntax for various directives, etc. may change in response to feedback. After this preview stage, Futaba will enter full release, and syntax will no longer change. Until the full release, guarantees about determinism across releases should not be considered valid.</p>--->
 
 <h2 id="quickstart">Quickstart</h2>
 
@@ -70,9 +70,9 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 <ol class="register-instructions">
 	<li>Download the file <fblk>futaba-linux-x64.zip</fblk> from <a href="https://github.com/spannerisms/futaba/releases/latest">the latest release of Futaba</a>.</li>
 	<li>Extract the contents of the archive to a permanent home for the application.</li>
-	<li>Open the command prompt.</li>
+	<li>Open a terminal.</li>
 	<li><fex>cd</fex> to that folder.</li>
-	<li>Type <fex>futaba register</fex> in the command prompt then press <kbd>ENTER</kbd>.</li>
+	<li>Type <fex>futaba register</fex> in the terminal then press <kbd>ENTER</kbd>.</li>
 </ol>
 
 
@@ -100,15 +100,15 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 
 <h3>Strings</h3>
 
-<p>Strings are an important data type, but they may be intepreted in multiple ways. In normal expressions, a string either behaves as a string object or, when a numeric value is expected, it will behave as either 0 (empty string) or the encoding of its first character.</p>
+<p>Strings are an important data type, but they may be interpreted in multiple ways. In normal expressions, a string either behaves as a string object or, when a numeric value is expected, it will behave as either 0 (empty string) or the encoding of its first character.</p>
 
 <p>A single character can be inserted by enclosing it in <nowrap>apostrophes (<ftok>'</ftok>)</nowrap>.</p>
 
-<div class="futaba-warn">Note: Futaba supports source files encoded in ASCII, <nowrap>UTF-8</nowrap>, and <nowrap>UTF-16</nowrap>, but does not support codepoints beyond the Basic Multilingual Plane (<code>U+0000&ndash;U+FFFF</code>) outside of comments. Surrogates are treated as separate characters.</div>
+<div class="futaba-warn">NOTE: Futaba supports source files encoded in ASCII, <nowrap>UTF-8</nowrap>, and <nowrap>UTF-16</nowrap>, but does not support code points beyond the Basic Multilingual Plane (<code>U+0000&ndash;U+FFFF</code>) outside of comments. Surrogates are treated as separate characters.</div>
 
 <h4>Escape sequences</h4>
 
-<p>In some cases, a character may need to be escaped in a string or character:</p>
+<p>In some cases, a character may need to be escaped inside a string or character literal:</p>
 
 <ul>
 	<li><fblk>\\</fblk> &ndash; backslash</li>
@@ -120,7 +120,7 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 
 <h4>Encoders</h4>
 
-<p>The default encoding is ASCII, which maps the unprintable characters and characters outside of the ASCII code block to space (U+0020). One other built-in encoder exists for unicode, which maps characters directly to their code point. Different encodings are selected with the <fkey id="directive-encoder">encoder</fkey> directive.</p>
+<p>The default encoding is ASCII, which maps the unprintable characters and characters outside of the ASCII code block to space (U+0020). One other built-in encoder exists for Unicode, which maps characters directly to their code point. Different encodings are selected with the <fkey id="directive-encoder">encoder</fkey> directive.</p>
 
 <div class="futexample">
 <fkey>encoder</fkey> ascii
@@ -133,7 +133,7 @@ ogdesc: "Documentation for the SNES assembler Futaba."
 <fkey>encoder</fkey> {{IDENTIFIER}} = {{FILENAME}}
 </div>
 
-<p>The format of an encoding file is one definition per line, with the first character of that line containing the character to encode followed by an <nowrap>equals sign (<ftok>=</ftok>)</nowrap> then a prefix-less hexadecimal value. Any character not defined by the encoder will be mapped to 0.</p>
+<p>The format of an encoding file is one definition per line, where the first character of each line is the character to encode followed by an <nowrap>equals sign (<ftok>=</ftok>)</nowrap> then a prefix-less hexadecimal value. Any character not defined by the encoder will be mapped to 0.</p>
 
 <div class="futexample">
 A = 20
@@ -422,13 +422,13 @@ F
 	<li><asmop>dd</asmop> (32-bit)</li>
 </ul>
 
-<p>These directives take a comma separated list of expressions, variables, and/or strings. Expressions will insert the value they resolve to. Strings will be treated as an array of characters and insert each encoded character separately. All values will be padded or truncated to the element size.</p>
+<p>These directives take a comma-separated list of expressions, variables, and/or strings. Expressions will insert the value they resolve to. Strings will be treated as an array of characters and insert each encoded character separately. All values will be padded or truncated to the element size.</p>
 
 <p>Individual elements can be skipped with a {{ SPLAT }}. This is useful for patching larger tables with partial edits.</p>
 
 <!---
 
-       Leaving this undocumented for now, because its usage is discourage
+       Leaving this undocumented for now, because its usage is discouraged
 
 <p>The <fkey id="directive-raw">raw</fkey> directive can be used to directly paste unformatted data into a program. This directive is intended for facilitating debugging. Its use for general data statements is discouraged.</p>
 
@@ -645,7 +645,7 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 <fkey>piling</fkey> {{IDENTIFIER}} :: {{argl}}CAPACITY{{argr}}
 </div>
 
-<p>Pilings can then be added to by using the <fkey id="directive-pile">pile</fkey> directive to assemble a single data statement by placing an {{ALLOC}} followed by the statement. The supplied data statement may have any number of items.</p>
+<p>Pilings can then be added to by using the <fkey id="directive-pile">pile</fkey> directive to assemble a single data statement by specifying the piling followed by an {{ALLOC}} and data statement. The supplied data statement may have any number of items.</p>
 
 <div class="futexample">
 <fkey>piling</fkey> Health :: $20 <fcom>; 32 bytes capacity; piling position is 0</fcom>
@@ -685,7 +685,7 @@ WYVERNHP = MAXHP <fcom>; valid</fcom>
 	<fkey>plop</fkey> Health+1 :: <asmop>db</asmop> <immval>75</immval>
 </div>
 
-<div class="futaba-warn">Note: The plop and pile directives do not affect the position being assembled. For example, the internal variable <fvab>!:pc</fvab> will return the current program counter and not the position of the data. This is intentional behavior that facilitates the creation of vector tables.</div>
+<div class="futaba-warn">NOTE: The plop and pile directives do not affect the position being assembled. For example, the internal variable <fvab>!:pc</fvab> will return the current program counter and not the position of the data. This is intentional behavior that facilitates the creation of vector tables.</div>
 
 <h4>Allocations</h4>
 
@@ -842,7 +842,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <h4>MMC banking control</h4>
 
-<p>The configuration of the MMC banking registers can be controlled using the <fkey id="directive-mmc">mmc</fkey> directive to specify the flags of each region, separated by commas. Use <ftok>L</ftok> to enable lorom mirroring and <ftok>H</ftok> to map exclusively to hirom (set or reset bit 7). Follow this identifier with a value from 0 to 7 for the 1MB bank to project. For example, the default values of these registers on boot is <nowrap><fkey>mmc</fkey> H0, H1, H2, H3</nowrap>.</p>
+<p>The configuration of the MMC banking registers can be controlled using the <fkey id="directive-mmc">mmc</fkey> directive to specify the flags of each region, separated by commas. Use <ftok>L</ftok> to enable lorom mirroring and <ftok>H</ftok> to map exclusively to hirom (set or reset bit 7). Follow this identifier with a value from 0 to 7 for the 1MB bank to project. For example, the default configuration of these registers on boot is <nowrap><fkey>mmc</fkey> H0, H1, H2, H3</nowrap>.</p>
 
 <p>A banking register can be kept in its current state by using {{ SPLAT }} to skip its entry.</p>
 
@@ -850,7 +850,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <fincom>; Sets the following configuration:</fincom>
 <fincom>; Banks Cx select image 1 and mirror to Banks 00-1F</fincom>
 <fincom>; Banks Dx select image 2 and mirror to Banks 20-3F</fincom>
-<fincom>; Banks Ex select image 4 while Banks 80-3F select image 2</fincom>
+<fincom>; Banks Ex select image 4 while Banks 80-9F select image 2</fincom>
 <fincom>; Banks Fx select image 0 while Banks A0-BF select image 3</fincom>
 <fkey>mmc</fkey> L1, L2, H4, H0
 
@@ -859,13 +859,15 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <fkey>mmc</fkey> L0, *, *, *
 </div>
 
+<div class="futaba-warn">NOTE: The unique behavior of the MMC may result in synchronization issues when the program counter crosses bank regions. Machine code is always written contiguously, but the program counter may become unsynchronized if it crosses from one region to another&mdash;for example, from <addr>$1F:FFFF</addr> to <addr>$20:8000</addr>. When this happens, the assembler emits a warning.</div>
+
 <h3 id="math">Expressions</h3>
 
 <p>Futaba supports expressions for nearly all operands and arguments. Expressions use standard programmer syntax for mathematical operations with C-style function calls and several assembly-specific operators.</p>
 
 <p>Expressions follow C#'s operator precedence with custom operators given the precedence that makes the most sense under those rules.</p>
 
-<p>The value of all expressions and subexpressions are stored as a <code>decimal</code> type value. This offers higher precision than <code>double</code> with negligible performance impact for Futaba's usecase.</p>
+<p>The value of every expression and subexpression is stored as a <code>decimal</code> type value. This offers higher precision than <code>double</code> with negligible performance impact for Futaba's use case.</p>
 
 <table id="operator-precedence" class="{{ tblclasses }} float-right hilite aligncenter">
 	<thead><tr><th>Operator precedence</th></tr></thead>
@@ -946,11 +948,11 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <h4>White space</h4>
 
-<p>Any number of space or tab characters may appear between most elements in an expression; however, inidivual elements cannot have white space within them.</p>
+<p>Any number of space or tab characters may appear between most elements in an expression; however, individual elements cannot have white space within them.</p>
 
 <ul>The following invocations are considered a single element and thus cannot have space between their components:
 	<li><fblk>func(</fblk> &ndash; opening parenthesis must immediately follow function names</li>
-	<li><fblk>symbol:property</fblk> &ndash; no white space before or after colon when acessing symbol properties</li>
+	<li><fblk>symbol:property</fblk> &ndash; no white space before or after colon when accessing symbol properties</li>
 </ul>
 
 <h4 id="truthiness">Truthiness</h4>
@@ -959,9 +961,9 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <div class="futaba-warn">The logical <nowrap>AND (<ftok>&&</ftok>)</nowrap> and <nowrap>logical OR (<ftok>||</ftok>) operators</nowrap> are not short-circuiting. Both operands will always be evaluated (unless the left operand fails to resolve, in which case the failure will immediately propagate upwards).</div>
 
-<h4>Null coalescence</h4>
+<h4>Null coalescing</h4>
 
-<p>The null coalescence operators can be used to provide fallbacks for invalid subexpressions in addition to undeclared symbols and variables.</p>
+<p>The null coalescing operators can be used to provide fallbacks for invalid subexpressions in addition to undeclared symbols and variables.</p>
 
 <div class="futexample">
 <fkey>print</fkey> (1 <fop>/</fop> 0) <fcom>; error</fcom>
@@ -1021,7 +1023,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <p>The following compound assignments are available for numeric variables: <ftok>+=</ftok>, <ftok>-=</ftok>, <ftok>*=</ftok>, <ftok>/=</ftok>, <ftok>&amp;=</ftok>, <ftok>|=</ftok>, <ftok>^=</ftok>. String variables only support the <ftok>+=</ftok> compound assignment, which appends the operand to the end of the string. No other string concatenation operator is supported. To concatenate string variables to a new variable, use string interpolation; <nowrap>e.g.: <fblk>!C="!A!B"</fblk></nowrap>.</p>
 
-<div class="futaba-warn">Note: Using the <ftok>+=</ftok> operator on a string variable when the operand is an expression will interpret the expression as a naked string without parsing it. Conversely, using the <ftok>+=</ftok> operator on a numeric variable with a string will first cast the value to a string then append it.</div>
+<div class="futaba-warn">NOTE: Using the <ftok>+=</ftok> operator on a string variable when the operand is an expression will interpret the expression as a naked string without parsing it. Conversely, using the <ftok>+=</ftok> operator on a numeric variable with a string will first cast the value to a string then append it.</div>
 
 <h4>Internal variables</h4>
 
@@ -1066,8 +1068,6 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <fkey>print</fkey> <ffn>GetVar</ffn>() <fcom>; prints 3</fcom>
 </div>
 
-
-
 <h4>Built-in functions</h4>
 
 <p>A number of built-in functions are provided. These functions' names are case-sensitive.</p>
@@ -1097,7 +1097,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 	{% endfor %}
 </table>
 
-<div class="futaba-warn">Note: Future releases may potentially add more functions; however, these functions will always have lowercase identifiers.</div>
+<div class="futaba-warn">NOTE: Future releases may potentially add more functions; however, these functions will always have lowercase identifiers.</div>
 
 <h3>Code/data management directives</h3>
 
@@ -1228,7 +1228,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <h4>Repeats</h4>
 
-<p>A block of statements can be repeated multiple times by using the <fkey id="directive-repeat">repeat</fkey> and <fkey id="directive-endrepeat">endrepeat</fkey> directives. The <fkey>repeat</fkey> directive opening the block should be supplied an immediately-evaluable expression specifying the number of times the block is to be repeated. This value must be a non-negative number. If this value is not an integer, the assembler will emit a warning.</p>
+<p>A block of statements can be repeated multiple times by using the <fkey id="directive-repeat">repeat</fkey> and <fkey id="directive-endrepeat">endrepeat</fkey> directives. The <fkey>repeat</fkey> directive opening the block should be supplied an immediately-evaluable expression specifying the number of times the block is to be repeated. This value must be a non-negative number. If this value is not an integer, the assembler will emit a warning and truncate the fractional part.</p>
 
 <div class="futexample">
 <fkey>repeat</fkey> 5
@@ -1288,7 +1288,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 		</tr>
 		<tr>
 			<td><fblk>bar</fblk></td>
-			<td>100 hypens; useful as a delimiter</td>
+			<td>100 hyphens; useful as a delimiter</td>
 		</tr>
 	</tbody>
 </table>
@@ -1302,7 +1302,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 <ftok>`</ftok><farg>[TRIGGERS]</farg><farg>[+INSERT]</farg>
 </div>
 
-<p>Any combination of flags can be combined to declare what actions the breakpoint should break on. If none are specified, then the default triggers will be used.</p>
+<p>Any combination of flags can be specified to declare what actions the breakpoint should break on. If none are specified, then the default triggers will be used.</p>
 
 <ul>
 	<li><fkey>r</fkey> &ndash; trigger this breakpoint on read</li>
@@ -1373,7 +1373,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <h4>Processor flags</h4>
 
-<p>Using square brackets, the processor flags can be referred to by initial in the <asmop>REP</asmop> and <asmop>SEP</asmop> instructions.</p>
+<p>Using square brackets, the processor flags can be referred to by their initials in the <asmop>REP</asmop> and <asmop>SEP</asmop> instructions.</p>
 
 <div class="futexample">
 	<asmop>REP</asmop> <immval>#[MXC]</immval> <fcom>; assembles as REP #$31</fcom>
@@ -1392,7 +1392,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <h4>Branch literals</h4>
 
-<p>Branch instructions can be assembled with literal values for their operands by using the <ftok>#</ftok> token. This may have some usecases, but generally, branch operands should be left to the assembler.</p>
+<p>Branch instructions can be assembled with literal values for their operands by using the <ftok>#</ftok> token. This may have some use cases, but generally, branch operands should be left to the assembler.</p>
 
 <h4 id="jnop">No-op jumps</h4>
 
@@ -1417,7 +1417,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <h4>Repeat pseudo-instructions</h4>
 
-<p>The following instructions can be repeated an arbitrary number of times by using the <ftok>#</ftok> token before an expression. This expression must be immediately resolvable and evaluate to a positive number:</p>
+<p>The following instructions can be repeated an arbitrary number of times by using the <ftok>#</ftok> token before an expression. This expression must be immediately resolvable and evaluate to a positive number. If the value contains a fractional part, it will be truncated.</p>
 
 <ul>
 	<li><asmop>ASL</asmop>, <asmop>LSR</asmop>, <asmop>ROL</asmop>, <asmop>ROR</asmop></li>
@@ -1521,7 +1521,7 @@ LabelE:NOP <fcom>; invalid! followed by normal text</fcom>
 
 <h2 id="nuget">.NET package</h2>
 
-<p>Futaba's core library is available as a nuget package from nuget.org for .NET projects. It can be found under the name <fblk>Spannerisms.Futaba</fblk>.</p>
+<p>Futaba's core library is available as a NuGet package from nuget.org for .NET projects. It can be found under the name <fblk>Spannerisms.Futaba</fblk>.</p>
 
 <ul id="nugetapi">The following APIs are exposed:
 	<li><code>Futaba</code> namespace

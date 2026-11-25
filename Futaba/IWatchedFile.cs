@@ -37,6 +37,10 @@ internal interface IWatchedFile : IDisposable {
 			error = null;
 			return ret;
 
+		} catch (FileNotFoundException) {
+			error = $"File {Path.GetFileName(path)} does not exist.";
+			return null;
+
 		} catch (Exception e) {
 			error = e.Message;
 			return null;
@@ -51,15 +55,8 @@ internal interface IWatchedFile : IDisposable {
 			change.HasFlag(WatcherChangeTypes.Created)) {
 			string path = file.FileName;
 
-			if (File.Exists(path)) {
-				handle = TryOpenHandle(path, out error);
-				return handle is not null;
-
-			} else {
-				error = $"File {Path.GetFileName(path)} does not exist.";
-				handle = null;
-				return false;
-			}
+			handle = TryOpenHandle(path, out error);
+			return handle is not null;
 
 		} else if (file.Handle is not null) {
 			handle = file.Handle;

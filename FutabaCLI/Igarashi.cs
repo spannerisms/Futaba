@@ -362,17 +362,15 @@ internal static partial class Igarashi {
 			PressedEscape = false;
 			DrainKeyBuffer();
 
-			while (!_manifestWait.IsSet) {
+			// TODO create a more robust debounce that waits for all files to stop
+			while (!_manifestWait.Wait(50)) {
 				while (Console.KeyAvailable) {
 					if (Console.ReadKey(true).Key is ConsoleKey.Escape) {
 						PressedEscape = true;
-						goto Exit;
+						return;
 					}
 				}
 			}
-
-		Exit:
-			return;
 		}
 
 		public void Reset() {
@@ -399,6 +397,7 @@ internal static partial class Igarashi {
 		}
 
 		public void Subscribe(ManifestContainer manifest) {
+			manifest.SourceChange -= SomethingChanged;
 			manifest.SourceChange += SomethingChanged;
 		}
 
@@ -432,17 +431,16 @@ internal static partial class Igarashi {
 			Directory.SetCurrentDirectory(dir);
 		}
 
-		using ManifestContainer manifest = new(manifestFile);
+		_manifestWaiter.Reset();
+
+		using ManifestContainer manifest = ManifestContainer.TryCreate(manifestFile);
+		_manifestWaiter.Subscribe(manifest);
 
 		do {
-			_manifestWaiter.Reset();
-
 			retcode = AssembleOne(manifest);
-
 			DrainKeyBuffer();
 
 			if (manifest.Incremental) {
-				_manifestWaiter.Subscribe(manifest);
 				Console.WriteLine();
 
 				NoLineNotice("Assembling in incremental mode. Press ESCAPE to stop.");
@@ -466,7 +464,6 @@ internal static partial class Igarashi {
 				}
 
 			} else if (redoAssembly) {
-				_manifestWaiter.Unsubscribe(manifest);
 				Console.WriteLine();
 
 				NoLineNotice("Press ENTER to rerun assembly. Press ESCAPE to stop.");
@@ -496,8 +493,10 @@ internal static partial class Igarashi {
 			} else if (pauseAfter) {
 				Console.ReadKey(true);
 			}
+
 		} while (redoAssembly);
 
+		_manifestWaiter.Unsubscribe(manifest);
 		return retcode;
 
 		int AssembleOne(ManifestContainer manifest) {
@@ -519,6 +518,7 @@ internal static partial class Igarashi {
 				byte[] rom = assembler.Assemble();
 				long finished = Stopwatch.GetTimestamp();
 
+				_manifestWaiter.Reset();
 				Notice(FinishedAssembly);
 
 				if (showTimer) {
@@ -646,7 +646,7 @@ internal static partial class Igarashi {
 					long totalOffset = diffWriter.BaseStream.Position;
 					const string TotalBytesDifferencePlaceHolder = "          ";
 					diffWriter.WriteLine(TotalBytesDifferencePlaceHolder);
-					diffWriter.WriteLine("");
+					diffWriter.WriteLine();
 					diffWriter.WriteLine("==================================");
 					diffWriter.WriteLine("offset (snesbus) | <build>");
 					diffWriter.WriteLine("                 | <expected>");
