@@ -84,6 +84,14 @@ unsafe partial class Assembler {
 		_shutUpAboutSegments = false;
 	}
 
+	private protected void RelocateOffset(int offset) {
+		_offset = offset;
+		_pcPtr = _romPtr + offset;
+
+		_shutUpAboutAddresses = false;
+		_shutUpAboutSegments = false;
+	}
+
 	private void PushPC() {
 		_pcStack.Push((_pc, _offset));
 	}
@@ -851,9 +859,11 @@ unsafe partial class Assembler {
 	}
 
 	private void AdvanceProgramCounter(int step) {
-		_pcPtr += step;
 		_site += step;
+
+		// this is fine in 99% of cases
 		_offset += step;
+		_pcPtr += step;
 
 		StepPC(step);
 

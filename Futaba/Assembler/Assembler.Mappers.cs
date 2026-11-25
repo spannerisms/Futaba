@@ -121,13 +121,11 @@ partial class Assembler {
 			}
 		}
 
-		_pc = pc & SnesHelpers.AddressMask;
+		_pc = pc;
 	}
 
 	private protected void StepPCHirom(int step) {
-		int pc = _pc; // force into register
-		pc += step;
-		_pc = pc & SnesHelpers.AddressMask;
+		_pc += step;
 	}
 
 	/// <summary>
@@ -333,7 +331,7 @@ public sealed class ExLoromAssembler : Assembler {
 	}
 
 	private protected override void StepPC(int step) {
-		StepPCLorom(step);
+		_pc = AddressToOffset(_offset);
 	}
 
 	private protected override bool JumpTargetMakesSense(int address, int destination) {
@@ -644,17 +642,126 @@ public sealed class Sa1Assembler : Assembler {
 		return address | (bank << SnesHelpers.MmcBankShift);
 	}
 
-	// TODO need to hijack and rewrite _offset and _pcPtr when doing a region bank cross
 	private protected override void StepPC(int step) {
-		int pc = _pc;
-
-		if (pc >= 0xC0_0000) {
-			StepPCHirom(step);
+		if (step is 0) {
 			return;
 		}
 
-		// TODO incomplete
-		StepPCLorom(step);
+		int offset = _offset;
+
+		// if we don't end up in a new bank region, then we're good
+		// we want this fast path that covers 99% of cases
+		// using subtraction because _offset has already been stepped by AdvanceProgramCounter
+		if (!SnesHelpers.OffsetChangedMmcBank(offset, offset - step)) {
+			if (_pc < 0xC0_0000) {
+				// this can't cross into C0
+				// because that would have been flagged as an MMC bank change
+				StepPCLorom(step);
+
+			} else {
+				// likewise, this can't cross into BF
+				StepPCHirom(step);
+			}
+
+			return;
+		}
+
+		//
+		// otherwise, we need to carefully step through each increment
+		// separate method so we can get some inlining
+		//
+
+		DoBigPCStep(step);
+	}
+
+	// no inlining because this is an edge case handler
+	[MethodImpl(MethodImplOptions.NoInlining)]
+	private void DoBigPCStep(int step) {
+		Warning("An MMC banking region was crossed. Data contiguity may be compromised.");
+
+		int pc = _pc;
+
+		// we can try to treat hirom as just a big step
+		if (pc >= 0xC0_0000) {
+			int newpc = pc + step;
+
+			// as long as we didn't step too far backwards when it's negative, we're fine
+			// BF to C0 is contiguous, so this is a tiny shortcut.
+			if (newpc >= 0xBF_8000) {
+				_pc = newpc;
+				RelocateOffset(GetOffsetFromAddress(newpc));
+				return;
+			}
+		}
+
+		// step 32KB at a time
+
+		if (step > 0) {
+
+			// positive steps
+
+			while (step > 0) {
+				int deduct = int.Min(0x8000, step);
+
+				step -= deduct;
+				pc += deduct;
+
+				// test lorom areas
+				if (pc < 0xC0_0000) {
+					// test for entering BWRAM
+					if (pc is < 0x80_0000 and >= 0x40_0000) {
+						// jump to region E
+						pc += 0x40_0000;
+					}
+
+					// just force move to upper half of bank
+					// using OR because we might be doing an incomplete step
+					// adding would send us to the next bank when that happens
+					pc |= 0x8000;
+
+				} else {
+					// explicit do nothing
+					// hirom can keep its PC
+				}
+			}
+
+		} else {
+
+			// negative steps
+
+			step = -step; // negate to make the loop easier to understand
+
+			while (step > 0) {
+				int deduct = int.Min(0x8000, step);
+
+				step -= deduct;
+				pc -= deduct;
+
+				// test lorom areas
+				if (pc < 0xC0_0000) {
+					// test for entering BWRAM
+					if (pc is < 0x80_0000 and >= 0x40_0000) {
+						// jump to region D
+						pc -= 0x40_0000;
+					}
+
+					// adjust for lorom
+					if ((pc & 0x8000) is 0) {
+						pc -= 0x00_8000;
+					}
+
+				} else {
+					// explicit do nothing
+					// hirom can keep its PC
+					// hirom may enter lorom here
+					// but because we're doing 32KB at a time,
+					// it is guaranteed to land in a valid ROM area
+				}
+			}
+		}
+
+		// once we're done, just force recalc the offset
+		RelocateOffset(GetOffsetFromAddress(pc));
 	}
 
 	/// <inheritdoc/>

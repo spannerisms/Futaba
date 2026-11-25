@@ -11,6 +11,7 @@ namespace Tests;
 // test db "string" including functions
 // test incsrc "samefile" : incbin "samefile"
 // test raw for invalid char / odd length
+// need lots of mmc region and bank cross step checks, both forwards and backwards
 public static class AssemblerTests {
 	private static bool FailsOnly = true;
 	private static bool GroupPassing = false;

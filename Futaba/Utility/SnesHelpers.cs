@@ -152,6 +152,11 @@ internal static class SnesHelpers {
 		return value is >= short.MinValue and <= ushort.MaxValue;
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	internal static bool OffsetChangedMmcBank(int addrA, int addrB) {
+		return ((addrA ^ addrB) & ~MmcBankingMask) is not 0;
+	}
+
 	internal static string BranchDistanceError(int distance, int size) {
 		if (distance < 0) {
 			return $"Branch distance too far: {distance} < {(size == 1 ? sbyte.MinValue : short.MinValue)}";
