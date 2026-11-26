@@ -429,25 +429,17 @@ unsafe partial class Assembler {
 
 					return;
 
-				// TODO should this use different contexts...?
 				case SAFEORG:
-					if (DemandSpaceWithError() && DemandRestOfCommand(out OperandString safeOrgArg)) {
-						IExpressionReturn safewarn = ParseOperand(safeOrgArg, SymbolContext.Provenance);
-						IExpressionReturn safeorg = ParseOperand(safeOrgArg, SymbolContext.RomAddress);
-
-						if (safeorg.Resolved && safewarn.Resolved) {
-							WarnCounter(safewarn.ValueInt32, _pc);
-							TryMovePC(safeorg);
-						} else {
-							Error_BadResolve(safeorg, $"argument to {SAFEORG} must be immediately resolvable");
-						}
+					if (DemandSpaceWithError() && TryReadRestAsExpression(SAFEORG, SymbolContext.RomAddress, out IExpressionReturn safeorg)) {
+						WarnCounter(safeorg.ValueInt32, _pc);
+						TryMovePC(safeorg);
 					}
 
 					return;
 
 				case WARNPC:
 				case GUARDPC:
-					if (DemandSpaceWithError() && TryReadRestAsExpression(WARNPC, SymbolContext.Provenance, out IExpressionReturn warnpc)) {
+					if (DemandSpaceWithError() && TryReadRestAsExpression(GUARDPC, SymbolContext.RomAddress, out IExpressionReturn warnpc)) {
 						WarnCounter(warnpc.ValueInt32, _pc);
 					}
 
@@ -455,14 +447,14 @@ unsafe partial class Assembler {
 
 				case WARNSITE:
 				case GUARDSITE:
-					if (DemandSpaceWithError() && TryReadRestAsExpression(WARNPC, SymbolContext.Provenance, out IExpressionReturn warnsite)) {
+					if (DemandSpaceWithError() && TryReadRestAsExpression(GUARDSITE, SymbolContext.Provenance, out IExpressionReturn warnsite)) {
 						WarnCounter(warnsite.ValueInt32, Provenance);
 					}
 
 					return;
 
 				case SKIP:
-					if (DemandSpaceWithError() && TryReadRestAsExpression(SKIP, SymbolContext.Provenance, out IExpressionReturn skipSize)) {
+					if (DemandSpaceWithError() && TryReadRestAsExpression(SKIP, SymbolContext.Default, out IExpressionReturn skipSize)) {
 						Skip(skipSize.ValueInt32);
 					}
 

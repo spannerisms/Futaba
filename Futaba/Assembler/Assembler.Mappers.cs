@@ -387,7 +387,6 @@ public sealed class ExHiromAssembler : Assembler {
 /// <summary>
 /// Represents an assembler that uses the SA-1 (MMC) mapping mode.
 /// </summary>
-// TODO fix this up
 public sealed class Sa1Assembler : Assembler {
 	/// <summary>
 	/// Creates a new assembler instance with the SA-1 using the given file as its entry point.

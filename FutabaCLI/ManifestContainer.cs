@@ -148,7 +148,7 @@ internal sealed class ManifestContainer : ManifestFile {
 			DiffRomFile = null;
 		}
 
-		bool needsReload = false;
+		bool needsReload;
 
 		if (TryGetBinaryFile("base", out var baseRomFile, out HandleRevalidation result)) {
 			BaseRomFile = baseRomFile;

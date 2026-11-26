@@ -34,7 +34,6 @@ unsafe partial class Assembler {
 			return true;
 		}
 
-		// TODO block reused param names
 		while (true) {
 			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
@@ -50,7 +49,16 @@ unsafe partial class Assembler {
 
 			FastRead.SkipInlineWhitespace(ref _reading, _fileEnd);
 
-			args.Add(new string(nextArg));
+			string nextArgName = new(nextArg);
+
+			// we expect few macros and few arguments, so probably don't need a hashset for O(1)
+			if (args.Contains(nextArgName)) {
+				Error($"Duplicate parameter name: {nextArgName}");
+			}
+
+			// add it anyways so things don't break down the line
+			// it will just be unreachable
+			args.Add(nextArgName);
 
 			if (*_reading is ',') {
 				_reading++;
