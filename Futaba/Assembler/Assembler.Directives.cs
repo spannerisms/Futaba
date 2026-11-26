@@ -432,7 +432,6 @@ unsafe partial class Assembler {
 
 		bool moreFiles;
 
-		// TODO needs stress testing
 		do {
 			moreFiles = ReadToNextComma(out OperandString incPath);
 
@@ -471,6 +470,7 @@ unsafe partial class Assembler {
 			if (pread >= pend) {
 				binstart = 0;
 				binend = binlen;
+
 			} else {
 				if (*pread is '[' && ((pread + 1) < pend)) {
 					char* pcheck = pend - 1;

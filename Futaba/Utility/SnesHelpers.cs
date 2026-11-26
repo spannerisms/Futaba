@@ -3,6 +3,9 @@
 internal static class SnesHelpers {
 	public const int BankSize = 32768;
 
+	public const int GameCodeLength = 4;
+	public const int MakerCodeLength = 2;
+
 	public const int MaxRegularSize = BankSize * 128;
 	public const int MaxExSize = BankSize * 254;
 	public const int MinExSize = MaxRegularSize + BankSize;
@@ -12,23 +15,31 @@ internal static class SnesHelpers {
 	internal const int BankMask = 0xFF_0000;
 	internal const int AbsoluteMask = 0xFFFF;
 	internal const int MirroredBankMask = 0x7F_FFFF;
-	internal const int HalfBankMask = 0x7FFF;
+	internal const int HalfBankMask = 0xFF_8000;
 
 	internal const int MmcBankingSize = 0x10_0000;
 	internal const int MmcBankingMask = 0xF_FFFF;
 	internal const int MmcBankShift = 20;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal static int LoromToOffset(int address) => address & 0x7FFF | (address & 0x7F0000) >> 1;
+	internal static int LoromToOffset(int address) {
+		return address & 0x7FFF | (address & 0x7F0000) >> 1;
+	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal static int OffsetToLorom(int offset) => (offset & 0x7FFF) | 0x8000 | ((offset & 0x7F8000) << 1);
+	internal static int OffsetToLorom(int offset) {
+		return (offset & 0x7FFF) | 0x8000 | ((offset & 0x7F8000) << 1);
+	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal static int HiromToOffset(int address) => address & 0x3F_FFFF;
+	internal static int HiromToOffset(int address) {
+		return address & 0x3F_FFFF;
+	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	internal static int OffsetToHirom(int offset) => offset | 0xC0_0000;
+	internal static int OffsetToHirom(int offset) {
+		return offset | 0xC0_0000;
+	}
 
 	internal static int Sa1ToOffset(int address) {
 		if ((uint) address > 0xFF_FFFF) {
@@ -192,9 +203,6 @@ internal static class SnesHelpers {
 		return (v == distance, distance);
 	}
 
-	public const int GameCodeLength = 4;
-	public const int MakerCodeLength = 2;
-
 	/// <summary>
 	/// Sanitizes a given string for header entry by
 	/// ensuring it is exactly the given number of characters in length (padded with spaces if necessary)
@@ -225,11 +233,10 @@ internal static class SnesHelpers {
 		// create a new string from the span on the stack
 		return new(newString);
 	}
-
-	// TODO validate all of these with unit tests
+	 
 	// TODO can hirom and lorom be merged like this?
-	internal static bool JumpTargetMakesSenseSmallRom(int addrA, int addrB) {
-		int bankChange = (addrA ^ addrB) & BankMask;
+	internal static bool JumpTargetMakesSenseSmallRom(int address, int destination) {
+		int bankChange = (address ^ destination) & BankMask;
 
 		if (bankChange is 0) {
 			return true;
@@ -237,74 +244,46 @@ internal static class SnesHelpers {
 
 		// check banks that mirror each other
 		if (bankChange is 0x80_0000) {
-			// wram has no mirror though
-			if ((addrA | 0x80_0000) >= 0xFE_0000) {
+			// wram has no mirror
+			// since the change is 0x80_0000
+			// this captures either address being WRAM
+			if ((address | 0x80_0000) >= 0xFE_0000) {
 				return false;
 			}
 
-			// TODO needs tinkering
-			return IsInMirroredBank(addrA) || IsHighBank(addrB);
-		}
-
-		if (bankChange is 0x40_0000 or 0xC0_0000) {
-			// TODO is this actually correct?
-			if (IsInMirroredBank(addrA)) {
-				return IsMirroredWram(addrB) || (!IsWram(addrB) && IsHighBank(addrB));
-			}
-
-			if (IsInMirroredBank(addrA)) return IsHighBank(addrB) || IsMirroredWram(addrB);
-			if (IsInMirroredBank(addrB)) return IsHighBank(addrA) || IsMirroredWram(addrA);
-
-			return false;
-		}
-
-		if (IsMirroredWram(addrB)) {
-			return IsInMirroredBank(addrA);
-		}
-
-		// bankA being in 7E/7F means it's assembled in WRAM, which is rarer
-		if (IsWram(addrA)) {
-			return IsMirroredWram(addrA) && IsInMirroredBank(addrB);
-		}
-
-		// weird cases like 01:2000 => 03:4000
-		return IsCommonMirror(addrA) && IsCommonMirror(addrB);
-	}
-
-	internal static bool JumpTargetMakesSenseMmc(int addrA, int addrB) {
-		int bankChange = (addrA ^ addrB) & BankMask;
-
-		if (bankChange is 0) {
+			// otherwise it's probably fine
 			return true;
 		}
 
-		if (IsMirroredWram(addrB)) {
-			return IsInMirroredBank(addrA);
+		// this means we also crossed into a region with a different layout
+		if (bankChange is 0x40_0000 or 0xC0_0000) {
+			if (IsInMirroredBank(address)) {
+				if (IsWram(destination)) {
+					return IsMirroredWram(destination);  // mirrored WRAM is allowed
+
+				} else {
+					return IsInUpperBankHalf(destination); // only valid if upper bank (otherwise we went to mirrored memory)
+				}
+
+			} else {
+				return !(IsWram(address) || IsWram(destination)); // reject WRAM
+			}
 		}
 
-		// bankA being in 7E/7F means it's assembled in WRAM, which is rarer
-		if (IsWram(addrA)) {
-			return IsMirroredWram(addrA) && IsInMirroredBank(addrB);
-		}
-
-		return false;
+		return JumpTargetMakesSenseEdgeCases(address, destination);
 	}
 
-	internal static bool JumpTargetMakesSenseExRom(int addrA, int addrB) {
-		int bankChange = (addrA ^ addrB) & BankMask;
+	internal static bool JumpTargetMakesSenseExRom(int address, int destination) {
+		int bankChange = (address ^ destination) & BankMask;
 
 		if (bankChange is 0) return true;
 
-		if (IsInMirroredBank(addrA)) {
-			return IsMirroredWram(addrB) || IsCommonMirror(addrB);
-		}
-
-		return false;
+		return JumpTargetMakesSenseEdgeCases(address, destination);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	internal static bool IsValidBusAddress(int addr) {
-		return (uint) addr <= 0xFF_FFFF;
+		return (uint) addr <= AddressMask;
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -313,23 +292,44 @@ internal static class SnesHelpers {
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static bool IsHighBank(int addr) => (addr & 0x8000) is not 0;
+	public static bool IsInUpperBankHalf(int addr) {
+		return (addr & 0x8000) is not 0;
+	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static bool IsCommonMirror(int addr) => (addr & 0x40_8000) < 0x8000;
+	public static bool IsCommonMirror(int addr) {
+		return (addr & 0x40_8000) < 0x8000;
+	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static bool IsWramMirror(int addr) => (addr & 0x40_FFFF) < 0x2000;
+	public static bool IsMirroredWram(int addr) {
+		return (addr ^ 0x7E_0000) < 0x00_2000;
+	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static bool IsMirroredWram(int addr) => (addr ^ 0x7E_0000) < 0x2000;
+	public static bool IsWram(int addr) {
+		// ^ has JIT synergy with mirror wram check
+		return (addr ^ 0x7E_0000) < 0x02_0000;
+	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static bool IsWram(int addr) => (addr & 0xFE_0000) == 0x7E_0000;
+	internal static bool JumpTargetMakesSenseEdgeCases(int address, int destination) {
+		// if the destination is mirrored WRAM, we can allow it for mirrored banks or common mirrors
+		if (IsMirroredWram(destination)) {
+			return IsInMirroredBank(address);
+		}
+
+		// address being in 7E/7F means it's assembled in WRAM, which is rarer
+		if (IsWram(address)) {
+			return IsMirroredWram(address) && IsInMirroredBank(destination);
+		}
+
+		// handles weird cases like 01:2000 => 03:4000
+		return IsCommonMirror(address) || IsCommonMirror(destination);
+	}
 
 	internal static int GetAllocationSize(int desired) {
 		return desired switch {
-			< 0 => 0,
+			<= 0 /*     */ => 0,
 			<= 0x0002_0000 => 0x0002_0000,
 			<= 0x0004_0000 => 0x0004_0000,
 			<= 0x0008_0000 => 0x0008_0000,
@@ -337,7 +337,7 @@ internal static class SnesHelpers {
 			<= 0x0020_0000 => 0x0020_0000,
 			<= 0x0040_0000 => 0x0040_0000,
 			<= 0x0080_0000 => 0x0080_0000,
-			_ => 0,
+			_ /*       */  => 0,
 		};
 	}
 }

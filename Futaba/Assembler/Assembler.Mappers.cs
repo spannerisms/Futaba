@@ -509,8 +509,113 @@ public sealed class Sa1Assembler : Assembler {
 		} while (more is StringSplitResult.MoreContent);
 	}
 
+	private int GetEffectiveBank(int address) {
+		if ((uint) address > 0xFF_FFFF) {
+			return -1;
+		}
+
+		return address switch {
+			< 0x20_0000 => GetEffectiveLorom(address, _CxLorom ? _CxBank : 0),
+			< 0x40_0000 => GetEffectiveLorom(address, _DxLorom ? _DxBank : 1),
+
+			< 0x80_0000 => -1,
+
+			< 0xA0_0000 => GetEffectiveLorom(address, _ExLorom ? _ExBank : 2),
+			< 0xC0_0000 => GetEffectiveLorom(address, _FxLorom ? _FxBank : 3),
+
+			< 0xD0_0000 => GetEffectiveHirom(address, _CxBank),
+			< 0xE0_0000 => GetEffectiveHirom(address, _DxBank),
+			< 0xF0_0000 => GetEffectiveHirom(address, _ExBank),
+			_ /*     */ => GetEffectiveHirom(address, _FxBank),
+		};
+
+		static int GetEffectiveLorom(int addr, int bank) {
+			addr &= 0x1F_0000;
+			addr >>= 1;
+			bank <<= SnesHelpers.MmcBankShift;
+			return addr | bank;
+		}
+
+		static int GetEffectiveHirom(int addr, int bank) {
+			addr &= 0xF_0000;
+			bank <<= SnesHelpers.MmcBankShift;
+			return addr | bank;
+		}
+	}
+
+	// TODO needs stress testing
 	private protected override bool JumpTargetMakesSense(int address, int destination) {
-		return SnesHelpers.JumpTargetMakesSenseMmc(address, destination);
+		int bankChange = (address ^ destination) & SnesHelpers.BankMask;
+
+		if (bankChange is 0) {
+			return true;
+		}
+
+		// catches negative numbers and out of bounds for both simultaneously
+		if ((uint) (destination | address) > 0xFF_FFFF) {
+			return false;
+		}
+
+		// see if we're in compatible, mirrored regions currently
+
+		// TODO this probably needs tinkering e.g. when assembly time has a different banking than runtime
+		// or just say "supress it with .w if you do that"
+
+		//
+		// This covers everything hirom
+		//
+
+		if (address >= 0xC0_0000) {
+			int addressOffset = GetEffectiveBank(address);
+			int destOffset = GetEffectiveBank(destination);
+
+			if (destination >= 0xC0_0000) {
+				return destOffset == addressOffset;
+
+			} else if (SnesHelpers.IsInUpperBankHalf(address)) {
+				return destOffset == addressOffset;
+
+			} else if (SnesHelpers.IsInUpperBankHalf(destination)) {
+				return destOffset == addressOffset;
+			}
+
+			return false;
+
+		} else if (destination >= 0xC0_0000) {
+			int addressOffset = GetEffectiveBank(address);
+			int destOffset = GetEffectiveBank(destination);
+
+			if (SnesHelpers.IsInUpperBankHalf(address)) {
+				return destOffset == addressOffset;
+
+			} else if (SnesHelpers.IsInUpperBankHalf(destination)) {
+				return destOffset == addressOffset;
+			}
+
+			return false;
+		}
+
+		//
+		// Check lorom area
+		//
+
+		// handles mirrored memory
+		if (SnesHelpers.IsInMirroredBank(address)) {
+			if (SnesHelpers.IsWram(destination)) {
+				return SnesHelpers.IsMirroredWram(destination);  // mirrored WRAM is allowed
+
+			} else if (SnesHelpers.IsCommonMirror(destination)) {
+				return true;
+			}
+		}
+
+		// handles lorom banks that match;
+		if (SnesHelpers.IsInUpperBankHalf(destination) && SnesHelpers.IsInUpperBankHalf(address)) {
+			return GetEffectiveBank(address) == GetEffectiveBank(destination);
+		}
+
+		// handles the rest
+		return SnesHelpers.JumpTargetMakesSenseEdgeCases(address, destination);
 	}
 
 	/// <inheritdoc/>
