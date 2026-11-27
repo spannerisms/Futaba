@@ -185,44 +185,49 @@ internal static partial class Igarashi {
 	}
 
 	static int ChecksumFile(ParseResult res) {
+		if (res.GetValue(Arg_TargetRom) is not FileInfo { Exists: true } entry) {
+			Error("Unable to locate file.");
+			return Exit_Error;
+		}
+
+		byte[] dat;
+
 		try {
-			if (res.GetValue(Arg_TargetRom) is not FileInfo entry || !entry.Exists) {
-				Error("Unable to locate file.");
-				return Exit_Error;
-			}
+			dat = Helpers.GetFileAsArray(entry);
 
-			byte[] dat = Helpers.GetFileAsArray(entry);
-			int len = dat.Length;
-
-			if (len is 0) {
-				Console.WriteLine("File is empty.");
-				return Exit_Error;
-			}
-
-			if (!RomHeader.IsExpectedRomSize(len)) {
-				Warning($"This file is {len} bytes, which is weird. Are you sure it's a SNES ROM?");
-			}
-
-			ushort cksm = (ushort) RomHeader.CalculateChecksum(dat);
-
-			Console.WriteLine($"Internal checksum (complement): {cksm:X4} ({(ushort) ~cksm:X4})");
-
-			// TODO add something that tries to find the checksum in the file itself to verify it matches.
-
-			EmitHashInfo("CRC32", Helpers.GetCrc32(dat));
-			EmitHashInfo("MD5", System.Security.Cryptography.MD5.HashData(dat));
-			EmitHashInfo("SHA1", System.Security.Cryptography.SHA1.HashData(dat));
-
-			return Exit_Good;
-
-			static void EmitHashInfo(string name, byte[] vals) {
-				string valStr = Convert.ToHexString(vals);
-				Console.WriteLine($"{name}: {valStr}");
-			}
 		} catch (Exception e) {
 			Error(e.Message);
-			return e.HResult;
+			return Exit_Error;
 		}
+
+		int len = dat.Length;
+
+		if (len is 0) {
+			Console.WriteLine("File is empty.");
+			return Exit_Good;
+		}
+
+		if (!RomHeader.IsExpectedRomSize(len)) {
+			Warning($"This file is {len} bytes, which is weird. Are you sure it's a SNES ROM?");
+		}
+
+		ushort cksm = (ushort) RomHeader.CalculateChecksum(dat);
+
+		Console.WriteLine($"Internal checksum (complement): {cksm:X4} ({(ushort) ~cksm:X4})");
+
+		// TODO add something that tries to find the checksum in the file itself to verify it matches.
+
+		EmitHashInfo("CRC32", Helpers.GetCrc32(dat));
+		EmitHashInfo("MD5", System.Security.Cryptography.MD5.HashData(dat));
+		EmitHashInfo("SHA1", System.Security.Cryptography.SHA1.HashData(dat));
+
+		return Exit_Good;
+
+		static void EmitHashInfo(string name, byte[] vals) {
+			string valStr = Convert.ToHexString(vals);
+			Console.WriteLine($"{name}: {valStr}");
+		}
+
 	}
 
 	static int RegisterFutaba(ParseResult _) => RunRegistrar(static r => r.Register());
@@ -232,6 +237,7 @@ internal static partial class Igarashi {
 	static int RunRegistrar(Func<IAssociationRegistrar, int> action) {
 		try {
 			return action(GetRegistrar());
+
 		} catch (Exception e) {
 			Error(e.Message);
 			return Exit_Error;
@@ -339,7 +345,7 @@ internal static partial class Igarashi {
 
 		} catch (Exception e) {
 			FatalError(e);
-			return e.HResult;
+			return Exit_Error;
 		}
 	}
 
@@ -501,6 +507,7 @@ internal static partial class Igarashi {
 
 		int AssembleOne(ManifestContainer manifest) {
 			Assembler? assembler = null;
+
 			try {
 				manifest.ParseManifest();
 				manifest.Configure();
@@ -576,11 +583,13 @@ internal static partial class Igarashi {
 
 			} catch (Exception e) {
 				Console.WriteLine(e.GetType());
+
 				if (assembler?.ErrorLine is string el) {
 					Console.Error.WriteLine($"Suspected line: {el}");
 				}
+
 				FatalError(e);
-				return e.HResult;
+				return Exit_Error;
 			}
 		}
 	}

@@ -76,8 +76,6 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 				LastLoaded = File.GetLastWriteTimeUtc(newHandle);
 
 				try {
-					//Console.WriteLine($"Loading {FullName}");
-
 					var fstream = new FileStream(newHandle, FileAccess.Read);
 					var ftext = new StreamReader(fstream);
 
@@ -104,12 +102,11 @@ internal unsafe sealed class SourceFile : SourceObject, IWatchedFile, IWatchedFi
 
 					return;
 
-				} catch (Exception e) {
+				} catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
 					Error = e.Message;
 				}
 			} else {
 				Error = null;
-				//Console.WriteLine($"{FullName} is unchanged.");
 				return;
 			}
 		}

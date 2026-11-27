@@ -60,8 +60,6 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 				LastLoaded = File.GetLastWriteTimeUtc(newHandle);
 
 				try {
-					//Console.WriteLine($"Loading {FullName}");
-
 					var fstream = new FileStream(newHandle, FileAccess.Read);
 					int length = (int) fstream.Length;
 
@@ -82,12 +80,11 @@ internal unsafe sealed class SourceBinary : IWatchedFile, IWatchedFileFactory<So
 
 					return;
 
-				} catch (Exception e) {
+				} catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
 					Error = e.Message;
 				}
 			} else {
 				Error = null;
-				//Console.WriteLine($"{FullName} is unchanged.");
 				return;
 			}
 		}

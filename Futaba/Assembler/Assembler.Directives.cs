@@ -1195,9 +1195,11 @@ unsafe partial class Assembler {
 
 				if (TrySpecialPrint(printChunk, out var printChunkStr)) {
 					formatObjects.Add(printChunkStr);
+
 				} else if (printChunk.TestIfVariable()) {
 					if (TryGetVariable(printChunk.AsSpan(1), out var vari)) {
 						formatObjects.Add(vari);
+
 					} else {
 						Warning(MsgInfo.VariableNotFound(printChunk));
 						formatObjects.Add(printChunk);
@@ -1216,8 +1218,12 @@ unsafe partial class Assembler {
 
 		try {
 			MessageOut.WriteLine(string.Format(formatString, CollectionsMarshal.AsSpan(formatObjects)));
-		} catch (Exception e) {
-			Warning("Format error: ", e.Message);
+
+		} catch (FormatException e) {
+			Warning("Formatting error", e.Message);
+
+		} catch (Exception e) when (e is IOException or UnauthorizedAccessException or ObjectDisposedException) {
+			Warning("Error writing", e.Message);
 		}
 	}
 

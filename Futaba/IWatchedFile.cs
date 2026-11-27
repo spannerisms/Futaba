@@ -41,7 +41,7 @@ internal interface IWatchedFile : IDisposable {
 			error = $"File {Path.GetFileName(path)} does not exist.";
 			return null;
 
-		} catch (Exception e) {
+		} catch (Exception e) when (e is IOException or NotSupportedException or ArgumentException or UnauthorizedAccessException) {
 			error = e.Message;
 			return null;
 		}

@@ -551,7 +551,7 @@ public sealed class Sa1Assembler : Assembler {
 			return true;
 		}
 
-		// catches negative numbers and out of bounds for both simultaneously
+		// covers negative numbers and out of bounds for both arguments simultaneously
 		if ((uint) (destination | address) > 0xFF_FFFF) {
 			return false;
 		}

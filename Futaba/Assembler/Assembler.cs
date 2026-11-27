@@ -253,9 +253,6 @@ public unsafe abstract partial class Assembler : IDisposable {
 
 			return [.. new ReadOnlySpan<byte>(_romPtr, CurrentRomSize)];
 
-		} catch {
-			throw;
-
 		} finally {
 			DeallocRomBuffer();
 		}
@@ -279,9 +276,6 @@ public unsafe abstract partial class Assembler : IDisposable {
 
 			stream.Write(new ReadOnlySpan<byte>(_romPtr, CurrentRomSize));
 			stream.Flush(true);
-
-		} catch {
-			throw;
 
 		} finally {
 			DeallocRomBuffer();

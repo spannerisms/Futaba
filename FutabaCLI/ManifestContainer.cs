@@ -302,12 +302,14 @@ internal sealed class ManifestContainer : ManifestFile {
 
 	internal void Configure() {
 		_firedChange = false;
+
 		try {
 			if (ManifestGood && _assemblerNeedsUpdating) {
 				PrepAssembler();
 			}
 		} catch {
 			ManifestGood = false;
+			throw;
 		}
 	}
 
@@ -527,7 +529,7 @@ internal sealed class ManifestContainer : ManifestFile {
 			if (StdOut?.Reload(stdoutGet) ?? true) {
 				try {
 					StdOut = new(stdoutGet.FullName, new(Helpers.WaitForAndCreateStream(stdoutGet)));
-				} catch (Exception e) {
+				} catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
 					StdOut = null;
 					ProblemLoadingFile(e, stdoutLine);
 				}
@@ -542,7 +544,7 @@ internal sealed class ManifestContainer : ManifestFile {
 			if (ErrOut?.Reload(erroroutGet) ?? true) {
 				try {
 					ErrOut = new(erroroutGet.FullName, new(Helpers.WaitForAndCreateStream(erroroutGet)));
-				} catch (Exception e) {
+				} catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
 					ErrOut = null;
 					ProblemLoadingFile(e, erroroutLine);
 				}
@@ -653,7 +655,7 @@ internal sealed class ManifestContainer : ManifestFile {
 					ManifestErrorNoLine("Problem parsing manifest file.");
 					return HandleRevalidation.Bad;
 
-				} catch (Exception e) {
+				} catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
 					Error = e.Message;
 				}
 			} else {
@@ -1101,7 +1103,7 @@ internal sealed class ManifestContainer : ManifestFile {
 				result = HandleRevalidation.Bad;
 				return false;
 			}
-		} catch (Exception e) {
+		} catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
 			ManifestError($"Problem loading file: '{path}' - {e.Message}", argGet.Line);
 			file = null;
 			result = HandleRevalidation.Bad;

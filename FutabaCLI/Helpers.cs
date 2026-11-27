@@ -53,6 +53,7 @@ internal static class Helpers {
 				}
 
 				return f;
+
 			} catch (IOException) {
 				int timeWasted = (int) Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 
@@ -81,6 +82,7 @@ internal static class Helpers {
 				}
 
 				return;
+
 			} catch (IOException) {
 				int timeWasted = (int) Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 

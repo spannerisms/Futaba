@@ -58,7 +58,7 @@ internal sealed class ManifestBinary(string path, SafeFileHandle? handle) : Mani
 					Error = null;
 					return HandleRevalidation.Good;
 
-				} catch (Exception e) {
+				} catch (Exception e) when (e is IOException or UnauthorizedAccessException) {
 					Error = e.Message;
 				}
 			} else {
